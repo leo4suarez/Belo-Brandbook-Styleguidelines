@@ -1,0 +1,14 @@
+{
+  "name": "belo-brandbook-styleguidelines",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Catálogo modular de la marca Belo: categorías, secciones y módulos editables, publicado como artifact de Claude.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/build.mjs && node scripts/serve.mjs",
+    "test": "node scripts/build.mjs && node tests/run.cjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
+}
