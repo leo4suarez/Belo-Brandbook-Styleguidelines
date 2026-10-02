@@ -15,6 +15,7 @@ const log = (...a) => console.log(...a);
   page.on('pageerror', e => errors.push('pageerror: ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 3).join('\n')));
   await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   await page.route(/cdn\.jsdelivr\.net\/npm\/lenis/, r => r.fulfill({ path: FIX + 'lenis.min.js', contentType: 'text/javascript' }));
+  await page.route(/cdn\.jsdelivr\.net\/npm\/gsap@[^/]+\/dist\/(gsap|ScrollTrigger|SplitText)\.min\.js/, r => r.fulfill({ path: FIX + r.request().url().split('/').pop(), contentType: 'text/javascript' }));
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto(BASE);
   await page.waitForSelector('#s-s_sepuede .row');

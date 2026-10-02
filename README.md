@@ -25,6 +25,16 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 - Barra flotante de tipo de módulo, botón de volver y `Ctrl+Z` / `Ctrl+Shift+Z` para deshacer y rehacer.
 - Carrusel con stepper animado (step player), arrastre con física de resorte y autoplay al entrar en pantalla.
 - Scroll suave con Lenis.
+- Animaciones preset (GSAP + ScrollTrigger + SplitText), en la vista **Animación** del panel de edición (toggle Diseño / Animación):
+  - **Módulo** (imagen, video, color o la caja de un texto): entrada (aparecer, desplazar, escalar, desenfoque, cortina, zoom revelado) y con scroll (parallax, alejar, acercar, desvanecer al salir). Solo se ofrecen los presets que tienen efecto en ese tipo de módulo.
+  - **Bloque de texto** (cada título o párrafo, por separado): entrada de bloque entero o por partes con SplitText (revelar con máscara, desplazar, aparecer, desenfoque, escalar, girar), y con scroll la lectura palabra por palabra.
+  - Controles: desde dónde entra (abajo, arriba, izquierda, derecha), distancia, duración y retraso; en los split, dividir por líneas, palabras o letras, escalonado por parte y orden (inicio, final, centro, bordes, azar).
+  - **Curva** de cada animación: familia (sine, power, expo, circ, back, elástica, rebote) e In / Out / In-Out, con un editor bezier de dos manijas. Editar cualquier curva la vuelve personalizada.
+  - **Secuencia** del bloque: espera entre módulos y entre textos. Nada se hereda.
+  - **Estilos de animación** vinculados, para todo el catálogo: se guarda la animación de un módulo o de un texto con un nombre y se vincula a otros. Editar un elemento vinculado lo marca como modificado, hasta que se actualiza el estilo (cambia en todos lados) o se restablece. **Usar en todos** vincula de una vez los del mismo tipo: el mismo tipo de módulo o, en textos, el mismo rol según el tamaño (títulos de 40 px o más, subtítulos de 24 a 39 px, textos). Al eliminar un estilo, cada elemento conserva su animación.
+  - Vista previa automática, con barra para recorrerla, velocidad 1× / ½× / ¼× y Esc para salir. **Ver división** marca en el lienzo las líneas, palabras o letras del texto y las cuenta.
+  - Las divisiones conservan los saltos de línea y no cambian el alto del texto.
+  - Respetan `prefers-reduced-motion`. Si GSAP no carga, el contenido se ve sin animar.
 
 ## Estructura
 
@@ -52,7 +62,7 @@ npm run serve                     # build + vista local en http://localhost:8765
 
 ```bash
 npx playwright install chromium   # la primera vez
-npm test                          # build + flows, panel y menu
+npm test                          # build + flows, panel, menu y motion
 ```
 
 - Las pruebas recorren los flujos principales: crear y editar bloques, panel, deshacer y rehacer, menú, buscador, temas y mobile.
@@ -69,6 +79,7 @@ Hay dos tipos de documento en la base del artifact:
   {
     logo: { id, w, h, mono } | null,
     menu: { bg: { kind: 'color', color } | { kind: 'image', asset, w, h, dim } },
+    animStyles: [{ id, name, kind: 'mod' | 'text', of, anim }],
     categories: [{ id, name, subs: [{ id, name }] }]
   }
   ```
@@ -80,6 +91,12 @@ Hay dos tipos de documento en la base del artifact:
   - Los textos guardan sus `blocks` con `font`, `size`, `weight`, `lh`, `ls`, `align` y `upper`.
   - Las imágenes y los videos guardan el `asset` (id del archivo subido, servido en `/_blob/<id>`).
   - `overlay` es el texto opcional sobre un bloque de pantalla completa.
+  - Animaciones (todas opcionales). Los presets están en `ENTER` y `SCROLL` dentro de `src/catalog.html`, y `ANIM_KEYS` define cuáles ofrece cada tipo:
+    - `row.anim`: `{ stagger, tstagger }`, la secuencia del bloque.
+    - `slot.anim`: `{ enter, scroll, dur, delay, ease, dir, dist }`, la animación del módulo.
+    - `block.anim` (en los bloques de texto): `{ enter, scroll, dur, delay, ease, dir, dist, by, order, stagger }`, la animación de ese texto.
+    - Con estilo: `anim.style` (id del estilo) y `anim.over` (modificado localmente). Los valores propios son una copia del estilo.
+    - `ease` es un nombre de GSAP (`power3.out`) o una curva `cubic-bezier(x1,y1,x2,y2)`.
 
 ## Publicar cambios
 
@@ -100,6 +117,7 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
 - **Phudu** (variable, 300–900): © The Phudu Project Authors, SIL Open Font License 1.1 (`assets/fonts/OFL.txt`). Se embebe un subset en la página.
 - **Plus Jakarta Sans:** se carga desde Google Fonts (OFL).
 - **Lenis** 1.3.26 (MIT): se carga desde jsDelivr. Hay una copia en `tests/fixtures/` solo para las pruebas.
+- **GSAP** 3.15.0 con ScrollTrigger y SplitText ([licencia estándar de GSAP](https://gsap.com/standard-license), sin costo): se carga desde jsDelivr. Hay copias en `tests/fixtures/` solo para las pruebas.
 - El stepper del carrusel es una reimplementación propia del comportamiento del *step player* de bencho.dev.
 
 ## Historial
