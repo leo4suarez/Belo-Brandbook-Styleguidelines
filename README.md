@@ -89,6 +89,12 @@ Hay dos tipos de documento en la base del artifact:
 
 El contenido (textos, imágenes, categorías) vive en la base del artifact y no en este repo, así que publicar código nuevo no pisa lo que ya está cargado.
 
+### Vercel
+
+- El repo está conectado a Vercel (proyecto `belo-brandbook`): cada push a `main` se despliega solo.
+- `vercel.json` le indica que corra `node scripts/build.mjs`, que no hace falta instalar dependencias y que sirva la carpeta `dist/`.
+- La versión de Vercel corre en **modo local**: muestra el contenido de demo y no guarda cambios. El catálogo con el contenido real es el artifact de Claude.
+
 ## Créditos y licencias
 
 - **Phudu** (variable, 300–900): © The Phudu Project Authors, SIL Open Font License 1.1 (`assets/fonts/OFL.txt`). Se embebe un subset en la página.
