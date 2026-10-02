@@ -34,6 +34,7 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
     await fake.attach(ctx, label);
     await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await ctx.route(/cdn\.jsdelivr\.net\/npm\/lenis/, r => r.fulfill({ path: FIX + 'lenis.min.js', contentType: 'text/javascript' }));
+    await ctx.route(/cdn\.jsdelivr\.net\/npm\/gsap@[^/]+\/dist\/(gsap|ScrollTrigger|SplitText)\.min\.js/, r => r.fulfill({ path: FIX + r.request().url().split('/').pop(), contentType: 'text/javascript' }));
     // The page loads supabase-js with an integrity hash: serving the npm copy also proves the hash matches the release.
     await ctx.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\/dist\/umd\/supabase\.js/, r => r.fulfill({ path: SB_JS, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
     if (user) await fake.signInContext(ctx, user);
@@ -183,6 +184,25 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
   const status = await L.textContent('#status');
   check(/Editado por (Ana Gómez|ti) · hace un momento/.test(status), 'status shows the last edit: "' + status + '"');
   await L.screenshot({ path: T + 'sb-05-status.png' });
+
+  // 9b. Animations save through Supabase: a preset on one title, saved as a linked style and applied to every title.
+  await editRow(L, 'r_b');
+  await L.click('#insp [data-action="insp-view"][data-v="anim"]');
+  await L.waitForSelector('#insp select[data-f="tenter"]');
+  await L.selectOption('#insp select[data-f="tenter"]', 'split-mask');
+  await L.click('#insp [data-action="style-new"][data-kind="text"]');
+  await L.fill('#style-name', 'Título hero'); await L.keyboard.press('Enter');
+  await L.waitForTimeout(200);
+  await L.click('#insp [data-action="style-ask"][data-mode="apply"][data-kind="text"]');
+  await L.click('#insp [data-action="style-apply"][data-kind="text"]');
+  await L.waitForTimeout(300);
+  await L.keyboard.press('Control+Enter');
+  const heroId = () => ((fake.docs.get('catalog/tree').data.animStyles || []).find(x => x.name === 'Título hero') || {}).id;
+  const linked = (r) => !!r && (r.slots[0].blocks || []).some(b => b.anim && b.anim.style === heroId());
+  check(await until(() => !!heroId() && linked(rowsOf('pages/s_intro').find(r => r.id === 'r_b')) && linked(rowsOf('pages/s_intro').find(r => r.id === 'r_a'))), 'animation style stored in the tree and applied to the titles of the page through Supabase');
+  check(await until(() => rowsOf('pages/s_logo').filter(r => r.slots[0].type === 'text').every(linked)), 'apply-to-all also saved the titles of the other section');
+  check(textOf(rowsOf('pages/s_intro').find(r => r.id === 'r_a')).includes('hola belo editado por ana'), 'applying the style kept the rest of each block');
+  await L.waitForTimeout(800);
 
   // 10. A dropped connection: the save is retried and lands.
   fake.down = 2;

@@ -1,12 +1,13 @@
 // Builds two test copies of the page and runs the end-to-end checks in sequence. Usage: npm test
-//   flows, panel, menu  the local demo (no Supabase), so they never touch real data
-//   collab              wired to a fake Supabase project (tests/fake-supabase.cjs)
+//   flows, panel, menu, motion  the local demo (no Supabase), so they never touch real data
+//   collab                      wired to a fake Supabase project (tests/fake-supabase.cjs)
 const { spawn } = require('child_process');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 (async () => {
-  const { serve } = await import(path.join(__dirname, '..', 'scripts', 'serve.mjs'));
-  const { build } = await import(path.join(__dirname, '..', 'scripts', 'build.mjs'));
+  const { serve } = await import(pathToFileURL(path.join(__dirname, '..', 'scripts', 'serve.mjs')).href);
+  const { build } = await import(pathToFileURL(path.join(__dirname, '..', 'scripts', 'build.mjs')).href);
   const port = Number(process.env.PORT) || 8765;
   const localDir = path.join(__dirname, 'output', 'dist-local');
   const supaDir = path.join(__dirname, 'output', 'dist-supabase');
@@ -17,7 +18,7 @@ const path = require('path');
   const supaServer = await serve(port + 1, supaDir);
   const env = { ...process.env, BASE_URL: `http://localhost:${port}/index.html`, SUPA_BASE_URL: `http://localhost:${port + 1}/index.html`, SUPA_URL: supaUrl };
   let failed = 0;
-  for (const file of ['flows.cjs', 'panel.cjs', 'menu.cjs', 'collab.cjs']) {
+  for (const file of ['flows.cjs', 'panel.cjs', 'menu.cjs', 'motion.cjs', 'collab.cjs']) {
     console.log(`\n=== ${file}`);
     const code = await new Promise(res => spawn(process.execPath, [path.join(__dirname, file)], { stdio: 'inherit', env }).on('exit', res));
     if (code !== 0) failed++;

@@ -189,6 +189,61 @@ html.is-editing .rail,html.is-editing .sec-mark,html.is-editing .adder,html.is-e
 .slot{position:relative;border-radius:var(--radius);overflow:clip;min-width:0;container-type:inline-size;--k:min(1px, calc(100cqi / var(--ref, 1114)))}
 .row.has-h .row-grid > .slot{min-height:calc(var(--h) * var(--u))}
 .slot.is-swapped{animation:slotIn 260ms var(--ease-out) both}
+/* Animation presets: SplitText line masks get room for ascenders and descenders; the block can't be edited while it previews */
+.sl-mask,.sw-mask,.sc-mask{overflow:visible!important;clip-path:inset(-.14em -.08em -.24em -.08em)}
+.row.is-splitview{pointer-events:none}
+.tb[data-split-by] .sl{position:relative}
+.tb[data-split-by="lines"] .sl{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--focus) 60%,transparent);border-radius:4px}
+.tb[data-split-by="words"] .sw{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--focus) 60%,transparent);border-radius:4px}
+.tb[data-split-by="chars"] .sc{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--focus) 50%,transparent);border-radius:2px}
+.tb[data-split-by]{counter-reset:ln}
+.tb[data-split-by="lines"] .sl{counter-increment:ln}
+.tb[data-split-by="lines"] .sl::before{content:counter(ln);position:absolute;right:calc(100% + 8px);top:50%;transform:translateY(-50%);min-width:18px;height:18px;padding:0 4px;border-radius:9px;display:grid;place-items:center;background:var(--focus);color:#fff;font:700 10px/1 var(--font);letter-spacing:0;text-transform:none}
+.ease-ctl{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ease-row{display:flex;gap:6px;align-items:center}
+.ease-row .sel{flex:1;min-width:0}
+.ease-thumb{width:44px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;background:var(--field);transition:background-color 160ms ease,box-shadow 160ms ease}
+.ease-thumb:hover{background:var(--field-hover)}
+.ease-thumb[aria-expanded="true"]{box-shadow:inset 0 0 0 1.5px var(--focus)}
+.ease-thumb svg{width:44px;height:32px;overflow:visible}
+.ez-base{stroke:var(--line-strong);stroke-width:1;fill:none}
+.ez-line{stroke:var(--ink);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.ease-ed{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:var(--field)}
+.ease-svg{width:100%;height:auto;max-height:190px;overflow:visible;touch-action:none;user-select:none}
+.ez-box{fill:var(--panel);stroke:var(--line-strong);stroke-width:1;stroke-dasharray:3 3}
+.ez-curve{fill:none;stroke:var(--ink);stroke-width:2.2;stroke-linecap:round}
+.ez-arm{stroke:var(--focus);stroke-width:1.4}
+.ez-h{fill:var(--panel);stroke:var(--focus);stroke-width:2.2;cursor:grab}
+.ez-h:active{cursor:grabbing;fill:var(--focus)}
+.ez-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.ez-nums input{width:100%;height:28px;border:0;border-radius:999px;background:var(--panel);text-align:center;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;outline:none}
+.ez-nums input:focus{box-shadow:inset 0 0 0 1.5px var(--focus)}
+.ez-code{flex:1;min-width:0;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.split-view{flex-wrap:wrap}
+.astyle{display:flex;flex-direction:column;gap:6px;padding:8px;margin:2px 0;border-radius:14px;background:color-mix(in srgb,var(--focus) 6%,var(--field))}
+.astyle .btn{align-self:flex-start}
+.astyle .insp-row .btn{align-self:auto}
+.astyle-meta{display:flex;gap:8px;align-items:center;margin:0;font-size:11.5px;color:var(--muted)}
+.astyle-mod{padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--ink);font-weight:600}
+.astyle-tools{flex-wrap:wrap;gap:2px}
+.astyle-q{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;background:var(--panel)}
+.astyle-q p{margin:0;font-size:12px;line-height:1.4}
+.grow-fld{flex:1;padding:0 12px}
+.anim-tp .rng output{min-width:52px}
+.row.is-previewing{pointer-events:none}
+html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);position:absolute;top:10px;right:10px;z-index:4;max-width:calc(100% - 20px);padding:5px 10px;border-radius:999px;background:var(--chip);color:var(--on-chip);font:600 11px/1.2 var(--font);letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:var(--shadow-soft);pointer-events:none;animation:fadeIn 200ms ease both}
+.insp-views{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin:8px 12px 0;padding:3px;border-radius:999px;background:var(--field)}
+.insp-views button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;border-radius:999px;font-size:12px;font-weight:600;color:var(--muted);transition:background-color 160ms ease,color 160ms ease}
+.insp-views button:hover{color:var(--ink)}
+.insp-views button[aria-selected="true"]{background:var(--seg-on);color:var(--ink);box-shadow:var(--shadow-soft)}
+.insp-views svg.i{width:14px;height:14px}
+.alist{display:flex;flex-direction:column;gap:2px;padding:3px;border-radius:14px;background:var(--field)}
+.alist button{display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 12px;border-radius:11px;text-align:left;color:var(--muted);transition:background-color 160ms ease,color 160ms ease}
+.alist button:hover{color:var(--ink)}
+.alist button[aria-pressed="true"]{background:var(--seg-on);color:var(--ink);box-shadow:var(--shadow-soft)}
+.alist-t{flex:1;min-width:0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alist-v{flex:none;max-width:48%;font-size:11px;font-weight:500;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alist-v.is-on{opacity:1;color:var(--focus)}
 
 /* Text */
 .slot-text{display:flex;flex-direction:column;color:var(--ink)}
@@ -718,6 +773,9 @@ html.is-editing .rail,html.is-editing .sec-mark,html.is-editing .adder,html.is-e
 <input type="file" id="logo-input" class="sr-only" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
 
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/SplitText.min.js"></script>
 <script>
 (() => {
 'use strict';
@@ -788,7 +846,10 @@ const ICONS = {
   fs: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
-  eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>'
+  eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  delay: '<path d="M7 4h10M7 20h10M8 4c0 4 8 4 8 8s-8 4-8 8M16 4c0 4-8 4-8 8s8 4 8 8"/>',
+  stagger: '<path d="M4 7h7M8 12h7M12 17h8"/>',
+  motion: '<path d="M3 12h4l2.5-6 5 12 2.5-6h4"/>'
 };
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n].replace(/class="f"/g, 'fill="currentColor" stroke="none"')}</svg>`;
 
@@ -806,8 +867,138 @@ const FIELD = {
   lh: { min: 50, max: 300, step: 1, px: 2, dec: 0 },
   ls: { min: -20, max: 50, step: .1, px: 3, dec: 1 },
   h: { min: 40, max: 4000, step: 1, px: 1, dec: 0 },
-  pace: { min: 1, max: 30, step: .5, px: 8, dec: 1 }
+  pace: { min: 1, max: 30, step: .5, px: 8, dec: 1 },
+  mdur: { min: .1, max: 4, step: .05, px: 6, dec: 2 },
+  mdelay: { min: 0, max: 3, step: .05, px: 6, dec: 2 },
+  tdur: { min: .1, max: 4, step: .05, px: 6, dec: 2 },
+  tdelay: { min: 0, max: 3, step: .05, px: 6, dec: 2 },
+  rstag: { min: 0, max: 1.5, step: .05, px: 6, dec: 2 },
+  tstag: { min: 0, max: 1.5, step: .05, px: 6, dec: 2 },
+  mdist: { min: 0, max: 400, step: 1, px: 1, dec: 0 },
+  tdist: { min: 0, max: 400, step: 1, px: 1, dec: 0 },
+  tstep: { min: 0, max: 1, step: .005, px: 4, dec: 3 }
 };
+/* Animation presets. Each module (image, video, color, the box of a text module) and each text block has its own
+   animation; nothing is inherited. The block (row) only sets the sequence: the wait between modules and between texts.
+   Enter presets play once when the block reaches the viewport; scroll presets are scrubbed by the scroll position.
+   Split presets cut a text block into lines, words or letters with SplitText and exist only for text blocks.
+   `fx(a)` returns the "from" state of a preset for an animation `a` (direction, distance). */
+const DIRS = ['bottom', 'top', 'left', 'right'], ORDERS = ['start', 'end', 'center', 'edges', 'random'], BYS = ['lines', 'words', 'chars'];
+const offset = (dir, d, unit) => {
+  const h = dir === 'left' || dir === 'right', s = dir === 'top' || dir === 'left' ? -1 : 1;
+  return { [unit === '%' ? (h ? 'xPercent' : 'yPercent') : (h ? 'x' : 'y')]: s * d };
+};
+const ENTER = {
+  none: { label: 'Sin animación' },
+  fade: { label: 'Aparecer', ease: 'power2.out', fx: () => ({ opacity: 0 }) },
+  move: { label: 'Desplazar', ease: 'power3.out', dir: true, dist: 56, fx: (a) => ({ opacity: 0, ...offset(a.dir, a.dist, 'px') }) },
+  scale: { label: 'Escalar', ease: 'power3.out', fx: () => ({ opacity: 0, scale: .92 }) },
+  blur: { label: 'Desenfoque', ease: 'power2.out', fx: () => ({ opacity: 0, filter: 'blur(16px)' }) },
+  wipe: { label: 'Cortina', ease: 'expo.inOut', dir: true, kind: 'wipe' },
+  zoom: { label: 'Zoom revelado', ease: 'expo.out', kind: 'zoom' },
+  'split-mask': { label: 'Revelar con máscara', split: true, mask: true, dir: true, dist: 120, by: 'lines', stagger: .09, dur: .9, ease: 'expo.out', fx: (a) => offset(a.dir, a.dist, '%') },
+  'split-move': { label: 'Desplazar', split: true, dir: true, dist: 60, by: 'words', stagger: .045, dur: .7, ease: 'power3.out', fx: (a) => ({ opacity: 0, ...offset(a.dir, a.dist, '%') }) },
+  'split-fade': { label: 'Aparecer', split: true, by: 'chars', stagger: .02, dur: .5, ease: 'power1.out', fx: () => ({ opacity: 0 }) },
+  'split-blur': { label: 'Desenfoque', split: true, by: 'words', stagger: .06, dur: .8, ease: 'power2.out', fx: () => ({ opacity: 0, filter: 'blur(10px)' }) },
+  'split-scale': { label: 'Escalar', split: true, by: 'chars', stagger: .025, dur: .6, ease: 'back.out(1.7)', fx: () => ({ opacity: 0, scale: 0 }) },
+  'split-rotate': { label: 'Girar', split: true, dir: true, dist: 60, by: 'chars', stagger: .018, dur: .7, ease: 'back.out(1.6)', fx: (a) => ({ opacity: 0, rotate: a.dir === 'top' || a.dir === 'left' ? -14 : 14, ...offset(a.dir, a.dist, '%') }) }
+};
+const SCROLL = {
+  none: { label: 'Sin animación' },
+  parallax: { label: 'Parallax', media: [{ yPercent: -8, scale: 1.18 }, { yPercent: 8, scale: 1.18 }], text: [{ y: 70 }, { y: -70 }] },
+  'zoom-out': { label: 'Alejar', media: [{ scale: 1.3 }, { scale: 1 }] },
+  'zoom-in': { label: 'Acercar', media: [{ scale: 1 }, { scale: 1.25 }] },
+  'fade-out': { label: 'Desvanecer al salir', self: [{ opacity: 1, y: 0 }, { opacity: 0, y: -80 }], start: 'top top', end: 'bottom top' },
+  'split-read': { label: 'Lectura palabra por palabra', split: true, start: 'top 85%', end: 'bottom 55%' }
+};
+const isMediaType = (t) => t === 'image' || t === 'video' || t === 'carousel';
+/* Which presets each target offers: only what has a visible effect on it */
+const ANIM_KEYS = {
+  modEnter: (t) => ['none', 'fade', 'move', 'scale', 'blur', 'wipe', ...(!t || isMediaType(t) ? ['zoom'] : [])],
+  modScroll: (t) => isMediaType(t) ? ['none', 'parallax', 'zoom-out', 'zoom-in', 'fade-out'] : t === 'text' ? ['none', 'parallax', 'fade-out'] : ['none', 'fade-out'],
+  txtEnter: () => ['none', 'fade', 'move', 'scale', 'blur', 'split-mask', 'split-move', 'split-fade', 'split-blur', 'split-scale', 'split-rotate'],
+  txtScroll: () => ['none', 'split-read']
+};
+/* Earlier preset names, kept readable */
+const LEGACY_ENTER = { 'fade-up': ['move', 'bottom'], 'fade-down': ['move', 'top'], 'slide-left': ['move', 'right'], 'slide-right': ['move', 'left'], 'split-lines': ['split-mask', null, 'lines'], 'split-words': ['split-move', null, 'words'], 'split-chars': ['split-rotate', null, 'chars'] };
+const ANIM_DEF = { mod: { dur: 1 }, text: { dur: .9 }, row: { stagger: .15, tstagger: .12 } };
+const UNIT_STAGGER = { lines: .09, words: .045, chars: .02 };
+
+/* Easing: a GSAP ease name ("power3.out") or a custom cubic-bezier("cubic-bezier(.2,1,.3,1)"). Every named ease has a
+   bezier equivalent, so any of them can be opened in the curve editor (elastic and bounce are approximated). */
+const EASE_FAMS = [['none', 'Lineal'], ['sine', 'Sine'], ['power1', 'Power 1'], ['power2', 'Power 2'], ['power3', 'Power 3'], ['power4', 'Power 4'], ['expo', 'Expo'], ['circ', 'Circ'], ['back', 'Back'], ['elastic', 'Elástica'], ['bounce', 'Rebote'], ['custom', 'Personalizada']];
+const BEZ = {
+  none: [0, 0, 1, 1],
+  'sine.in': [.12, 0, .39, 0], 'sine.out': [.61, 1, .88, 1], 'sine.inOut': [.37, 0, .63, 1],
+  'power1.in': [.11, 0, .5, 0], 'power1.out': [.5, 1, .89, 1], 'power1.inOut': [.45, 0, .55, 1],
+  'power2.in': [.32, 0, .67, 0], 'power2.out': [.33, 1, .68, 1], 'power2.inOut': [.65, 0, .35, 1],
+  'power3.in': [.5, 0, .75, 0], 'power3.out': [.25, 1, .5, 1], 'power3.inOut': [.76, 0, .24, 1],
+  'power4.in': [.64, 0, .78, 0], 'power4.out': [.22, 1, .36, 1], 'power4.inOut': [.83, 0, .17, 1],
+  'expo.in': [.7, 0, .84, 0], 'expo.out': [.16, 1, .3, 1], 'expo.inOut': [.87, 0, .13, 1],
+  'circ.in': [.55, 0, 1, .45], 'circ.out': [0, .55, .45, 1], 'circ.inOut': [.85, 0, .15, 1],
+  'back.in': [.36, 0, .66, -.56], 'back.out': [.34, 1.56, .64, 1], 'back.inOut': [.68, -.6, .32, 1.6]
+};
+['in', 'out', 'inOut'].forEach(t => { BEZ['elastic.' + t] = BEZ['back.' + t]; BEZ['bounce.' + t] = BEZ['back.' + t]; });
+const BEZ_RE = /^cubic-bezier\((-?\d*\.?\d+),(-?\d*\.?\d+),(-?\d*\.?\d+),(-?\d*\.?\d+)\)$/;
+const EASE_RE = /^(sine|power[1-4]|expo|circ|back|elastic|bounce)\.(in|out|inOut)(\([\d.,]*\))?$/;
+const validEase = (v) => typeof v === 'string' && (v === 'none' || EASE_RE.test(v) || BEZ_RE.test(v));
+const bezStr = (b) => `cubic-bezier(${b.map(n => +(+n).toFixed(2)).join(',')})`;
+function easeParts(v) {
+  if (v === 'none') return { fam: 'none', type: '' };
+  if (BEZ_RE.test(v)) return { fam: 'custom', type: '' };
+  const m = EASE_RE.exec(v); return m ? { fam: m[1], type: m[2] } : { fam: 'power2', type: 'out' };
+}
+function toBezier(v) {
+  const m = BEZ_RE.exec(v || ''); if (m) return m.slice(1, 5).map(Number);
+  const p = easeParts(v); return BEZ[p.fam === 'none' ? 'none' : p.fam + '.' + p.type] || [.25, .1, .25, 1];
+}
+function bezierEase(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const sx = (t) => ((ax * t + bx) * t + cx) * t, sy = (t) => ((ay * t + by) * t + cy) * t, dx = (t) => (3 * ax * t + 2 * bx) * t + cx;
+  return (x) => {
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    let t = x;
+    for (let i = 0; i < 8; i++) { const e = sx(t) - x; if (Math.abs(e) < 1e-6) return sy(t); const d = dx(t); if (Math.abs(d) < 1e-6) break; t -= e / d; }
+    let lo = 0, hi = 1; t = x;
+    for (let i = 0; i < 40; i++) { const v = sx(t); if (Math.abs(v - x) < 1e-6) break; if (v < x) lo = t; else hi = t; t = (lo + hi) / 2; }
+    return sy(t);
+  };
+}
+const EASES = new Map();
+function easeFn(v) {
+  if (EASES.has(v)) return EASES.get(v);
+  const m = BEZ_RE.exec(v || '');
+  const fn = m ? bezierEase(clamp(+m[1], 0, 1), +m[2], clamp(+m[3], 0, 1), +m[4]) : (window.gsap ? window.gsap.parseEase(v || 'none') : (x) => x);
+  EASES.set(v, fn); return fn;
+}
+const resolveEase = (v) => BEZ_RE.test(v || '') ? easeFn(v) : (v || 'none');
+
+function normAnim(a, kind) {
+  if (!a || typeof a !== 'object') return undefined;
+  const num = (v, d, lo, hi) => clamp(isNum(v) ? v : d, lo, hi);
+  if (kind === 'row') return { stagger: num(a.stagger, ANIM_DEF.row.stagger, 0, 1.5), tstagger: num(a.tstagger, ANIM_DEF.row.tstagger, 0, 1.5) };
+  a = { ...a };
+  const L = LEGACY_ENTER[a.enter];
+  if (L) { a.enter = L[0]; if (L[1] && !a.dir) a.dir = L[1]; if (L[2] && !a.by) a.by = L[2]; }
+  const keys = kind === 'mod' ? ANIM_KEYS.modEnter() : ANIM_KEYS.txtEnter();
+  const enter = keys.includes(a.enter) ? a.enter : ENTER[a.enter] ? (kind === 'mod' ? 'move' : 'fade') : 'none';
+  const P = ENTER[enter];
+  const o = {
+    enter, scroll: 'none', dur: num(a.dur, P.dur || ANIM_DEF[kind].dur, .1, 4), delay: num(a.delay, 0, 0, 3),
+    ease: validEase(a.ease) ? a.ease : (P.ease || 'power2.out'),
+    dir: DIRS.includes(a.dir) ? a.dir : 'bottom', dist: num(a.dist, P.dist || 56, 0, 400)
+  };
+  const sk = kind === 'mod' ? ['none', 'parallax', 'zoom-out', 'zoom-in', 'fade-out'] : ANIM_KEYS.txtScroll();
+  if (sk.includes(a.scroll)) o.scroll = a.scroll;
+  if (kind === 'text') {
+    o.by = BYS.includes(a.by) ? a.by : (P.by || 'words');
+    o.order = ORDERS.includes(a.order) ? a.order : 'start';
+    o.stagger = num(a.stagger, P.stagger || UNIT_STAGGER[o.by], 0, 1);
+    if (o.scroll === 'split-read' && P.split) o.enter = 'fade';
+  }
+  if (typeof a.style === 'string' && a.style) { o.style = a.style; o.over = !!a.over; }
+  return o;
+}
 const RATIOS = [['auto', 'Original'], ['16/9', '16:9'], ['3/2', '3:2'], ['4/3', '4:3'], ['1/1', '1:1'], ['4/5', '4:5']];
 const TYPES = {
   text: { label: 'Texto', hint: 'Títulos y párrafos', icon: 'text' },
@@ -832,6 +1023,7 @@ function normBlock(b) {
   else { if (isNum(b.size)) o.size = b.size; if (isNum(b.lh)) o.lh = b.lh; if (isNum(b.ls)) o.ls = b.ls; }
   if (isNum(b.weight)) o.weight = b.weight;
   const F = FONTS[o.font]; o.weight = clamp(o.weight, F.min, F.max);
+  if (b.anim) o.anim = normAnim(b.anim, 'text');
   return o;
 }
 function normSlot(s) {
@@ -844,6 +1036,7 @@ function normSlot(s) {
     s.align = s.align || 'start'; s.ink = s.ink || 'auto';
   }
   if (s.type === 'carousel') { s.images = s.images || []; if (!isNum(s.pace)) s.pace = 5; if (typeof s.autoplay !== 'boolean') s.autoplay = true; }
+  if (s.anim) s.anim = normAnim(s.anim, 'mod'); else delete s.anim;
   return s;
 }
 function normRow(r) {
@@ -856,6 +1049,7 @@ function normRow(r) {
     else r.overlay = null;
   }
   if (!isNum(r.h)) r.h = null;
+  if (r.anim) r.anim = normAnim(r.anim, 'row'); else delete r.anim;
   return r;
 }
 function normTree(t) {
@@ -864,6 +1058,8 @@ function normTree(t) {
   t.categories.forEach(c => { if (!Array.isArray(c.subs)) c.subs = []; });
   t.menu = t.menu && t.menu.bg ? t.menu : { bg: { kind: 'color', color: BRAND } };
   t.logo = t.logo || null;
+  t.animStyles = (Array.isArray(t.animStyles) ? t.animStyles : []).filter(x => x && x.id && (x.kind === 'mod' || x.kind === 'text'))
+    .map(x => ({ id: String(x.id), name: String(x.name || 'Estilo').slice(0, 60), kind: x.kind, of: String(x.of || ''), anim: ownVals(normAnim(x.anim || {}, x.kind)) }));
   return t;
 }
 
@@ -903,7 +1099,7 @@ const S = {
   pages: new Map(), loaded: new Set(), subsc: new Map(),
   edit: null, adder: null, inline: null, focusInline: false,
   pop: null, confirmDelete: null, uploading: new Map(), justAdded: new Set(),
-  overlay: null, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
+  overlay: null, inspView: ls.get('insp') === 'anim' ? 'anim' : 'design', easeEd: null, splitView: false, pvSpeed: 1, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
   started: false, user: null, peers: [], importing: false, landing: false
 };
 const B = { db: null, assets: null, user: null };
@@ -939,10 +1135,10 @@ const Local = (() => {
       ]
     });
     docs.set('pages/s_direccion', { rows: [
-      { id: 'r_t', layout: 'full', slots: [{ id: 'm_t', type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b1', text: 'Dirección estratégica', font: 'jakarta', size: 14, weight: 600, lh: 140, ls: 0, align: 'left' }, { id: 'b2', text: 'Tu dinero puede llegar más lejos', font: 'jakarta', size: 96, weight: 600, lh: 95, ls: -4, align: 'left' }] }] }
+      { id: 'r_t', layout: 'full', slots: [{ id: 'm_t', type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b1', text: 'Dirección estratégica', font: 'jakarta', size: 14, weight: 600, lh: 140, ls: 0, align: 'left', anim: { enter: 'move' } }, { id: 'b2', text: 'Tu dinero puede llegar más lejos', font: 'jakarta', size: 96, weight: 600, lh: 95, ls: -4, align: 'left', anim: { enter: 'split-mask', by: 'lines' } }] }] }
     ] });
     docs.set('pages/s_sepuede', { rows: [
-      { id: 'r_sp', layout: 'fullscreen', h: null, slots: [{ id: 'm_sp', type: 'color', color: BRAND }], overlay: { pos: 'tl', width: 'content', slot: { id: 't_sp', type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b3', text: 'Se puede', font: 'phudu', size: 252, weight: 900, lh: 95, ls: -2, align: 'left', upper: true }, { id: 'b4', text: 'Nuestra manera de decir que siempre hay algo más por hacer.', font: 'jakarta', size: 24, weight: 500, lh: 130, ls: -1, align: 'left' }] } } }
+      { id: 'r_sp', layout: 'fullscreen', h: null, slots: [{ id: 'm_sp', type: 'color', color: BRAND, anim: { enter: 'fade' } }], overlay: { pos: 'tl', width: 'content', slot: { id: 't_sp', type: 'text', anim: { scroll: 'parallax' }, bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b3', text: 'Se puede', font: 'phudu', size: 252, weight: 900, lh: 95, ls: -2, align: 'left', upper: true, anim: { enter: 'split-rotate', by: 'chars', delay: .1 } }, { id: 'b4', text: 'Nuestra manera de decir que siempre hay algo más por hacer.', font: 'jakarta', size: 24, weight: 500, lh: 130, ls: -1, align: 'left', anim: { enter: 'split-move', by: 'words' } }] } } }
     ] });
   };
   return { db, assets, urls, seed };
@@ -1085,7 +1281,8 @@ function docOf(path) {
   if (!d) D.set(path, d = { base: undefined, ver: undefined, meta: null, ops: [], busy: false, later: null, retry: 0, timer: 0, fns: new Set() });
   return d;
 }
-const viewOf = (path) => { const d = docOf(path); return d.ops.reduce((acc, op) => op(acc), d.base == null ? null : clone(d.base)); };
+/* A change that throws is skipped instead of breaking the whole document (and every later save of it). */
+const viewOf = (path) => { const d = docOf(path); return d.ops.reduce((acc, op) => { try { return op(acc); } catch (e) { console.error('Skipped a change that failed to apply to ' + path, e); return acc; } }, d.base == null ? null : clone(d.base)); };
 function land(d, data, ver, meta) { d.base = data == null ? null : data; d.ver = ver; d.meta = meta || null; }
 function notify(path) { const d = docOf(path); d.fns.forEach(fn => fn(viewOf(path))); }
 function watchDoc(path, onData, onError) {
@@ -1209,6 +1406,7 @@ async function boot() {
   $('#search-ico').innerHTML = icon('search');
   renderAll();
   initLenis();
+  Motion.init();
   /* The menu is the opening screen, unless the link points at a section (or a sign-in is coming back to one). */
   let back = ''; try { back = sessionStorage.getItem('bc.authHash') || ''; } catch {}
   if (location.hash.length < 2 && back.length < 2) openOverlay('menu', { instant: true, landing: true });
@@ -1325,6 +1523,7 @@ function renderPeers() { updateRailState(); refreshRowTools(); }
 function onTree() {
   const intro = S.overlay === 'menu' && S.landing && !$('#menu-list .ov-item');
   renderLogos();
+  { const sig = JSON.stringify(animStyles()); if (sig !== Motion.stSig) { const first = Motion.stSig == null; Motion.stSig = sig; if (!first) Motion.resetAll(); } }
   if (!currentCat()) {
     const hashSub = decodeURIComponent((location.hash || '').slice(1));
     const hc = hashSub && catOf(hashSub);
@@ -1609,6 +1808,7 @@ function afterStage() {
   $$('#stage video').forEach(v => { if (v.paused && !v.dataset.userPaused) { const r = v.getBoundingClientRect(); if (r.bottom > 0 && r.top < innerHeight) v.play().catch(() => {}); } });
   Ink.schedule();
   spySchedule();
+  Motion.sync();
 }
 function markStartsFull() {
   const stage = $('#stage');
@@ -1766,7 +1966,7 @@ function textShell(s, ref, overlay) {
 }
 function buildTextView(s, ref, overlay) {
   const { el, w } = textShell(s, ref, overlay);
-  (s.blocks || []).filter(b => b.text && b.text.trim()).forEach(b => { const t = document.createElement(tagFor(b.size)); t.className = 'tb'; applyBlockStyle(t, b); t.textContent = b.text; w.append(t); });
+  (s.blocks || []).filter(b => b.text && b.text.trim()).forEach(b => { const t = document.createElement(tagFor(b.size)); t.className = 'tb'; t.dataset.block = b.id; applyBlockStyle(t, b); t.textContent = b.text; w.append(t); });
   return el;
 }
 function buildTextEdit(s, ref, overlay) {
@@ -1831,7 +2031,7 @@ const videoCtrls = () => `<div class="media-ctrls"><button type="button" class="
 function buildImage(s) { const el = mediaFrame(s, 'figure'); el.append(imgEl(s.asset, s.w, s.h, s.alt || '')); return el; }
 function buildVideo(s) { const el = mediaFrame(s, 'div'); el.classList.add('slot-video'); el.append(videoEl(s)); el.insertAdjacentHTML('beforeend', videoCtrls()); return el; }
 function watchMedia(m) {
-  const done = () => { m.classList.add('is-loaded'); Ink.schedule(); };
+  const done = () => { m.classList.add('is-loaded'); Ink.schedule(); Motion.refresh(); };
   const fail = () => { m.classList.add('is-loaded'); m.parentElement && m.parentElement.classList.add('is-broken'); m.style.visibility = 'hidden'; };
   if (m.tagName === 'IMG') { if (m.complete && m.naturalWidth) done(); else { m.addEventListener('load', done, { once: true }); m.addEventListener('error', fail, { once: true }); } }
   else { m.addEventListener('loadeddata', done, { once: true }); m.addEventListener('error', fail, { once: true }); }
@@ -2162,7 +2362,8 @@ function activeBlock() { const s = activeSlot(); return s && s.type === 'text' ?
 
 function newSlot() { return { id: uid('m'), type: null }; }
 function fillType(s, type, ctx) {
-  const id = s.id; Object.keys(s).forEach(k => delete s[k]); s.id = id; s.type = type;
+  const id = s.id, anim = s.anim; Object.keys(s).forEach(k => delete s[k]); s.id = id; s.type = type;
+  if (anim) s.anim = anim;
   if (type === 'text') {
     if (ctx === 'overlay') {
       s.blocks = [mkBlock('phudu', 120, 900, 95, -2), mkBlock('jakarta', 20, 500, 140, -.5)];
@@ -2182,6 +2383,7 @@ function fillType(s, type, ctx) {
 }
 function bump() {
   const e = S.edit; if (!e) return;
+  Motion.idle();
   e.v++;
   renderStage();
   S.animSlot = null; S.newBlock = null;
@@ -2231,6 +2433,7 @@ function startEdit(subId, rowId) {
   const rows = S.pages.get(subId) || []; const i = rows.findIndex(r => r.id === rowId); if (i < 0) return;
   S.confirmDelete = null;
   const draft = clone(rows[i]);
+  S.pagesAll = false; S.styleUi = null;
   S.edit = { subId, rowId, isNew: false, index: i, draft, origin: clone(rows[i]), v: 1, slot: draft.slots[0] && draft.slots[0].id, blocks: {}, ...editMeta() };
   renderStage(); updateRailState();
   const other = peersOn(p => p.row === rowId)[0];
@@ -2240,6 +2443,7 @@ function startNew(subId, layout) {
   if (S.edit) return;
   const row = { id: uid('r'), layout, h: null, slots: layout === 'half' ? [newSlot(), newSlot()] : [newSlot()] };
   if (layout === 'fullscreen') row.overlay = null;
+  S.pagesAll = false; S.styleUi = null;
   S.edit = { subId, rowId: row.id, isNew: true, index: (S.pages.get(subId) || []).length, draft: row, v: 1, slot: row.slots[0].id, blocks: {}, ...editMeta() };
   S.adder = null;
   const sec = document.getElementById('s-' + subId); if (sec) $('.adder', sec).dataset.state = '';
@@ -2266,7 +2470,7 @@ function cleanRow(r) {
   if (c.overlay) { tidy(c.overlay.slot); if (!c.overlay.slot.blocks.length) c.overlay = null; }
   return c;
 }
-function syncTextFromDom() { const e = S.edit; if (!e) return; allSlots(e.draft).forEach(s => { if (s.type === 'text') $$(`.tb[data-slot="${s.id}"]`).forEach(el => { const b = s.blocks.find(x => x.id === el.dataset.block); if (b) b.text = readText(el); }); }); }
+function syncTextFromDom() { Motion.idle(); const e = S.edit; if (!e) return; allSlots(e.draft).forEach(s => { if (s.type === 'text') $$(`.tb[data-slot="${s.id}"]`).forEach(el => { const b = s.blocks.find(x => x.id === el.dataset.block); if (b) b.text = readText(el); }); }); }
 const readText = (el) => (el.innerText || '').replace(/\r/g, '');
 function confirmEdit() {
   const e = S.edit; if (!e) return;
@@ -2366,7 +2570,7 @@ function selc(k, opts, val, label, disabled = false) {
 function renderInspector() {
   const el = $('#insp');
   const e = S.edit;
-  if (!e || S.mode !== 'admin') { if (!el.hidden || el.innerHTML) { el.hidden = true; el.innerHTML = ''; } renderTypes(); return; }
+  if (!e || S.mode !== 'admin') { if (!el.hidden || el.innerHTML) { el.hidden = true; el.innerHTML = ''; } ROOT.classList.remove('insp-anim'); renderTypes(); return; }
   const b0 = $('.insp-body', el); const st = b0 ? b0.scrollTop : 0;
   const fa = document.activeElement; const keepF = fa && el.contains(fa) && fa.id ? { id: fa.id, s: fa.selectionStart, e: fa.selectionEnd } : null;
   const row = e.draft; const slot = activeSlot(); const fsRow = row.layout === 'fullscreen';
@@ -2374,20 +2578,25 @@ function renderInspector() {
   let tabs = '';
   if (row.layout === 'half') tabs = row.slots.map((s, i) => tab(s.id, (i ? 'Derecha' : 'Izquierda') + (s.type ? ' · ' + TYPES[s.type].label : ''))).join('');
   if (fsRow && row.overlay) tabs = tab(row.slots[0].id, 'Fondo') + tab(row.overlay.slot.id, 'Texto encima');
+  const animV = S.inspView === 'anim';
   let body = '';
-  if (!slot || !slot.type) body += `<div class="insp-sec"><p class="insp-hint">Elige en el bloque qué tipo de contenido va ${fsRow ? 'de fondo' : 'en este módulo'}.</p></div>`;
+  if (animV) body = inspAnimView(row, slot);
+  else if (!slot || !slot.type) body += `<div class="insp-sec"><p class="insp-hint">Elige en el bloque qué tipo de contenido va ${fsRow ? 'de fondo' : 'en este módulo'}.</p></div>`;
   else if (slot.type === 'text') body += inspText(slot, isOverlaySlot(slot), row);
   else if (slot.type === 'image' || slot.type === 'video') body += inspMedia(slot, row);
   else if (slot.type === 'carousel') body += inspCarousel(slot, row);
   else if (slot.type === 'color') body += inspColor(slot);
-  if (fsRow && slot && slot.id === row.slots[0].id && slot.type && !row.overlay) body += `<div class="insp-sec"><button type="button" class="btn ghost" data-action="ov-add">${icon('text')}Añadir texto encima</button></div>`;
-  body += inspHeight(row);
+  if (!animV && fsRow && slot && slot.id === row.slots[0].id && slot.type && !row.overlay) body += `<div class="insp-sec"><button type="button" class="btn ghost" data-action="ov-add">${icon('text')}Añadir texto encima</button></div>`;
+  if (!animV) body += inspHeight(row);
+  const view = (v, l, ic) => `<button type="button" role="tab" data-action="insp-view" data-v="${v}" aria-selected="${(S.inspView === 'anim' ? 'anim' : 'design') === v}">${icon(ic)}${l}</button>`;
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   el.innerHTML = `<div class="insp-head"><button type="button" class="insp-back" id="insp-back" data-action="undo" aria-label="Volver atrás" title="Volver atrás (${mac ? '⌘' : 'Ctrl'} + Z)">${icon('left')}</button>${tabs ? `<div class="insp-tabs" role="tablist">${tabs}</div>` : ''}</div>
+    <div class="insp-views" role="tablist" aria-label="Vista del panel">${view('design', 'Diseño', 'edit')}${view('anim', 'Animación', 'motion')}</div>
     <div class="insp-body" data-lenis-prevent>${body}</div><div class="insp-foot" id="insp-foot">${footHTML()}</div>`;
   el.hidden = false;
   const b1 = $('.insp-body', el); if (b1) b1.scrollTop = st;
   syncBack(); renderTypes();
+  ROOT.classList.toggle('insp-anim', animV); paintAnimBadges(); Motion.syncSplit(); Motion.paintTransport();
   if (keepF) { const n = document.getElementById(keepF.id); if (n) { n.focus({ preventScroll: true }); try { n.setSelectionRange(keepF.s, keepF.e); } catch {} } }
 }
 function renderTypes() {
@@ -2470,6 +2679,287 @@ function inspCarousel(s, row) {
       ${fld('pace', 'clock', s.pace || 5, 's por imagen', { title: 'Duración de cada imagen' })}</div>
     <div class="insp-sec"><h4>Encuadre</h4>${selc('ratio', RATIOS, s.ratio || 'auto', 'Proporción', !!row.h)}</div>`;
 }
+/* ---------- Animation styles: saved, named animations shared by the whole catalog ---------- */
+/* A module or text block linked to a style takes the style's values; its own values are a copy kept up to date, so
+   nothing is lost if the style is deleted. Editing a linked item marks it as modified (an override) until the change
+   is pushed to the style or reset. "Same type" means the same module type, or for text the same role by size. */
+const animStyles = () => (S.tree && S.tree.animStyles) || [];
+const styleById = (id) => animStyles().find(x => x.id === id) || null;
+const TEXT_ROLES = { title: ['título', 'títulos'], subtitle: ['subtítulo', 'subtítulos'], body: ['texto', 'textos'] };
+const MOD_GROUPS = { image: ['imagen', 'imágenes'], video: ['video', 'videos'], carousel: ['carrusel', 'carruseles'], color: ['fondo de color', 'fondos de color'], text: ['caja de texto', 'cajas de texto'] };
+const textRole = (b) => b.size >= 40 ? 'title' : b.size >= 24 ? 'subtitle' : 'body';
+const ownVals = (a) => { const o = { ...a }; delete o.style; delete o.over; return o; };
+const linkVals = (st) => ({ ...normAnim(st.anim, st.kind), style: st.id, over: false });
+/* Every module or text block of the catalog (and of the block being edited), with a setter for its anim */
+async function animTargets() {
+  await ensureAllPages();
+  const fresh = cats().flatMap(c => c.subs.map(s => s.id)).filter(id => !S.subsc.has(id));
+  await Promise.all(fresh.map(async id => { try { const snap = await B.db.doc('pages/' + id).get(); const d = snap.exists ? snap.data() : null; S.pages.set(id, d && Array.isArray(d.rows) ? d.rows.map(r => normRow(clone(r))) : []); } catch {} }));
+}
+/* Returns, per section, the ids of the modules and text blocks fn changed (the block being edited is saved on confirm). */
+function forEachTarget(fn) {
+  const changed = new Map();
+  const mark = (subId, id) => { if (!subId) return; let ids = changed.get(subId); if (!ids) changed.set(subId, ids = new Set()); ids.add(id); };
+  const visit = (row, subId) => allSlots(row).forEach(s => {
+    if (!s.type) return;
+    if (fn({ kind: 'mod', item: s, type: s.type })) mark(subId, s.id);
+    if (s.type === 'text') (s.blocks || []).forEach(b => { if (fn({ kind: 'text', item: b, type: textRole(b) })) mark(subId, b.id); });
+  });
+  S.pages.forEach((rows, subId) => rows.forEach(r => { if (!(S.edit && S.edit.rowId === r.id)) visit(r, subId); }));
+  if (S.edit) visit(S.edit.draft, null);
+  return changed;
+}
+/* Saves the new animations through the normal save path: only the anim of each changed item is written over the
+   stored page, so a concurrent edit by someone else to anything else in that page is kept. */
+function commitTargets(changed) {
+  changed.forEach((ids, subId) => {
+    const anims = new Map();
+    (S.pages.get(subId) || []).forEach(r => allSlots(r).forEach(s => {
+      if (!s) return;
+      if (ids.has(s.id)) anims.set(s.id, s.anim);
+      (s.blocks || []).forEach(b => { if (ids.has(b.id)) anims.set(b.id, b.anim); });
+    }));
+    const put = (x) => { if (!x || !anims.has(x.id)) return; const a = anims.get(x.id); if (a === undefined) delete x.anim; else x.anim = clone(a); };
+    const rows = commitPage(subId, rows => {
+      rows.forEach(r => [...((r && r.slots) || []), ...(r && r.overlay && r.overlay.slot ? [r.overlay.slot] : [])].forEach(s => { put(s); if (s && Array.isArray(s.blocks)) s.blocks.forEach(put); }));
+      return rows;
+    });
+    if (docOf('pages/' + subId).base !== undefined) S.pages.set(subId, rows); /* sections not open here keep their local copy */
+  });
+  Motion.resetAll();
+  if (S.edit) bump(); else renderStage();
+}
+const styleUses = (id) => { let n = 0; forEachTarget(t => { if (t.item.anim && t.item.anim.style === id) n++; return false; }); return n; };
+function sameTypeTargets(kind, type, styleId) {
+  let n = 0; forEachTarget(t => { if (t.kind === kind && t.type === type && !(t.item.anim && t.item.anim.style === styleId && !t.item.anim.over)) n++; return false; }); return n;
+}
+async function styleOp(op, kind) {
+  const e = S.edit; if (!e) return;
+  const item = kind === 'mod' ? activeSlot() : activeBlock(); if (!item) return;
+  const a = kind === 'mod' ? modAnim(item) : txtAnim(item);
+  const st = a.style ? styleById(a.style) : null;
+  if (op === 'reset' && st) { record(null); item.anim = linkVals(st); bump(); return; }
+  if (op === 'unlink') { record(null); item.anim = normAnim(ownVals(a), kind); bump(); return; }
+  if (op === 'update' && st) {
+    const vals = normAnim(ownVals(a), kind);
+    mutateTree(t => { const x = t.animStyles.find(y => y.id === st.id); if (x) x.anim = vals; });
+    await animTargets();
+    const ns = styleById(st.id);
+    commitTargets(forEachTarget(t => { if (t.item.anim && t.item.anim.style === st.id && (!t.item.anim.over || t.item === item)) { t.item.anim = linkVals(ns); return true; } return false; }));
+    toast(`Estilo «${st.name}» actualizado`);
+    return;
+  }
+  if (op === 'delete' && st) {
+    await animTargets();
+    const changed = forEachTarget(t => { const x = t.item.anim; if (!x || x.style !== st.id) return false; t.item.anim = normAnim(x.over ? ownVals(x) : ownVals(linkVals(st)), st.kind); return true; });
+    mutateTree(t => { t.animStyles = t.animStyles.filter(y => y.id !== st.id); });
+    S.styleUi = null; commitTargets(changed);
+    toast(`Estilo «${st.name}» eliminado. Cada elemento conserva su animación.`);
+    return;
+  }
+  if (op === 'apply' && st) {
+    await animTargets();
+    const type = kind === 'mod' ? item.type : textRole(item);
+    const changed = forEachTarget(t => { if (t.kind !== kind || t.type !== type) return false; const x = t.item.anim; if (x && x.style === st.id && !x.over) return false; t.item.anim = linkVals(st); return true; });
+    S.styleUi = null; commitTargets(changed);
+    const G = kind === 'mod' ? MOD_GROUPS[type] : TEXT_ROLES[type];
+    toast(`«${st.name}» aplicado a todos los ${G[1]}`);
+  }
+}
+function commitStyleName(value) {
+  const ui = S.styleUi; const name = String(value || '').trim().slice(0, 60);
+  if (!ui || !name) { S.styleUi = null; renderInspector(); return; }
+  const kind = ui.kind, item = kind === 'mod' ? activeSlot() : activeBlock();
+  if (ui.mode === 'rename') { mutateTree(t => { const x = t.animStyles.find(y => y.id === ui.id); if (x) x.name = name; }); S.styleUi = null; renderInspector(); return; }
+  if (!item) return;
+  const a = kind === 'mod' ? modAnim(item) : txtAnim(item);
+  const st = { id: uid('as'), name, kind, of: kind === 'mod' ? item.type : textRole(item), anim: normAnim(ownVals(a), kind) };
+  mutateTree(t => { t.animStyles.push(st); });
+  record(null); item.anim = linkVals(st);
+  S.styleUi = null; bump();
+  toast(`Estilo «${name}» guardado`);
+}
+function styleRow(kind, item) {
+  const a = kind === 'mod' ? modAnim(item) : txtAnim(item);
+  const st = a.style ? styleById(a.style) : null;
+  const type = kind === 'mod' ? item.type : textRole(item);
+  const G = kind === 'mod' ? MOD_GROUPS[type] : TEXT_ROLES[type];
+  const ui = S.styleUi && S.styleUi.kind === kind ? S.styleUi : null;
+  const list = animStyles().filter(x => x.kind === kind);
+  const sel = `<label class="sel"><span class="sr-only">Estilo de animación</span><select data-f="${kind === 'mod' ? 'mstyle' : 'tstyle'}"><option value="">Sin estilo (propia)</option>${list.map(x => `<option value="${esc(x.id)}"${st && st.id === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>${icon('down')}</label>`;
+  let h = `<div class="astyle"><div class="insp-line"><span class="lbl">Estilo</span>${sel}</div>`;
+  if (ui && (ui.mode === 'new' || ui.mode === 'rename')) {
+    h += `<div class="insp-row"><div class="fld grow-fld"><input id="style-name" type="text" maxlength="60" autocomplete="off" placeholder="Nombre del estilo" value="${esc(ui.mode === 'rename' && st ? st.name : '')}" aria-label="Nombre del estilo" data-kind="${kind}"></div><button type="button" class="btn solid sm" data-action="style-name-ok" data-kind="${kind}">${ui.mode === 'rename' ? 'Renombrar' : 'Guardar'}</button><button type="button" class="icon-btn" data-action="style-cancel" aria-label="Cancelar">${icon('x')}</button></div>`;
+  } else if (!st) {
+    h += `<button type="button" class="btn ghost sm" data-action="style-new" data-kind="${kind}">${icon('plus')}Guardar como estilo</button>`;
+  } else {
+    const uses = styleUses(st.id), cand = sameTypeTargets(kind, type, st.id);
+    h += `<p class="astyle-meta"><span>${uses === 1 ? 'Usado en 1 elemento' : `Usado en ${uses} elementos`}</span>${a.over ? '<span class="astyle-mod">Modificado</span>' : ''}</p>`;
+    if (a.over) h += `<div class="insp-row"><button type="button" class="btn solid sm grow" data-action="style-update" data-kind="${kind}">Actualizar estilo</button><button type="button" class="btn ghost sm" data-action="style-reset" data-kind="${kind}">Restablecer</button></div>`;
+    if (ui && ui.mode === 'apply') h += `<div class="astyle-q"><p>¿Vincular «${esc(st.name)}» a ${cand === 1 ? `1 ${G[0]}` : `${cand} ${G[1]}`} del catálogo? Los que tengan otra animación la reemplazan.</p><div class="insp-row"><button type="button" class="btn ghost sm" data-action="style-cancel">Cancelar</button><button type="button" class="btn solid sm grow" data-action="style-apply" data-kind="${kind}">Aplicar</button></div></div>`;
+    else if (ui && ui.mode === 'delete') h += `<div class="astyle-q"><p>¿Eliminar «${esc(st.name)}»? Los ${uses} elementos que lo usan conservan su animación, sin vínculo.</p><div class="insp-row"><button type="button" class="btn ghost sm" data-action="style-cancel">Cancelar</button><button type="button" class="btn danger sm grow" data-action="style-delete" data-kind="${kind}">Eliminar</button></div></div>`;
+    else h += `${!a.over && cand ? `<button type="button" class="btn ghost sm" data-action="style-ask" data-mode="apply" data-kind="${kind}">${icon('swap')}Usar en todos los ${G[1]} (${cand})</button>` : ''}
+      <div class="insp-row astyle-tools"><button type="button" class="btn plain sm" data-action="style-unlink" data-kind="${kind}">Desvincular</button><button type="button" class="btn plain sm" data-action="style-ask" data-mode="rename" data-kind="${kind}">Renombrar</button><button type="button" class="btn plain sm danger-text" data-action="style-ask" data-mode="delete" data-kind="${kind}">Eliminar</button></div>`;
+  }
+  return h + '</div>';
+}
+const animTag = (a, fallback) => { const st = a.style && styleById(a.style); return st ? '★ ' + st.name + (a.over ? ' *' : '') : fallback; };
+
+/* ---------- Inspector: animation view ---------- */
+function selAnim(k, D, keys, val, label, { off = [] } = {}) {
+  const opt = (v) => `<option value="${v}"${v === val ? ' selected' : ''}${off.includes(v) ? ' disabled' : ''}>${esc(D[v].label)}</option>`;
+  const plain = keys.filter(v => !D[v].split), split = keys.filter(v => D[v].split);
+  const body = split.length && plain.length > 1 ? `<optgroup label="Bloque entero">${plain.map(opt).join('')}</optgroup><optgroup label="Por líneas, palabras o letras">${split.map(opt).join('')}</optgroup>` : keys.map(opt).join('');
+  return `<label class="sel"><span class="sr-only">${esc(label)}</span><select data-f="${k}">${body}</select>${icon('down')}</label>`;
+}
+function slotLabel(row, s) {
+  if (row.layout === 'fullscreen') return isOverlaySlot(s) ? 'Texto encima' : 'Fondo';
+  if (row.layout === 'half') return row.slots.indexOf(s) ? 'Derecha' : 'Izquierda';
+  return TYPES[s.type] ? TYPES[s.type].label : '';
+}
+const animLabel = (a) => {
+  const P = ENTER[a.enter];
+  const e = a.enter === 'none' ? '' : P.label + (P.split ? ' · ' + ({ lines: 'líneas', words: 'palabras', chars: 'letras' })[a.by] : '');
+  return [e, a.scroll !== 'none' ? SCROLL[a.scroll].label : ''].filter(Boolean).join(' · ');
+};
+const blockName = (b, i) => (b.text || '').trim().replace(/\s+/g, ' ').slice(0, 42) || `Bloque ${i + 1} vacío`;
+const DIR_OPTS = [['bottom', 'Abajo'], ['top', 'Arriba'], ['left', 'Izq.'], ['right', 'Der.']];
+
+/* Curves: a thumbnail of the current ease, and a cubic-bezier editor with two handles */
+const EZ = { W: 200, H: 200, x: (v) => 20 + v * 160, y: (v) => 150 - v * 100, ix: (p) => (p - 20) / 160, iy: (p) => (150 - p) / 100 };
+function easePath(v, map) {
+  const f = easeFn(v); let d = '';
+  for (let i = 0; i <= 48; i++) { const t = i / 48; d += (i ? 'L' : 'M') + map.x(t).toFixed(1) + ',' + map.y(f(t)).toFixed(1); }
+  return d;
+}
+const THUMB = { x: (v) => 5 + v * 34, y: (v) => 25 - v * 18 };
+const easeThumb = (v) => `<svg viewBox="0 0 44 32" aria-hidden="true"><path class="ez-base" d="M5,25L39,25"/><path class="ez-line" d="${easePath(v, THUMB)}"/></svg>`;
+function easeCtl(k, v) {
+  const p = easeParts(v), open = S.easeEd === k;
+  const typeSeg = p.fam !== 'none' && p.fam !== 'custom' ? segc(k + 'type', [['in', 'In'], ['out', 'Out'], ['inOut', 'In-Out']], p.type, 'Tramo de la curva') : '';
+  let h = `<div class="insp-line top"><span class="lbl">Curva</span><div class="ease-ctl">
+      <div class="ease-row"><button type="button" class="ease-thumb" data-action="ease-edit" data-k="${k}" aria-expanded="${open}" title="${open ? 'Cerrar el editor de curva' : 'Editar la curva'}">${easeThumb(v)}</button>${selc(k + 'fam', EASE_FAMS, p.fam, 'Tipo de curva')}</div>
+      ${typeSeg}</div></div>`;
+  if (open) {
+    const b = toBezier(v);
+    const ap = /^(elastic|bounce)/.test(v) ? '<p class="insp-hint">Las curvas elásticas y de rebote no son bezier: al editarlas se parte de una aproximación.</p>' : '';
+    h += `<div class="ease-ed" data-k="${k}">
+      <svg class="ease-svg" viewBox="0 0 ${EZ.W} ${EZ.H}" data-ease-svg="${k}" aria-label="Editor de curva">
+        <rect class="ez-box" x="${EZ.x(0)}" y="${EZ.y(1)}" width="160" height="100"/>
+        <path class="ez-curve" d="${easePath(v, EZ)}"/>
+        <line class="ez-arm" data-arm="1" x1="${EZ.x(0)}" y1="${EZ.y(0)}" x2="${EZ.x(b[0])}" y2="${EZ.y(b[1])}"/>
+        <line class="ez-arm" data-arm="2" x1="${EZ.x(1)}" y1="${EZ.y(1)}" x2="${EZ.x(b[2])}" y2="${EZ.y(b[3])}"/>
+        <circle class="ez-h" data-h="1" data-k="${k}" cx="${EZ.x(b[0])}" cy="${EZ.y(b[1])}" r="7"/>
+        <circle class="ez-h" data-h="2" data-k="${k}" cx="${EZ.x(b[2])}" cy="${EZ.y(b[3])}" r="7"/>
+      </svg>
+      <div class="ez-nums">${b.map((n, i) => `<input type="text" inputmode="decimal" data-bz="${i}" data-k="${k}" value="${+n.toFixed(2)}" aria-label="${['x1', 'y1', 'x2', 'y2'][i]}">`).join('')}</div>
+      ${ap}<div class="insp-row"><code class="ez-code">${esc(bezStr(b))}</code><button type="button" class="btn ghost sm" data-action="ease-reset" data-k="${k}">Restablecer</button></div></div>`;
+  }
+  return h;
+}
+function inspAnimView(row, slot) {
+  if (!S.pagesAll) { S.pagesAll = 'loading'; animTargets().then(() => { S.pagesAll = true; if (S.edit && S.inspView === 'anim') renderInspector(); }); }
+  const typed = allSlots(row).filter(s => s.type);
+  const note = RM ? 'Tu equipo tiene activado “reducir movimiento”, así que aquí no se reproducen las animaciones.'
+    : !Motion.g ? 'No se pudo cargar GSAP: las animaciones no se van a ver.' : '';
+  const can = Motion.on() && hasAnim(row);
+  const sp = S.pvSpeed || 1;
+  let h = `<div class="insp-sec anim-tp"><div class="insp-row"><button type="button" class="btn solid sm grow" data-action="anim-preview"${can ? '' : ' disabled'}>${icon('play')}Previsualizar bloque</button><button type="button" class="icon-btn" data-action="pv-stop" aria-label="Salir de la vista previa" title="Salir de la vista previa (Esc)"${Motion.pv ? '' : ' hidden'}>${icon('x')}</button></div>
+      <div class="rng"><input type="range" id="anim-scrub" min="0" max="1000" value="0" aria-label="Recorrer la animación"${can ? '' : ' disabled'}><output id="anim-t">0.00 s</output></div>
+      <div class="insp-line"><span class="lbl">Velocidad</span><div class="segc" role="group" aria-label="Velocidad de la vista previa">${[[1, '1×'], [.5, '½×'], [.25, '¼×']].map(([v, l]) => `<button type="button" data-action="pv-speed" data-v="${v}" aria-pressed="${sp === v}">${l}</button>`).join('')}</div></div>
+      <p class="insp-hint">${note || 'Los cambios se previsualizan solos. Arrastra la barra para ver cada momento. Las animaciones con scroll se ven al confirmar y desplazarte.'}</p></div>`;
+  if (!slot || !slot.type) return h + `<div class="insp-sec"><p class="insp-hint">Elige primero qué contiene ${row.layout === 'fullscreen' ? 'el fondo' : 'el módulo'}.</p></div>`;
+  const ma = modAnim(slot), t = slot.type, MP = ENTER[ma.enter];
+  h += `<div class="insp-sec"><h4>Módulo<span>${esc(slotLabel(row, slot))}</span></h4>
+      <p class="insp-hint">${t === 'text' ? 'Anima la caja del texto completa.' : 'Anima el módulo completo.'}</p>
+      ${styleRow('mod', slot)}
+      <div class="insp-line"><span class="lbl">Entrada</span>${selAnim('menter', ENTER, ANIM_KEYS.modEnter(t), ma.enter, 'Entrada del módulo')}</div>
+      ${ma.enter === 'none' ? '' : `${MP.dir ? `<div class="insp-line"><span class="lbl">Desde</span>${segc('mdir', DIR_OPTS, ma.dir, 'Dirección de entrada del módulo')}</div>` : ''}
+      ${MP.dist ? `<div class="insp-line"><span class="lbl">Distancia</span>${fld('mdist', 'stagger', ma.dist, 'px', { title: 'Distancia de entrada del módulo' })}</div>` : ''}
+      ${easeCtl('mease', ma.ease)}
+      <div class="grid2">${fld('mdur', 'clock', ma.dur, 's', { title: 'Duración de la entrada del módulo' })}${fld('mdelay', 'delay', ma.delay, 's', { title: 'Retraso del módulo' })}</div>`}
+      <div class="insp-line"><span class="lbl">Con scroll</span>${selAnim('mscroll', SCROLL, ANIM_KEYS.modScroll(t), ma.scroll, 'Animación del módulo con scroll')}</div>
+      ${typed.length > 1 ? `<button type="button" class="btn ghost sm" data-action="anim-copy">${icon('swap')}Aplicar a los demás módulos</button>` : ''}</div>`;
+  if (t === 'text') {
+    const b = activeBlockOf(slot), i = slot.blocks.indexOf(b), ta = txtAnim(b), P = ENTER[ta.enter];
+    const list = slot.blocks.map((x, k) => { const xa = txtAnim(x), l = animTag(xa, animLabel(xa)); return `<button type="button" data-action="anim-block" data-slot="${slot.id}" data-block="${x.id}" aria-pressed="${x === b}"><span class="alist-t">${esc(blockName(x, k))}</span><span class="alist-v${l ? ' is-on' : ''}">${esc(l || 'Sin animación')}</span></button>`; }).join('');
+    const reading = ta.scroll === 'split-read';
+    h += `<div class="insp-sec"><h4>Texto<span>Bloque ${i + 1} de ${slot.blocks.length}</span></h4>
+      <div class="alist" role="group" aria-label="Bloques de texto">${list}</div>
+      <p class="insp-hint">Cada bloque de texto tiene su propia animación. Elige uno en la lista o tocándolo en el módulo.</p>
+      ${styleRow('text', b)}
+      <div class="insp-line"><span class="lbl">Entrada</span>${selAnim('tenter', ENTER, ANIM_KEYS.txtEnter(), ta.enter, 'Entrada del bloque de texto', { off: reading ? ANIM_KEYS.txtEnter().filter(v => ENTER[v].split) : [] })}</div>
+      ${ta.enter === 'none' ? '' : `${P.split ? `<div class="insp-line"><span class="lbl">Dividir por</span>${segc('tby', [['lines', 'Líneas'], ['words', 'Palabras'], ['chars', 'Letras']], ta.by, 'Dividir el texto por')}</div>` : ''}
+      ${P.dir ? `<div class="insp-line"><span class="lbl">Desde</span>${segc('tdir', DIR_OPTS, ta.dir, 'Dirección de entrada del texto')}</div>` : ''}
+      ${P.dist ? `<div class="insp-line"><span class="lbl">Distancia</span>${fld('tdist', 'stagger', ta.dist, P.split ? '%' : 'px', { title: P.split ? 'Distancia, en % de cada parte' : 'Distancia de entrada del texto' })}</div>` : ''}
+      ${P.split ? `<div class="insp-line"><span class="lbl">Escalonado</span>${fld('tstep', 'stagger', ta.stagger, 's por parte', { title: 'Espera entre cada línea, palabra o letra' })}</div>
+        <div class="insp-line"><span class="lbl">Orden</span>${selc('torder', [['start', 'Desde el inicio'], ['end', 'Desde el final'], ['center', 'Desde el centro'], ['edges', 'Desde los bordes'], ['random', 'Al azar']], ta.order, 'Orden de las partes')}</div>` : ''}
+      ${easeCtl('tease', ta.ease)}
+      <div class="grid2">${fld('tdur', 'clock', ta.dur, P.split ? 's c/u' : 's', { title: P.split ? 'Duración de cada parte' : 'Duración de la entrada del texto' })}${fld('tdelay', 'delay', ta.delay, 's', { title: 'Retraso del texto' })}</div>`}
+      <div class="insp-line"><span class="lbl">Con scroll</span>${selAnim('tscroll', SCROLL, ANIM_KEYS.txtScroll(), ta.scroll, 'Animación del texto con scroll')}</div>
+      ${reading ? '<p class="insp-hint">Con la lectura palabra por palabra, la entrada solo puede ser de bloque entero.</p>' : ''}
+      <div class="insp-row split-view"><button type="button" class="btn ghost sm" data-action="split-view" aria-pressed="${!!S.splitView}">${icon('text')}${S.splitView ? 'Ocultar división' : 'Ver división'}</button><span class="insp-hint" id="split-info"></span></div></div>`;
+  }
+  const Q = seqAnim(row), texts = typed.some(s => s.type === 'text' && s.blocks.length > 1);
+  if (typed.length > 1 || texts) {
+    h += `<div class="insp-sec"><h4>Secuencia<span>Bloque completo</span></h4>
+      ${typed.length > 1 ? `<div class="insp-line"><span class="lbl">Entre módulos</span>${fld('rstag', 'stagger', Q.stagger, 's', { title: 'Espera entre módulos' })}</div>` : ''}
+      ${texts ? `<div class="insp-line"><span class="lbl">Entre textos</span>${fld('tstag', 'stagger', Q.tstagger, 's', { title: 'Espera entre bloques de texto' })}</div>` : ''}
+      <p class="insp-hint">Cuánto espera cada módulo, y cada texto animado, antes de empezar después del anterior.</p></div>`;
+  }
+  return h;
+}
+const ANIM_FIELD = { menter: 'enter', mscroll: 'scroll', mdur: 'dur', mdelay: 'delay', mdir: 'dir', mdist: 'dist', mease: 'ease', tenter: 'enter', tscroll: 'scroll', tdur: 'dur', tdelay: 'delay', tdir: 'dir', tdist: 'dist', tease: 'ease', tby: 'by', torder: 'order', tstep: 'stagger', rstag: 'stagger', tstag: 'tstagger' };
+function syncPreviewBtn() { const ok = !!S.edit && Motion.on() && hasAnim(S.edit.draft); const b = $('#insp [data-action="anim-preview"]'); if (b) b.disabled = !ok; const r = $('#anim-scrub'); if (r) r.disabled = !ok; }
+/* A new ease value from a change of family or of in/out */
+function composeEase(cur, { fam, type }) {
+  const p = easeParts(cur);
+  const f = fam || p.fam;
+  if (f === 'none') return 'none';
+  if (f === 'custom') return BEZ_RE.test(cur) ? cur : bezStr(toBezier(cur));
+  return f + '.' + (type || p.type || 'out');
+}
+/* Live update of the curve editor while a handle is dragged, without rebuilding the panel */
+function paintEase(k, v) {
+  const b = toBezier(v), svg = $(`#insp [data-ease-svg="${k}"]`);
+  if (svg) {
+    $('.ez-curve', svg).setAttribute('d', easePath(v, EZ));
+    [[1, 0, 0, b[0], b[1]], [2, 1, 1, b[2], b[3]]].forEach(([h, ax, ay, x, y]) => {
+      const c = $(`[data-h="${h}"]`, svg); c.setAttribute('cx', EZ.x(x)); c.setAttribute('cy', EZ.y(y));
+      const l = $(`[data-arm="${h}"]`, svg); l.setAttribute('x2', EZ.x(x)); l.setAttribute('y2', EZ.y(y));
+    });
+    $$(`#insp [data-bz][data-k="${k}"]`).forEach(i => { if (document.activeElement !== i) i.value = +b[+i.dataset.bz].toFixed(2); });
+    const code = $('#insp .ez-code'); if (code) code.textContent = bezStr(b);
+  }
+  const th = $(`#insp [data-action="ease-edit"][data-k="${k}"]`); if (th) th.innerHTML = easeThumb(v);
+  const fs = $(`#insp select[data-f="${k}fam"]`); if (fs) fs.value = easeParts(v).fam;
+}
+let ezDrag = null;
+function ezDown(ev) {
+  const h = ev.target.closest && ev.target.closest('.ez-h'); if (!h || ev.button !== 0) return;
+  ev.preventDefault();
+  ezDrag = { k: h.dataset.k, h: +h.dataset.h, svg: h.ownerSVGElement, id: ev.pointerId };
+  try { h.setPointerCapture(ev.pointerId); } catch {}
+}
+function ezMove(ev) {
+  if (!ezDrag || ev.pointerId !== ezDrag.id) return;
+  const r = ezDrag.svg.getBoundingClientRect();
+  const px = (ev.clientX - r.left) / r.width * EZ.W, py = (ev.clientY - r.top) / r.height * EZ.H;
+  const x = clamp(EZ.ix(px), 0, 1), y = clamp(EZ.iy(py), -.5, 1.5);
+  const cur = ezDrag.k === 'mease' ? modAnim(activeSlot()).ease : txtAnim(activeBlock()).ease;
+  const b = toBezier(cur); if (ezDrag.h === 1) { b[0] = x; b[1] = y; } else { b[2] = x; b[3] = y; }
+  onField(ezDrag.k, bezStr(b));
+}
+function ezUp(ev) { if (!ezDrag || ev.pointerId !== ezDrag.id) return; ezDrag = null; renderInspector(); }
+/* Labels on the modules of the block being edited, visible in the animation view */
+function paintAnimBadges() {
+  const e = S.edit, el = editRowEl(); if (!e || !el) return;
+  allSlots(e.draft).forEach(s => {
+    const n = $(`.slot[data-slot="${s.id}"]`, el); if (!n) return;
+    const ma = s.type ? modAnim(s) : null, l = ma ? animTag(ma, animLabel(ma)) : '';
+    if (l) n.dataset.anim = l; else delete n.dataset.anim;
+  });
+}
 function inspHeight(row) {
   const fsRow = row.layout === 'fullscreen';
   return `<div class="insp-sec"><h4>Alto del bloque</h4>
@@ -2482,6 +2972,11 @@ function setPressed(k, v) { $$(`#insp [data-action="seg"][data-k="${k}"]`).forEa
 
 function onField(k, v) {
   const e = S.edit; if (!e) return;
+  let easeUi = false;
+  if (/^[mt]ease(fam|type)$/.test(k)) {
+    const t = k[0], a = t === 'm' ? modAnim(activeSlot()) : txtAnim(activeBlock());
+    v = composeEase(a.ease, k.endsWith('fam') ? { fam: v } : { type: v }); k = t + 'ease'; easeUi = true;
+  }
   { const ab = activeBlock(); record('f:' + k + ':' + (ab ? ab.id : activeSlotId())); }
   const row = e.draft, slot = activeSlot();
   const media = row.layout === 'fullscreen' ? row.slots[0] : slot;
@@ -2555,6 +3050,38 @@ function onField(k, v) {
       const r = $('#insp select[data-f="ratio"]'); if (r) r.disabled = !!row.h;
       break;
     }
+    case 'menter': case 'mscroll': case 'mdur': case 'mdelay': case 'mdir': case 'mdist': case 'mease': {
+      if (!slot || !slot.type) return;
+      const cur = modAnim(slot), next = { ...cur, [ANIM_FIELD[k]]: v }; if (next.style) next.over = true;
+      if (k === 'menter') { const P = ENTER[v] || {}; next.ease = P.ease || cur.ease; if (P.dist) next.dist = P.dist; if (P.dur) next.dur = P.dur; }
+      slot.anim = normAnim(next, 'mod');
+      paintAnimBadges(); syncPreviewBtn();
+      if (k === 'menter' || k === 'mscroll' || k === 'mdir' || easeUi) renderInspector(); else if (k === 'mease') paintEase(k, slot.anim.ease);
+      if (k !== 'mscroll') Motion.previewSoon();
+      break;
+    }
+    case 'tenter': case 'tscroll': case 'tdur': case 'tdelay': case 'tdir': case 'tdist': case 'tease': case 'tby': case 'torder': case 'tstep': {
+      const b = activeBlock(); if (!b) return;
+      const cur = txtAnim(b), next = { ...cur, [ANIM_FIELD[k]]: v }; if (next.style) next.over = true;
+      if (k === 'tenter') {
+        const P = ENTER[v] || {}, keepSplit = P.split && ENTER[cur.enter].split;
+        next.ease = P.ease || cur.ease; if (P.dist) next.dist = P.dist; if (P.dur) next.dur = P.dur;
+        if (P.split && !keepSplit) { next.by = P.by; next.stagger = P.stagger; }
+      }
+      if (k === 'tby') next.stagger = UNIT_STAGGER[v];
+      b.anim = normAnim(next, 'text');
+      if (['tenter', 'tscroll', 'tby', 'tdir'].includes(k) || easeUi) renderInspector(); else if (k === 'tease') paintEase(k, b.anim.ease);
+      if (k !== 'tscroll') Motion.previewSoon();
+      break;
+    }
+    case 'mstyle': case 'tstyle': {
+      const kind = k === 'mstyle' ? 'mod' : 'text', item = kind === 'mod' ? slot : activeBlock(); if (!item) return;
+      const st = v ? styleById(v) : null, a = kind === 'mod' ? modAnim(item) : txtAnim(item);
+      item.anim = st ? linkVals(st) : normAnim(ownVals(a), kind);
+      S.styleUi = null; paintAnimBadges(); renderInspector(); Motion.previewSoon();
+      break;
+    }
+    case 'rstag': case 'tstag': row.anim = normAnim({ ...seqAnim(row), [ANIM_FIELD[k]]: v }, 'row'); Motion.previewSoon(); break;
     case 'h': row.h = v || null; applyRowH(row); setPressed('hmode', row.h ? 'custom' : 'auto'); { const r = $('#insp select[data-f="ratio"]'); if (r) r.disabled = !!row.h; } break;
   }
   Ink.schedule();
@@ -2852,6 +3379,183 @@ const Ink = {
   }
 };
 
+/* ================= Motion presets (GSAP + ScrollTrigger + SplitText) ================= */
+/* One enter timeline per block, triggered by the block itself (never by something that moves). Each module and
+   each text block adds its own tween at its place in the sequence; when a tween ends it clears its inline styles
+   and reverts its split. Scroll presets of a module move its inner media or text box, so they never fight with its
+   enter preset (except "fade-out", which moves the module after it has entered); "split-read" splits a text block
+   into words for as long as it lives. Splits keep the text's line breaks (reduceWhiteSpace: false). */
+const MCLEAR = 'opacity,transform,filter,clipPath';
+function resolveAnim(a, kind) {
+  const own = normAnim(a || {}, kind);
+  const st = own.style && styleById(own.style);
+  if (!st || st.kind !== kind) { delete own.style; delete own.over; return own; }
+  return own.over ? own : { ...normAnim(st.anim, kind), style: st.id, over: false };
+}
+const modAnim = (s) => resolveAnim(s && s.anim, 'mod');
+const txtAnim = (b) => resolveAnim(b && b.anim, 'text');
+const seqAnim = (row) => normAnim(row.anim || {}, 'row');
+const animated = (a) => a.enter !== 'none' || a.scroll !== 'none';
+/* The plan of a block: every module with its start time, and inside text modules every text block with its own */
+function motionPlan(row) {
+  const Q = seqAnim(row);
+  return allSlots(row).filter(s => s.type).map((s, i) => {
+    const a = modAnim(s), at = i * Q.stagger + a.delay;
+    let j = 0;
+    const blocks = s.type !== 'text' ? [] : (s.blocks || []).filter(b => b.text && b.text.trim()).map(b => {
+      const ta = txtAnim(b); if (!animated(ta)) return null;
+      const t = at + (a.enter !== 'none' ? .15 : 0) + (ta.enter !== 'none' ? j++ * Q.tstagger : 0) + ta.delay;
+      return { b, a: ta, at: t };
+    }).filter(Boolean);
+    return { s, a, at, blocks };
+  });
+}
+const hasAnim = (row) => motionPlan(row).some(m => animated(m.a) || m.blocks.length);
+const innerOf = (el) => $(':scope > img, :scope > video, :scope > .carousel > .car-viewport, :scope > .tpad', el);
+const isMediaInner = (n) => !!n && !n.classList.contains('tpad');
+const scrollST = (rowEl, P) => ({ trigger: rowEl, start: P.start || 'top bottom', end: P.end || 'bottom top', scrub: true });
+const WIPE = { bottom: 'inset(100% 0% 0% 0%)', top: 'inset(0% 0% 100% 0%)', left: 'inset(0% 100% 0% 0%)', right: 'inset(0% 0% 0% 100%)' };
+const splitText = (tb, by, mask, extra = {}) => window.SplitText.create(tb, { type: by === 'chars' ? 'words,chars' : by, mask: mask ? by : undefined, linesClass: 'sl', wordsClass: 'sw', charsClass: 'sc', reduceWhiteSpace: false, ...extra });
+
+function addModEnter(tl, el, a, at, scrollOwnsInner) {
+  const P = ENTER[a.enter]; if (!P || a.enter === 'none' || P.split) return;
+  const base = { duration: a.dur, ease: resolveEase(a.ease), clearProps: MCLEAR };
+  if (P.kind === 'wipe') { tl.fromTo(el, { clipPath: WIPE[a.dir] }, { clipPath: 'inset(0% 0% 0% 0%)', ...base }, at); return; }
+  if (P.kind === 'zoom') {
+    tl.fromTo(el, { clipPath: 'inset(10% 10% 10% 10% round 24px)' }, { clipPath: 'inset(0% 0% 0% 0% round 0px)', ...base }, at);
+    const inner = innerOf(el);
+    if (isMediaInner(inner) && !scrollOwnsInner) tl.fromTo(inner, { scale: 1.35 }, { scale: 1, ...base, duration: a.dur * 1.15 }, at);
+    return;
+  }
+  tl.from(el, { ...P.fx(a), ...base }, at);
+}
+function addTextEnter(tl, tb, a, at) {
+  const P = ENTER[a.enter]; if (!P || a.enter === 'none') return;
+  const ease = resolveEase(a.ease);
+  if (P.split && window.SplitText && a.scroll !== 'split-read') {
+    const sp = splitText(tb, a.by, P.mask);
+    tl.from(sp[a.by], { ...P.fx(a), duration: a.dur, ease, stagger: { each: a.stagger, from: a.order }, onComplete: () => sp.revert() }, at);
+    return;
+  }
+  const F = P.split ? ENTER.fade : P;
+  tl.from(tb, { ...F.fx(a), duration: a.dur, ease, clearProps: MCLEAR }, at);
+}
+function addModScroll(rowEl, el, a) {
+  const g = Motion.g, P = SCROLL[a.scroll]; if (!P || a.scroll === 'none' || P.split) return;
+  if (P.self) { g.fromTo(el, P.self[0], { ...P.self[1], ease: 'none', immediateRender: false, scrollTrigger: scrollST(rowEl, P) }); return; }
+  const inner = innerOf(el); if (!inner) return;
+  const fx = isMediaInner(inner) ? P.media : P.text; if (!fx) return;
+  g.fromTo(inner, fx[0], { ...fx[1], ease: 'none', scrollTrigger: scrollST(rowEl, P) });
+}
+function addTextScroll(rowEl, tb, a) {
+  const g = Motion.g, P = SCROLL[a.scroll]; if (!P || !P.split || !window.SplitText) return;
+  splitText(tb, 'words', false, { autoSplit: true, onSplit: (self) => g.fromTo(self.words, { opacity: .16 }, { opacity: 1, ease: 'none', stagger: .1, scrollTrigger: scrollST(rowEl, P) }) });
+}
+function buildMotion(rowEl, row, { preview = false, onDone = null, onUpdate = null } = {}) {
+  const vars = { onComplete: () => { Ink.schedule(); onDone && onDone(); } };
+  if (onUpdate) vars.onUpdate = onUpdate;
+  if (preview) vars.paused = true; else vars.scrollTrigger = { trigger: rowEl, start: 'top 82%', once: true };
+  const tl = Motion.g.timeline(vars);
+  motionPlan(row).forEach(m => {
+    const el = $(`.slot[data-slot="${m.s.id}"]`, rowEl); if (!el) return;
+    const sp = SCROLL[m.a.scroll] || {};
+    addModEnter(tl, el, m.a, m.at, m.a.scroll !== 'none' && !sp.self);
+    if (!preview) addModScroll(rowEl, el, m.a);
+    m.blocks.forEach(t => {
+      const tb = $(`.tb[data-block="${t.b.id}"]`, el); if (!tb) return;
+      addTextEnter(tl, tb, t.a, t.at);
+      if (!preview) addTextScroll(rowEl, tb, t.a);
+    });
+  });
+  return tl;
+}
+const Motion = {
+  g: null, ready: false, stSig: null, live: new Map(), rq: 0, pv: null, tl: null, held: false, pq: 0, sv: null,
+  init() {
+    const g = window.gsap;
+    if (!g || !window.ScrollTrigger) return;
+    g.registerPlugin(window.ScrollTrigger);
+    if (window.SplitText) g.registerPlugin(window.SplitText);
+    this.g = g;
+    window.ScrollTrigger.config({ ignoreMobileResize: true });
+    if (lenis) lenis.on('scroll', window.ScrollTrigger.update);
+    const go = () => { this.ready = true; this.sync(); };
+    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go);
+  },
+  on() { return !!this.g && !RM; },
+  sync() {
+    if (!this.ready) return;
+    this.live.forEach((ctx, el) => { if (!el.isConnected || el.classList.contains('is-editing')) { ctx.revert(); this.live.delete(el); } });
+    if (!this.on()) return;
+    $$('#stage .row').forEach(el => {
+      if (this.live.has(el) || el.classList.contains('is-editing')) return;
+      const row = (S.pages.get(el.dataset.sub) || []).find(r => r.id === el.dataset.id);
+      if (!row || !hasAnim(row)) return;
+      this.live.set(el, this.g.context(() => buildMotion(el, row)));
+    });
+    this.refresh();
+  },
+  resetAll() { this.live.forEach(ctx => ctx.revert()); this.live.clear(); this.sync(); },
+  refresh() { if (!this.g) return; clearTimeout(this.rq); this.rq = setTimeout(() => window.ScrollTrigger.refresh(), 120); },
+  /* Preview of the block being edited: plays it, or holds it paused at a point of the scrub bar */
+  preview({ held = false } = {}) {
+    this.stopPreview(false);
+    const e = S.edit, el = editRowEl();
+    if (!this.on() || !e || !el || !hasAnim(e.draft)) return;
+    syncTextFromDom(); this.clearSplit();
+    const a = document.activeElement; if (a && el.contains(a)) a.blur();
+    el.classList.add('is-previewing');
+    this.held = held;
+    this.pv = this.g.context(() => { this.tl = buildMotion(el, e.draft, { preview: true, onUpdate: () => this.paintTransport(), onDone: () => { if (!this.held) this.stopPreview(); } }); });
+    this.tl.timeScale(S.pvSpeed || 1);
+    if (!held) this.tl.play(0);
+    this.paintTransport();
+  },
+  scrubTo(p) {
+    if (!this.pv) this.preview({ held: true });
+    if (!this.tl) return;
+    this.held = true; this.tl.pause(); this.tl.progress(p); this.paintTransport();
+  },
+  setSpeed(v) { S.pvSpeed = v; if (this.tl) this.tl.timeScale(v); },
+  previewSoon() { clearTimeout(this.pq); this.pq = setTimeout(() => this.preview(), 280); },
+  stopPreview(resync = true) {
+    clearTimeout(this.pq);
+    if (this.pv) { const ctx = this.pv; this.pv = null; this.tl = null; this.held = false; ctx.revert(); }
+    $$('#stage .row.is-previewing').forEach(n => n.classList.remove('is-previewing'));
+    this.paintTransport();
+    if (resync) this.syncSplit();
+  },
+  /* Stops everything that changes the DOM of the edited block, before its text is read or it is rebuilt */
+  idle() { this.stopPreview(false); this.clearSplit(); },
+  paintTransport() {
+    const r = $('#anim-scrub'), o = $('#anim-t'), x = $('#insp [data-action="pv-stop"]');
+    if (x) x.hidden = !this.pv;
+    if (!r) return;
+    const tl = this.tl;
+    r.value = tl ? Math.round(tl.progress() * 1000) : 0;
+    if (o) o.textContent = (tl ? tl.time() : 0).toFixed(2) + ' s';
+  },
+  /* "Ver división": outlines the lines, words or letters of the selected text block, as the split will cut them */
+  clearSplit() {
+    if (!this.sv) return;
+    const { sp, tb, row } = this.sv; this.sv = null;
+    sp.revert(); delete tb.dataset.splitBy; row.classList.remove('is-splitview');
+  },
+  syncSplit() {
+    this.clearSplit();
+    const info = $('#split-info');
+    if (!S.splitView || S.inspView !== 'anim' || this.pv || !window.SplitText) { if (info) info.textContent = ''; return; }
+    const b = activeBlock(), row = editRowEl(); const tb = b && blockEl(b.id); if (!tb || !row) return;
+    if (!(b.text || '').trim()) { if (info) info.textContent = 'El bloque está vacío.'; return; }
+    syncTextFromDom();
+    const a = txtAnim(b);
+    const sp = splitText(tb, 'lines,words,chars', false);
+    tb.dataset.splitBy = a.by; row.classList.add('is-splitview');
+    this.sv = { sp, tb, row };
+    if (info) info.textContent = `${sp.lines.length} ${sp.lines.length === 1 ? 'línea' : 'líneas'} · ${sp.words.length} palabras · ${sp.chars.length} letras`;
+  }
+};
+
 /* ================= Scroll, spy, navigation ================= */
 let spyQ = 0;
 function spySchedule() { if (spyQ) return; spyQ = requestAnimationFrame(() => { spyQ = 0; updateSpy(); }); }
@@ -3021,7 +3725,9 @@ function openOverlay(kind, { instant = false, landing = false } = {}) {
 function closeOverlay(instant = false) {
   const kind = S.overlay; if (!kind) return;
   const ov = $('#' + kind);
+  const wasLanding = S.landing;
   S.overlay = null; S.landing = false;
+  if (wasLanding) Motion.resetAll(); /* the enter animations ran behind the opening menu: play them again as the page shows */
   if (S.inline && (S.inline.kind === 'cat' || S.inline.kind === 'rename-cat')) S.inline = null;
   clearTimeout(ovTimer);
   const fin = () => { if (S.overlay === kind) return; clearTimeout(ovTimer); ov.classList.remove('is-open'); ov.setAttribute('aria-hidden', 'true'); ov.getAnimations({ subtree: true }).forEach(a => a.cancel()); };
@@ -3252,12 +3958,51 @@ document.addEventListener('click', (ev) => {
     case 'adder-close': setAdder(null); break;
     case 'adder-layout': startNew(a.dataset.sub, a.dataset.layout); break;
     case 'undo': undo(); break;
+    case 'anim-preview': Motion.preview(); break;
+    case 'pv-stop': Motion.stopPreview(); break;
+    case 'pv-speed': Motion.setSpeed(+a.dataset.v); $$('#insp [data-action="pv-speed"]').forEach(b => b.setAttribute('aria-pressed', String(b === a))); break;
+    case 'ease-edit': S.easeEd = S.easeEd === a.dataset.k ? null : a.dataset.k; renderInspector(); break;
+    case 'ease-reset': { const k = a.dataset.k, P = ENTER[(k === 'mease' ? modAnim(activeSlot()) : txtAnim(activeBlock())).enter] || {}; onField(k, P.ease || 'power2.out'); renderInspector(); break; }
+    case 'split-view': S.splitView = !S.splitView; renderInspector(); break;
+    case 'style-new': S.styleUi = { kind: a.dataset.kind, mode: 'new' }; renderInspector(); { const i = $('#style-name'); i && i.focus(); } break;
+    case 'style-ask': {
+      const kind = a.dataset.kind, it = kind === 'mod' ? activeSlot() : activeBlock(); const x = it && (kind === 'mod' ? modAnim(it) : txtAnim(it));
+      S.styleUi = { kind, mode: a.dataset.mode, id: x && x.style }; renderInspector();
+      if (a.dataset.mode === 'rename') { const i = $('#style-name'); if (i) { i.focus(); i.select(); } }
+      break;
+    }
+    case 'style-cancel': S.styleUi = null; renderInspector(); break;
+    case 'style-name-ok': commitStyleName(($('#style-name') || {}).value); break;
+    case 'style-update': styleOp('update', a.dataset.kind); break;
+    case 'style-reset': styleOp('reset', a.dataset.kind); break;
+    case 'style-unlink': styleOp('unlink', a.dataset.kind); break;
+    case 'style-apply': styleOp('apply', a.dataset.kind); break;
+    case 'style-delete': styleOp('delete', a.dataset.kind); break;
+    case 'insp-view': S.inspView = a.dataset.v === 'anim' ? 'anim' : 'design'; ls.set('insp', S.inspView); renderInspector(); break;
+    case 'anim-block': {
+      const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
+      e.blocks[s.id] = a.dataset.block;
+      if (e.slot !== s.id) { setActiveSlot(s.id); } else renderInspector();
+      $$('#stage .row.is-editing .tb.is-active').forEach(n => n.classList.remove('is-active'));
+      const t = blockEl(a.dataset.block); t && t.classList.add('is-active');
+      break;
+    }
+    case 'anim-copy': {
+      const e = S.edit, s = activeSlot(); if (!e || !s) break;
+      record(null);
+      const a0 = modAnim(s);
+      allSlots(e.draft).filter(o => o !== s && o.type).forEach(o => {
+        o.anim = normAnim({ ...a0, enter: ANIM_KEYS.modEnter(o.type).includes(a0.enter) ? a0.enter : 'fade-up', scroll: ANIM_KEYS.modScroll(o.type).includes(a0.scroll) ? a0.scroll : 'none' }, 'mod');
+      });
+      paintAnimBadges(); toast('Animación aplicada a todos los módulos'); Motion.previewSoon();
+      break;
+    }
     case 'type-switch': {
       const e = S.edit, s = activeSlot(); const t = a.dataset.type; if (!e || !s || s.type === t) break;
       record(null);
       const st = (e.stash[s.id] = e.stash[s.id] || {});
       if (s.type) st[s.type] = clone(s);
-      if (st[t]) { const keep = clone(st[t]); Object.keys(s).forEach(k => delete s[k]); Object.assign(s, keep); }
+      if (st[t]) { const keep = clone(st[t]), anim = s.anim; Object.keys(s).forEach(k => delete s[k]); Object.assign(s, keep); if (anim) s.anim = anim; else delete s.anim; }
       else fillType(s, t, e.draft.layout === 'half' ? 'half' : 'full');
       S.animSlot = s.id;
       if (s.type === 'text') { const b = s.blocks[1] || s.blocks[0]; e.blocks[s.id] = b.id; }
@@ -3325,11 +4070,11 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('pointerdown', (ev) => {
   const s = ev.target.closest && ev.target.closest('#stage .row.is-editing [data-slot]');
   if (s && !ev.target.closest('.spl, .thumbs')) setActiveSlot(s.dataset.slot);
-  rzDown(ev); thumbDown(ev); scrubDown(ev);
+  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev);
 });
-document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); });
-document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); });
-document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); });
+document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); });
+document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); });
+document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); });
 document.addEventListener('dblclick', (ev) => { if (ev.target.closest('[data-rz]') && S.edit) onField('hmode', 'auto'); });
 
 /* Scrub numeric fields by dragging their icon */
@@ -3380,6 +4125,12 @@ document.addEventListener('input', (ev) => {
     return;
   }
   if (el.id === 'search-input') { S.srSel = 0; renderSearch(el.value); return; }
+  if (el.id === 'anim-scrub') { Motion.scrubTo(+el.value / 1000); return; }
+  if (el.dataset && el.dataset.bz != null) {
+    const k = el.dataset.k, b = $$(`#insp [data-bz][data-k="${k}"]`).map(i => parseFloat(String(i.value).replace(',', '.')));
+    if (b.every(n => isFinite(n))) onField(k, bezStr([clamp(b[0], 0, 1), clamp(b[1], -.5, 1.5), clamp(b[2], 0, 1), clamp(b[3], -.5, 1.5)]));
+    return;
+  }
   if (el.id === 'menu-color') { const c = el.value; S.tree.menu.bg = { kind: 'color', color: c }; $('#menu-bg').style.background = c; $('#menu').style.setProperty('--ov-solid', c); const i = el.parentElement.querySelector('i'); if (i) i.style.background = c; Ink.run(); return; }
   if (el.id === 'menu-dim') { const v = +el.value; const d = $('#menu-bg .fs-dim'); if (d) d.style.opacity = v / 100; S.tree.menu.bg.dim = v; Ink.run(); clearTimeout(el._t); el._t = setTimeout(() => commit('catalog/tree', t => { if (t && t.menu && t.menu.bg && t.menu.bg.kind === 'image') t.menu.bg.dim = v; return t; }), 400); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
@@ -3396,6 +4147,7 @@ document.addEventListener('change', (ev) => {
   if (el.dataset.upload) { const files = el.files; handleFiles(el.dataset.upload, files).finally(() => { try { el.value = ''; } catch {} }); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
   if (k === 'ratio') { onField('ratio', el.value); return; }
+  if (['menter', 'mscroll', 'tenter', 'tscroll', 'torder', 'measefam', 'teasefam', 'mstyle', 'tstyle'].includes(k)) { onField(k, el.value); return; }
   if (FIELD[k]) { const v = parseField(k, el.value); el.value = v == null || v === 0 ? (k === 'h' ? '' : el.value) : fmt(k, v); }
 });
 document.addEventListener('paste', (ev) => {
@@ -3408,6 +4160,11 @@ document.addEventListener('paste', (ev) => {
 document.addEventListener('keydown', (ev) => {
   const t = ev.target;
   const typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+  if (t && t.id === 'style-name') {
+    if (ev.key === 'Enter') { ev.preventDefault(); commitStyleName(t.value); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); S.styleUi = null; renderInspector(); }
+    return;
+  }
   if (t && t.id === 'inline-input') {
     if (ev.key === 'Enter') { ev.preventDefault(); commitInline(t.value); }
     else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); cancelInline(); }
@@ -3428,6 +4185,7 @@ document.addEventListener('keydown', (ev) => {
   if ((ev.metaKey || ev.ctrlKey) && (ev.key === 'k' || ev.key === 'K')) { ev.preventDefault(); if (S.overlay === 'search') closeOverlay(true); else openOverlay('search', { instant: true }); return; }
   if (ev.key === '/' && !typing && !S.overlay && !S.edit) { ev.preventDefault(); openOverlay('search', { instant: true }); return; }
   if (ev.key === 'Escape') {
+    if (Motion.pv) { Motion.stopPreview(); return; }
     if (S.pop) { const tr = S.pop.trigger; closePop(); tr && tr.focus && tr.focus(); return; }
     if (S.overlay) { closeOverlay(true); return; }
     if (S.adder) { setAdder(null); return; }
