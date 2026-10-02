@@ -1,5 +1,6 @@
-// Serves dist/ and runs the end-to-end checks in sequence. Usage: npm test
-// collab.cjs runs on a second build wired to a fake Supabase project (tests/fake-supabase.cjs).
+// Builds two test copies of the page and runs the end-to-end checks in sequence. Usage: npm test
+//   flows, panel, menu  the local demo (no Supabase), so they never touch real data
+//   collab              wired to a fake Supabase project (tests/fake-supabase.cjs)
 const { spawn } = require('child_process');
 const path = require('path');
 
@@ -7,10 +8,12 @@ const path = require('path');
   const { serve } = await import(path.join(__dirname, '..', 'scripts', 'serve.mjs'));
   const { build } = await import(path.join(__dirname, '..', 'scripts', 'build.mjs'));
   const port = Number(process.env.PORT) || 8765;
+  const localDir = path.join(__dirname, 'output', 'dist-local');
   const supaDir = path.join(__dirname, 'output', 'dist-supabase');
   const supaUrl = 'https://belotest.supabase.co';
+  build({ outDir: localDir, supabase: null });
   build({ outDir: supaDir, supabase: { url: supaUrl, key: 'sb_publishable_test' } });
-  const server = await serve(port);
+  const server = await serve(port, localDir);
   const supaServer = await serve(port + 1, supaDir);
   const env = { ...process.env, BASE_URL: `http://localhost:${port}/index.html`, SUPA_BASE_URL: `http://localhost:${port + 1}/index.html`, SUPA_URL: supaUrl };
   let failed = 0;

@@ -9,12 +9,12 @@ Catálogo modular de la marca **Belo**. Las categorías y secciones se arman con
 
 El catálogo es **una sola página HTML** sin dependencias de build: markup, estilos y script viven en `src/catalog.html`. La página elige dónde guardar al arrancar:
 
-- **Supabase (Vercel):** si el build recibió `SUPABASE_URL` y la clave pública, el contenido se guarda en Supabase y lo comparten todos los que abren el link. Ver [Guardado compartido](#guardado-compartido-supabase).
+- **Supabase (Vercel y local):** el contenido se guarda en Supabase y lo comparten todos los que abren el link. Ver [Guardado compartido](#guardado-compartido-supabase).
 - **Dentro de Claude (artifact publicado):**
   - El contenido se guarda en la base compartida del artifact (`db`). Las imágenes y los videos se suben al almacén de archivos (`assets`).
   - Todos los que abren el link ven lo mismo.
   - Solo el dueño puede escribir: la regla de la base es lectura `view`, escritura `admin`. El modo **admin** muestra los "+", el panel de edición y los menús de cada ítem; el modo **viewer** muestra solo el contenido.
-- **Vista local:** sin `window.claude` y sin configuración de Supabase, arranca con contenido de demo en memoria y lo indica abajo ("Vista local · los cambios no se guardan"). Sirve para revisar diseño y comportamiento sin tocar los datos reales.
+- **Vista local:** sin `window.claude` y sin configuración de Supabase, arranca con contenido de demo en memoria y lo indica abajo ("Vista local · los cambios no se guardan"). Es lo que usan las pruebas, para no tocar los datos reales.
 
 ### Funciones principales
 
@@ -83,9 +83,9 @@ npm test                          # build + flows, panel y menu
 
 ### Configuración
 
-- El build lee `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` (o `SUPABASE_ANON_KEY`) y los inyecta en la página. Son valores públicos: lo que protege los datos son los permisos de la base. Nunca se usa la clave secreta (`service_role`), y el build la rechaza si se la pasan por error.
-- **En Vercel:** cargar las dos variables en Settings → Environment Variables, para Production y Preview.
-- **En local:** crear `.env.local` (ignorado por git) con las dos variables y correr `npm run serve`. Sin ese archivo, la página arranca en vista local.
+- El build inyecta en la página la URL del proyecto y su clave pública (publishable), que están en `supabase/public.json`. Son valores públicos por diseño: terminan en la página igual, y lo que protege los datos son los permisos de la base. La clave secreta (`service_role`) no va nunca en el repo, y el build la rechaza si se la pasan por error.
+- Para apuntar a otro proyecto sin tocar el repo, `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` en el entorno (Vercel o `.env.local`) tienen prioridad.
+- `npm run serve` levanta la página contra el Supabase real.
 - **Login con Google:** se configura en Supabase, en Authentication → Sign In / Providers → Google, con un cliente OAuth de Google Cloud. En Authentication → URL Configuration van el Site URL (`https://belo-brandbook.vercel.app`) y las URLs de redirección permitidas (producción, previews de Vercel y `http://localhost:8765/**`).
 
 ### Importar el contenido del artifact
@@ -125,8 +125,8 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
 
 - El repo está conectado a Vercel (proyecto `belo-brandbook`): cada push a `main` se despliega solo, y cada rama tiene su preview.
 - `vercel.json` le indica que corra `node scripts/build.mjs`, que no hace falta instalar dependencias y que sirva la carpeta `dist/`.
-- Con las variables de Supabase cargadas, la versión de Vercel guarda en Supabase. Sin ellas, cae en la vista local de demo.
-- `dist/` en el repo se genera sin configuración de Supabase, para publicarlo como artifact.
+- La versión de Vercel guarda en Supabase sin configurar nada en Vercel: la configuración pública está en `supabase/public.json`.
+- `dist/artifact.html` también la lleva, pero dentro de Claude la página usa la base del artifact.
 
 ## Créditos y licencias
 

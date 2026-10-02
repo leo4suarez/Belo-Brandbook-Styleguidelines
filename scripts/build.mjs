@@ -2,8 +2,10 @@
 //   dist/artifact.html  the page body that is published as the Claude artifact
 //   dist/index.html     the same page wrapped in a full HTML document, for Vercel and local preview
 //
-// Shared storage: when SUPABASE_URL and a publishable key are set, the page saves to that Supabase project
-// (see supabase/). Only the project URL and the publishable (anon) key are read, never a secret key.
+// Shared storage: the page saves to the Supabase project in supabase/public.json, or to the one named by
+// SUPABASE_URL and a publishable key in the environment (which win). Only the project URL and the publishable
+// key are used: both end up in the page by design, and the database permissions decide who can write.
+// A secret (service_role) key is refused.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,10 +24,17 @@ function localEnv() {
   return out;
 }
 
+function committedConfig() {
+  const file = join(root, 'supabase/public.json');
+  if (!existsSync(file)) return {};
+  const { url, key } = JSON.parse(readFileSync(file, 'utf8'));
+  return { url, key };
+}
+
 export function supabaseConfig(env = { ...localEnv(), ...process.env }) {
   const pick = (...names) => names.map(n => env[n]).find(v => v && String(v).trim());
-  const url = pick('SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL');
-  const key = pick('SUPABASE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  const fromEnv = { url: pick('SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL'), key: pick('SUPABASE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY') };
+  const { url, key } = fromEnv.url && fromEnv.key ? fromEnv : committedConfig();
   if (!url || !key) return null;
   if (!/^https?:\/\/[^\s"'<>]+$/.test(url)) throw new Error('SUPABASE_URL does not look like a URL');
   if (/^sb_secret_/.test(key) || /service_role/.test(Buffer.from(key.split('.')[1] || '', 'base64').toString())) {
