@@ -549,8 +549,8 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .ov-inner{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;overflow-y:auto;padding:20px;padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
 .ov-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-height:48px}
 .ov-tl,.ov-tr{display:flex;align-items:flex-start;gap:16px;min-width:0}
-.ov-tr{gap:10px;flex:none}
-.ov-tl > :empty{display:none}
+.ov-tr{align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+.ov-tl > :empty,.ov-tr > :empty{display:none}
 .ov-close{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;transition:transform 140ms var(--ease-out),background-color 240ms ease,color 240ms ease}
 .ov-close:active{transform:scale(.94)}
 .ov-close[data-ink="light"]{background:#FFFFFF;color:#000000}
@@ -602,9 +602,8 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .acct-out{height:38px;padding:0 16px;margin-left:4px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 18%,transparent);transition:box-shadow 160ms ease,transform 140ms var(--ease-out)}
 .acct-out:hover{box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 50%,transparent)}
 .acct-out:active{transform:scale(.96)}
-.ovbg{display:flex;flex-direction:column;align-items:flex-start;gap:10px;font-size:13px;font-weight:600}
-.ovbg .lbl{opacity:.75}
-.ovbg-row{display:flex;align-items:center;gap:8px}
+#menu-bgctl,#menu-theme{display:contents}
+.ovbg{display:flex;align-items:center;gap:8px;margin-right:6px}
 .ovsw{position:relative;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;cursor:pointer;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,currentColor 35%,transparent);transition:transform 140ms var(--ease-out),box-shadow 160ms ease}
 .ovsw:active{transform:scale(.92)}
 .ovsw[aria-pressed="true"]{box-shadow:0 0 0 2px currentColor}
@@ -742,8 +741,8 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
   <div class="ov-reveal" id="menu-reveal" aria-hidden="true"></div>
   <div class="ov-inner" data-lenis-prevent>
     <div class="ov-top">
-      <div class="ov-tl"><div class="logo-wrap" data-adapt="menu" data-logo-slot></div><div id="menu-bgctl"></div></div>
-      <div class="ov-tr"><div id="menu-theme"></div><button type="button" class="ov-close" id="menu-close" data-adapt="menu" data-action="menu-close" aria-label="Cerrar menú"></button></div>
+      <div class="ov-tl"><div class="logo-wrap" data-adapt="menu" data-logo-slot></div></div>
+      <div class="ov-tr"><div id="menu-bgctl"></div><div id="menu-theme"></div><button type="button" class="ov-close" id="menu-close" data-adapt="menu" data-action="menu-close" aria-label="Cerrar menú"></button></div>
     </div>
     <nav class="ov-list" id="menu-list" aria-label="Categorías"></nav>
     <div class="ov-bottom" id="menu-bottom"></div>
@@ -3648,12 +3647,12 @@ function renderMenuBottom() {
   const modeSeg = S.canEdit ? seg('seg-solid', 'Vista', S.mode === 'admin' ? 1 : 0, segBtn('data-action="mode" data-mode="viewer"', S.mode === 'viewer', 'Viewer', 'eye') + segBtn('data-action="mode" data-mode="admin"', S.mode === 'admin', 'Admin', 'edit')) : '';
   const themeSeg = seg('seg-ghost', 'Tema', dark ? 1 : 0, segBtn('data-action="scheme" data-scheme="light"', !dark, 'Tema claro', 'sun') + segBtn('data-action="scheme" data-scheme="dark"', dark, 'Tema oscuro', 'moon'));
   const isBrand = bg.kind === 'color' && bg.color.toLowerCase() === BRAND;
-  const bgCtl = `<div class="ovbg admin-only" data-adapt="menu"><span class="lbl">Fondo del menú</span><div class="ovbg-row">
+  const bgCtl = `<div class="ovbg admin-only" data-adapt="menu" role="group" aria-label="Fondo del menú">
     <button type="button" class="ovsw" data-action="menu-bg" data-kind="brand" aria-pressed="${isBrand}" title="Azul de marca" aria-label="Azul de marca"><i style="background:${BRAND}"></i></button>
     <button type="button" class="ovsw" data-action="menu-bg" data-kind="theme" aria-pressed="${bg.kind === 'theme'}" title="Color del tema" aria-label="Color del tema"><i style="background:linear-gradient(135deg,#fff 50%,#000 50%)"></i></button>
     <label class="ovsw" aria-pressed="${bg.kind === 'color' && !isBrand}" title="Otro color"><i style="background:${bg.kind === 'color' && !isBrand ? esc(bg.color) : 'conic-gradient(from 0deg,#ff5f57,#ffbd2e,#28c840,#1ec8e5,#002FA7,#bf5af2,#ff5f57)'}"></i><input type="color" id="menu-color" value="${bg.kind === 'color' ? esc(bg.color) : BRAND}" aria-label="Elegir color de fondo"></label>
     <label class="ovsw" aria-pressed="${bg.kind === 'image'}" title="Imagen de fondo">${icon('image')}<input type="file" id="menu-bg-file" accept="${ACCEPT.image}" aria-label="Subir imagen de fondo"></label>
-    ${bg.kind === 'image' ? `<input type="range" id="menu-dim" min="0" max="80" step="5" value="${bg.dim || 0}" aria-label="Oscurecer imagen">` : ''}</div></div>`;
+    ${bg.kind === 'image' ? `<input type="range" id="menu-dim" min="0" max="80" step="5" value="${bg.dim || 0}" aria-label="Oscurecer imagen">` : ''}</div>`;
   const put = (el, html) => { if (el && el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; } };
   put($('#menu-bgctl'), bgCtl);
   put($('#menu-theme'), themeSeg);

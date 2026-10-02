@@ -20,7 +20,7 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 
 - Menú de pantalla completa: es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección).
   - Categorías grandes abajo a la izquierda.
-  - Arriba a la izquierda, el fondo del menú (solo en Admin). Arriba a la derecha, claro/oscuro con íconos, junto a la X.
+  - Arriba a la derecha, junto a la X: los selectores del fondo del menú (solo en Admin) y claro/oscuro con íconos.
   - Abajo a la derecha, viewer/admin con íconos (ojo y lápiz) al lado del usuario, o "Iniciar sesión".
 - Buscador.
 - Sidebar sin contenedor, con el título de la categoría y las subcategorías. Hace scroll-spy y auto-scroll dentro de la misma página.
