@@ -18,7 +18,10 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 
 ### Funciones principales
 
-- Menú de pantalla completa (burger) con las categorías grandes, el switch claro/oscuro y el switch admin/viewer.
+- Menú de pantalla completa: es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección).
+  - Categorías grandes abajo a la izquierda.
+  - Arriba a la izquierda, el fondo del menú (solo en Admin). Arriba a la derecha, claro/oscuro con íconos, junto a la X.
+  - Abajo a la derecha, viewer/admin con íconos (ojo y lápiz) al lado del usuario, o "Iniciar sesión".
 - Buscador.
 - Sidebar sin contenedor, con el título de la categoría y las subcategorías. Hace scroll-spy y auto-scroll dentro de la misma página.
 - Color de texto adaptativo sobre fondos blancos, azules o fotos, para el sidebar, el menú y el texto sobre imágenes.
@@ -69,7 +72,7 @@ npm test                          # build + flows, panel y menu
 - **Proyecto:** `belo-brandbook` (id `tdrlxenjgfvnjzmuixhy`, región São Paulo).
 - **Base:** una tabla `docs` con un documento JSON por ruta (`catalog/tree` y `pages/{subId}`), el mismo modelo que el artifact. El esquema está en `supabase/migrations/`.
 - **Quién ve:** cualquiera con el link, sin login.
-- **Quién edita:** cuentas con email confirmado de `@paisanoscreando.com`. Se entra con Google desde el menú ("Iniciar sesión"). Una cuenta de otro dominio entra en "Solo lectura".
+- **Quién edita:** cuentas con email confirmado de `@paisanoscreando.com` o `@paisanos.io`. Se entra con Google desde el menú ("Iniciar sesión"). Una cuenta de otro dominio entra en "Solo lectura".
   - Para sumar a una persona puntual: `insert into private.editors (email) values ('alguien@belo.app');`
   - Para sumar un dominio entero: `insert into private.editor_domains (domain) values ('belo.app');`
 - **Archivos:** bucket público `assets`. Solo los editores suben y borran.
@@ -150,3 +153,8 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Barra flotante de tipo, botones redondos, botón de volver y deshacer/rehacer.
 - **v4:** arreglo del menú que a veces quedaba a medio dibujar, con el texto encima de todo.
 - **v5:** guardado compartido en Supabase. Login con Google para editores de Paisanos, cambios en vivo, conflictos sin pisarse, presencia, última edición, historial e importación del contenido del artifact.
+- **v5.1:**
+  - Arreglo del menú que quedaba sin fondo, con las categorías flotando sobre la página. Chrome dejaba partes animadas con un `visibility:hidden` viejo; ahora el menú cerrado usa `display:none` y la revelación circular es un círculo que crece (solo transform), sin recortes.
+  - El menú es la pantalla de inicio y los controles se reubicaron con íconos.
+  - Editores también con `@paisanos.io`.
+  - Las imágenes de Supabase cargan con CORS para que el texto adaptativo pueda leerlas.

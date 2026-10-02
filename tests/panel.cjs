@@ -19,6 +19,7 @@ const log = (...a) => console.log(...a);
   await page.goto(BASE);
   await page.waitForSelector('#s-s_sepuede .row');
   await page.waitForTimeout(400);
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300); // close the opening menu
   const snap = async (name, opts = {}) => { await page.screenshot({ path: T + name + '.png', ...opts }); };
   // Lenis keeps easing the page after programmatic scrolls; wait for it so clicks land where the element is.
   const scrollIdle = () => page.waitForFunction(() => !document.documentElement.classList.contains('lenis-scrolling'), null, { timeout: 5000 }).catch(() => {});

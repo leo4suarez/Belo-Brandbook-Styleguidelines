@@ -19,8 +19,12 @@ const log = (...a) => console.log(...a);
   await page.goto(BASE);
   await page.waitForSelector('.rail-title');
   await page.waitForSelector('#s-s_sepuede .row');
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(900);
   const snap = async (name, opts = {}) => { await page.screenshot({ path: T + name + '.png', ...opts }); };
+  // The menu is the opening screen
+  log('landing menu open:', await page.evaluate(() => document.querySelector('#menu').classList.contains('is-open')), '| bg opacity', await page.evaluate(() => getComputedStyle(document.querySelector('#menu-bg')).opacity));
+  await snap('v5-00-landing-menu');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400);
   await snap('v2-01-admin-top');
   log('title:', await page.textContent('.rail-title'), '| scheme', await page.evaluate(() => document.documentElement.dataset.scheme));
 

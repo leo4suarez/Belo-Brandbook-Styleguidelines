@@ -1,7 +1,7 @@
 // An in-memory stand-in for the Supabase project, served through Playwright routes so the real supabase-js
 // (installed as a dev dependency) runs against it: Auth (Google PKCE round trip), the Data API (docs, save_doc,
 // can_edit), Storage (assets bucket) and Realtime (postgres_changes on docs, presence) over a mocked WebSocket.
-// The rules mirror supabase/migrations: anyone reads, only confirmed @paisanoscreando.com accounts write,
+// The rules mirror supabase/migrations: anyone reads, only confirmed @paisanoscreando.com and @paisanos.io accounts write,
 // and save_doc refuses a stale version with PT409.
 const crypto = require('crypto');
 
@@ -29,7 +29,7 @@ class FakeSupabase {
     this.users.set(u.id, u);
     return u;
   }
-  isEditor(u) { return !!(u && u.confirmed && !this.revoked.has(u.id) && /@paisanoscreando\.com$/i.test(u.email)); }
+  isEditor(u) { return !!(u && u.confirmed && !this.revoked.has(u.id) && /@(paisanoscreando\.com|paisanos\.io)$/i.test(u.email)); }
 
   token(u) {
     const now = Math.floor(Date.now() / 1000);

@@ -480,19 +480,30 @@ html.is-editing .rail,html.is-editing .sec-mark,html.is-editing .adder,html.is-e
 .foot-hint kbd{font-family:inherit;font-weight:600}
 
 /* ---------- Overlays (menu, search) ---------- */
-.ov{position:fixed;inset:0;z-index:80;--ov-solid:var(--brand);visibility:hidden;pointer-events:none}
-.ov.is-open{visibility:visible;pointer-events:auto}
+/* Closed overlays are display:none, not visibility:hidden. Chrome can keep a stale inherited visibility:hidden on
+   descendants that have animations running when the overlay opens, which left the menu without its background and
+   controls while the category names (re-rendered on open) showed over the page. */
+.ov{position:fixed;inset:0;z-index:80;--ov-solid:var(--brand);display:none}
+.ov.is-open{display:block}
 .ov-bg{position:absolute;inset:0;background:var(--brand)}
+/* The circular reveal is a plain circle that grows from the menu button (transform only). It is hidden unless an
+   animation shows it, so a stalled frame can never leave the menu without its background. */
+.ov-reveal{position:absolute;left:0;top:0;width:0;height:0;border-radius:50%;background:var(--ov-solid);opacity:0;pointer-events:none}
 .ov-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .ov-bg .fs-dim{z-index:1}
 .ov-inner{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;overflow-y:auto;padding:20px;padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
-.ov-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
+.ov-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-height:48px}
+.ov-tl,.ov-tr{display:flex;align-items:flex-start;gap:16px;min-width:0}
+.ov-tr{gap:10px;flex:none}
+.ov-tl > :empty{display:none}
 .ov-close{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;transition:transform 140ms var(--ease-out),background-color 240ms ease,color 240ms ease}
 .ov-close:active{transform:scale(.94)}
 .ov-close[data-ink="light"]{background:#FFFFFF;color:#000000}
 .ov-close[data-ink="dark"]{background:#000000;color:#FFFFFF}
 .ov-close svg.i{width:20px;height:20px;stroke-width:1.9}
-.ov-list{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding-block:clamp(24px,6vh,64px)}
+.ov-list{flex:1;display:flex;flex-direction:column;align-items:flex-start;padding-top:clamp(24px,6vh,64px)}
+.ov-list > :first-child{margin-top:auto}
+.ov-list > :last-child{max-width:calc(100% - var(--ob-w,0px) - 24px)}
 .ov-item{display:flex;align-items:center;gap:10px;max-width:100%}
 .ov-cat{font-family:var(--display);font-weight:900;text-transform:uppercase;text-align:left;font-size:clamp(40px,min(8.4vw,calc((100dvh - 300px) / var(--n,4) / .98)),176px);line-height:.98;letter-spacing:-.02em;overflow-wrap:anywhere;transition:opacity 240ms ease}
 @media (hover:hover) and (pointer:fine){.ov-list:hover .ov-cat:not(:hover){opacity:.38}}
@@ -501,19 +512,25 @@ html.is-editing .rail,html.is-editing .sec-mark,html.is-editing .adder,html.is-e
 .ov-input{font-family:var(--display);font-weight:900;text-transform:uppercase;font-size:clamp(40px,min(8.4vw,calc((100dvh - 300px) / var(--n,4) / .98)),176px);line-height:.98;letter-spacing:-.02em;padding:0;border-radius:0;width:min(100%,1100px)}
 .ov-add{display:inline-flex;align-items:center;gap:10px;margin-top:18px;font-size:16px;font-weight:600;opacity:.6;transition:opacity 160ms ease}
 .ov-add:hover{opacity:1}
-.ov-bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.pills{display:flex;gap:10px;flex-wrap:wrap}
-.pill{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:999px;transition:background-color 240ms ease}
-.pill[data-ink="light"]{background:#FFFFFF}
-.pill[data-ink="dark"]{background:#000000}
-.pill-ind{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--ov-solid);transition:transform 340ms var(--ease-out)}
-.pill[data-v="1"] .pill-ind{transform:translateX(100%)}
-.pill button{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:42px;padding:0 20px;border-radius:999px;font-size:15px;font-weight:500;letter-spacing:-.01em;transition:color 240ms ease}
-.pill[data-ink="light"] button{color:#000000}
-.pill[data-ink="dark"] button{color:#FFFFFF}
-.pill[data-ink="light"] button[aria-pressed="true"]{color:#FFFFFF}
-.pill[data-ink="dark"] button[aria-pressed="true"]{color:#000000}
-.pill svg.i{width:16px;height:16px}
+.ov-bottom{position:absolute;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px}
+.ov-bottom:empty{display:none}
+/* Icon-only switches: theme (top right, subtle ring) and view mode (bottom right, solid like the account chip) */
+.seg{--s:40px;position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:var(--s);padding:4px;border-radius:999px;flex:none;transition:background-color 240ms ease,color 240ms ease}
+.seg-ind{position:absolute;top:4px;left:4px;width:var(--s);height:var(--s);border-radius:50%;transition:transform 340ms var(--ease-out),background-color 240ms ease}
+.seg[data-v="1"] .seg-ind{transform:translateX(var(--s))}
+.seg button{position:relative;z-index:1;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;transition:color 240ms ease,opacity 200ms ease,transform 140ms var(--ease-out)}
+.seg button:active{transform:scale(.92)}
+.seg svg.i{width:18px;height:18px}
+.seg-ghost{box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 24%,transparent)}
+.seg-ghost .seg-ind{background:color-mix(in srgb,currentColor 18%,transparent)}
+.seg-ghost button{opacity:.55}
+.seg-ghost button[aria-pressed="true"],.seg-ghost button:hover{opacity:1}
+.seg-solid{--s:42px}
+.seg-solid[data-ink="light"]{background:#FFFFFF;color:#000000}
+.seg-solid[data-ink="dark"]{background:#000000;color:#FFFFFF}
+.seg-solid .seg-ind{background:var(--ov-solid)}
+.seg-solid[data-ink="light"] button[aria-pressed="true"]{color:#FFFFFF}
+.seg-solid[data-ink="dark"] button[aria-pressed="true"]{color:#000000}
 .acct{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 6px;border-radius:999px;transition:background-color 240ms ease,color 240ms ease}
 .acct[data-ink="light"]{background:#FFFFFF;color:#000000}
 .acct[data-ink="dark"]{background:#000000;color:#FFFFFF}
@@ -530,8 +547,9 @@ html.is-editing .rail,html.is-editing .sec-mark,html.is-editing .adder,html.is-e
 .acct-out{height:38px;padding:0 16px;margin-left:4px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 18%,transparent);transition:box-shadow 160ms ease,transform 140ms var(--ease-out)}
 .acct-out:hover{box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 50%,transparent)}
 .acct-out:active{transform:scale(.96)}
-.ovbg{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
-.ovbg .lbl{opacity:.75;margin-right:4px}
+.ovbg{display:flex;flex-direction:column;align-items:flex-start;gap:10px;font-size:13px;font-weight:600}
+.ovbg .lbl{opacity:.75}
+.ovbg-row{display:flex;align-items:center;gap:8px}
 .ovsw{position:relative;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;cursor:pointer;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,currentColor 35%,transparent);transition:transform 140ms var(--ease-out),box-shadow 160ms ease}
 .ovsw:active{transform:scale(.92)}
 .ovsw[aria-pressed="true"]{box-shadow:0 0 0 2px currentColor}
@@ -645,8 +663,8 @@ html.is-editing .rail,html.is-editing .sec-mark,html.is-editing .adder,html.is-e
   .types{left:16px;top:calc(12px + env(safe-area-inset-top,0px))}
   .insp{left:8px;right:8px;top:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px));width:auto;max-height:56dvh;animation-name:sheetIn}
   .ov-cat,.ov-input{font-size:clamp(36px,13vw,72px)}
-  .ov-bottom{flex-direction:column;align-items:flex-start}
-  .pill button{height:38px;padding:0 16px;font-size:14px}
+  .ov-bottom{position:static;margin-top:16px;flex-wrap:wrap}
+  .ov-list > :last-child{max-width:100%}
   .status{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 }
 @keyframes sheetIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
@@ -667,10 +685,11 @@ html.is-editing .rail,html.is-editing .sec-mark,html.is-editing .adder,html.is-e
 
 <div class="ov ov-menu" id="menu" role="dialog" aria-modal="true" aria-label="Menú" aria-hidden="true">
   <div class="ov-bg" id="menu-bg"></div>
+  <div class="ov-reveal" id="menu-reveal" aria-hidden="true"></div>
   <div class="ov-inner" data-lenis-prevent>
     <div class="ov-top">
-      <div class="logo-wrap" data-adapt="menu" data-logo-slot></div>
-      <button type="button" class="ov-close" id="menu-close" data-adapt="menu" data-action="menu-close" aria-label="Cerrar menú"></button>
+      <div class="ov-tl"><div class="logo-wrap" data-adapt="menu" data-logo-slot></div><div id="menu-bgctl"></div></div>
+      <div class="ov-tr"><div id="menu-theme"></div><button type="button" class="ov-close" id="menu-close" data-adapt="menu" data-action="menu-close" aria-label="Cerrar menú"></button></div>
     </div>
     <nav class="ov-list" id="menu-list" aria-label="Categorías"></nav>
     <div class="ov-bottom" id="menu-bottom"></div>
@@ -768,7 +787,8 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>',
   fs: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>'
+  user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>'
 };
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n].replace(/class="f"/g, 'fill="currentColor" stroke="none"')}</svg>`;
 
@@ -884,7 +904,7 @@ const S = {
   edit: null, adder: null, inline: null, focusInline: false,
   pop: null, confirmDelete: null, uploading: new Map(), justAdded: new Set(),
   overlay: null, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
-  started: false, user: null, peers: [], importing: false
+  started: false, user: null, peers: [], importing: false, landing: false
 };
 const B = { db: null, assets: null, user: null };
 let lenis = null;
@@ -1189,6 +1209,9 @@ async function boot() {
   $('#search-ico').innerHTML = icon('search');
   renderAll();
   initLenis();
+  /* The menu is the opening screen, unless the link points at a section (or a sign-in is coming back to one). */
+  let back = ''; try { back = sessionStorage.getItem('bc.authHash') || ''; } catch {}
+  if (location.hash.length < 2 && back.length < 2) openOverlay('menu', { instant: true, landing: true });
   const c = window.claude;
   if (!c || typeof c.use !== 'function') return SUPA && SUPA.url && SUPA.key ? startSupabase(SUPA) : startLocal();
   const safe = (p) => Promise.resolve(p).catch(() => null);
@@ -1300,6 +1323,7 @@ const PEER_COLORS = ['#002FA7', '#E5484D', '#12A594', '#F76B15', '#8E4EC6', '#D6
 const peerColor = (id) => { let h = 0; for (const c of String(id || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PEER_COLORS[h % PEER_COLORS.length]; };
 function renderPeers() { updateRailState(); refreshRowTools(); }
 function onTree() {
+  const intro = S.overlay === 'menu' && S.landing && !$('#menu-list .ov-item');
   renderLogos();
   if (!currentCat()) {
     const hashSub = decodeURIComponent((location.hash || '').slice(1));
@@ -1311,6 +1335,7 @@ function onTree() {
     syncSubscriptions(); renderRail(); renderStage();
   }
   if (S.overlay === 'menu') renderMenu();
+  if (intro && !RM) introMenu($('#menu'), 40, '.ov-item, .ov-add'); /* the categories arrive after the opening screen is up */
 }
 
 /* ================= Mode ================= */
@@ -1775,8 +1800,20 @@ function mediaFrame(s, tag) {
   if (s.ratio && s.ratio !== 'auto') { el.classList.add('is-fixed'); el.style.aspectRatio = s.ratio; }
   return el;
 }
+/* Supabase files come from another origin: they load with crossorigin so the adaptive ink can read their pixels.
+   If one ever arrives without CORS headers, it is loaded again without it (it still shows; the ink uses the theme). */
+const XO = () => S.backend === 'supabase' ? ' crossorigin="anonymous"' : '';
+document.addEventListener('error', (ev) => {
+  const el = ev.target;
+  if (!el || (el.tagName !== 'IMG' && el.tagName !== 'VIDEO') || !el.hasAttribute('crossorigin') || el.dataset.xo) return;
+  ev.stopPropagation();
+  el.dataset.xo = '1'; el.removeAttribute('crossorigin');
+  const src = el.getAttribute('src'); el.setAttribute('src', src);
+  if (el.tagName === 'VIDEO') el.load();
+}, true);
 function imgEl(id, w, h, alt = '') {
   const img = new Image(); img.alt = alt; img.decoding = 'async'; img.draggable = false;
+  if (XO()) img.crossOrigin = 'anonymous';
   if (w && h) { img.width = w; img.height = h; }
   img.src = assetUrl(id); watchMedia(img); return img;
 }
@@ -1784,6 +1821,7 @@ function videoEl(s) {
   const v = document.createElement('video');
   v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'metadata';
   v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+  if (XO()) v.crossOrigin = 'anonymous';
   if (s.w && s.h) { v.width = s.w; v.height = s.h; }
   v.src = assetUrl(s.asset); watchMedia(v); VIO && VIO.observe(v);
   v.addEventListener('timeupdate', () => Ink.schedule());
@@ -1852,7 +1890,7 @@ function buildCarousel(s, editing) {
   if (s.ratio && s.ratio !== 'auto') root.style.aspectRatio = s.ratio;
   else if (imgs[0] && imgs[0].w && imgs[0].h) root.style.setProperty('--ar', `${imgs[0].w}/${imgs[0].h}`);
   const many = imgs.length > 1;
-  root.innerHTML = `<div class="car-viewport"><div class="car-track">${imgs.map((im, i) => `<div class="car-slide" role="group" aria-roledescription="imagen" aria-label="${i + 1} de ${imgs.length}"><img src="${esc(assetUrl(im.id))}" alt="" draggable="false" decoding="async"${i > 1 ? ' loading="lazy"' : ''}></div>`).join('')}</div></div>
+  root.innerHTML = `<div class="car-viewport"><div class="car-track">${imgs.map((im, i) => `<div class="car-slide" role="group" aria-roledescription="imagen" aria-label="${i + 1} de ${imgs.length}"><img src="${esc(assetUrl(im.id))}" alt="" draggable="false" decoding="async"${XO()}${i > 1 ? ' loading="lazy"' : ''}></div>`).join('')}</div></div>
     ${many ? `<button type="button" class="car-arrow prev" aria-label="Imagen anterior">${icon('left')}</button><button type="button" class="car-arrow next" aria-label="Imagen siguiente">${icon('right')}</button>` : ''}`;
   $$('img', root).forEach(watchMedia);
   if (!(s.ratio && s.ratio !== 'auto') && !(imgs[0] && imgs[0].w)) {
@@ -2704,16 +2742,16 @@ const LG = new WeakMap();
 function lumGrid(el) {
   const vid = el.tagName === 'VIDEO';
   const c = LG.get(el);
-  if (c && (!vid || performance.now() - c.t < 700)) return c;
+  if (c && (!vid || performance.now() - c.t < 700)) return c.fail ? null : c;
   const nw = vid ? el.videoWidth : el.naturalWidth, nh = vid ? el.videoHeight : el.naturalHeight;
-  if (!nw || !nh || (vid ? el.readyState < 2 : !el.complete)) return c || null;
+  if (!nw || !nh || (vid ? el.readyState < 2 : !el.complete)) return c && !c.fail ? c : null;
   const W = 24, H = clamp(Math.round(24 * nh / nw), 1, 64);
   try {
     LUMC.width = W; LUMC.height = H; LUMX.clearRect(0, 0, W, H); LUMX.drawImage(el, 0, 0, W, H);
     const px = LUMX.getImageData(0, 0, W, H).data; const d = new Float32Array(W * H), a = new Float32Array(W * H);
     for (let i = 0; i < W * H; i++) { a[i] = px[i * 4 + 3] / 255; d[i] = .2126 * lin(px[i * 4]) + .7152 * lin(px[i * 4 + 1]) + .0722 * lin(px[i * 4 + 2]); }
     const g = { W, H, nw, nh, d, a, t: performance.now() }; LG.set(el, g); return g;
-  } catch { return null; }
+  } catch { LG.set(el, { fail: true, t: performance.now() }); return null; } /* unreadable (cross-origin): don't redraw a large image on every pass */
 }
 function regionLum(el, rect) {
   const g = lumGrid(el); if (!g) return null;
@@ -2875,7 +2913,7 @@ function renderMenu() {
   let img = $('img', bgEl), dim = $('.fs-dim', bgEl);
   if (bg.kind === 'image' && bg.asset) {
     const src = assetUrl(bg.asset);
-    if (!img) { img = new Image(); img.alt = ''; img.decoding = 'async'; img.addEventListener('load', () => Ink.run()); bgEl.prepend(img); }
+    if (!img) { img = new Image(); img.alt = ''; img.decoding = 'async'; if (XO()) img.crossOrigin = 'anonymous'; img.addEventListener('load', () => Ink.run()); bgEl.prepend(img); }
     if (img.getAttribute('src') !== src) img.src = src;
     if (!dim) { dim = document.createElement('div'); dim.className = 'fs-dim'; bgEl.append(dim); }
     dim.style.opacity = (bg.dim || 0) / 100;
@@ -2897,23 +2935,31 @@ function renderMenu() {
   restoreInline(keep);
   renderMenuBottom();
 }
+/* Menu controls: background (top left, admin), theme (top right), view mode and account (bottom right). */
 function renderMenuBottom() {
   const box = $('#menu-bottom'); if (!box) return;
   const bg = (S.tree && S.tree.menu && S.tree.menu.bg) || { kind: 'color', color: BRAND };
   const dark = ROOT.dataset.scheme === 'dark';
-  const modePill = S.canEdit ? `<div class="pill" data-adapt="menu" data-v="${S.mode === 'admin' ? 1 : 0}" role="group" aria-label="Vista"><span class="pill-ind" aria-hidden="true"></span><button type="button" data-action="mode" data-mode="viewer" aria-pressed="${S.mode === 'viewer'}">Viewer</button><button type="button" data-action="mode" data-mode="admin" aria-pressed="${S.mode === 'admin'}">Admin</button></div>` : '';
-  const themePill = `<div class="pill" data-adapt="menu" data-v="${dark ? 1 : 0}" role="group" aria-label="Tema"><span class="pill-ind" aria-hidden="true"></span><button type="button" data-action="scheme" data-scheme="light" aria-pressed="${!dark}">${icon('sun')}Light</button><button type="button" data-action="scheme" data-scheme="dark" aria-pressed="${dark}">${icon('moon')}Dark</button></div>`;
+  const seg = (cls, label, v, btns) => `<div class="seg ${cls}" data-adapt="menu" data-v="${v}" role="group" aria-label="${label}"><span class="seg-ind" aria-hidden="true"></span>${btns}</div>`;
+  const segBtn = (attrs, on, label, ic) => `<button type="button" ${attrs} aria-pressed="${on}" aria-label="${label}" title="${label}">${icon(ic)}</button>`;
+  const modeSeg = S.canEdit ? seg('seg-solid', 'Vista', S.mode === 'admin' ? 1 : 0, segBtn('data-action="mode" data-mode="viewer"', S.mode === 'viewer', 'Viewer', 'eye') + segBtn('data-action="mode" data-mode="admin"', S.mode === 'admin', 'Admin', 'edit')) : '';
+  const themeSeg = seg('seg-ghost', 'Tema', dark ? 1 : 0, segBtn('data-action="scheme" data-scheme="light"', !dark, 'Tema claro', 'sun') + segBtn('data-action="scheme" data-scheme="dark"', dark, 'Tema oscuro', 'moon'));
   const isBrand = bg.kind === 'color' && bg.color.toLowerCase() === BRAND;
-  const bgCtl = `<div class="ovbg admin-only" data-adapt="menu"><span class="lbl">Fondo del menú</span>
+  const bgCtl = `<div class="ovbg admin-only" data-adapt="menu"><span class="lbl">Fondo del menú</span><div class="ovbg-row">
     <button type="button" class="ovsw" data-action="menu-bg" data-kind="brand" aria-pressed="${isBrand}" title="Azul de marca" aria-label="Azul de marca"><i style="background:${BRAND}"></i></button>
     <button type="button" class="ovsw" data-action="menu-bg" data-kind="theme" aria-pressed="${bg.kind === 'theme'}" title="Color del tema" aria-label="Color del tema"><i style="background:linear-gradient(135deg,#fff 50%,#000 50%)"></i></button>
     <label class="ovsw" aria-pressed="${bg.kind === 'color' && !isBrand}" title="Otro color"><i style="background:${bg.kind === 'color' && !isBrand ? esc(bg.color) : 'conic-gradient(from 0deg,#ff5f57,#ffbd2e,#28c840,#1ec8e5,#002FA7,#bf5af2,#ff5f57)'}"></i><input type="color" id="menu-color" value="${bg.kind === 'color' ? esc(bg.color) : BRAND}" aria-label="Elegir color de fondo"></label>
     <label class="ovsw" aria-pressed="${bg.kind === 'image'}" title="Imagen de fondo">${icon('image')}<input type="file" id="menu-bg-file" accept="${ACCEPT.image}" aria-label="Subir imagen de fondo"></label>
-    ${bg.kind === 'image' ? `<input type="range" id="menu-dim" min="0" max="80" step="5" value="${bg.dim || 0}" aria-label="Oscurecer imagen">` : ''}</div>`;
-  box.innerHTML = `<div class="pills">${acctHTML()}${modePill}${themePill}</div>${bgCtl}`;
+    ${bg.kind === 'image' ? `<input type="range" id="menu-dim" min="0" max="80" step="5" value="${bg.dim || 0}" aria-label="Oscurecer imagen">` : ''}</div></div>`;
+  const put = (el, html) => { if (el && el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; } };
+  put($('#menu-bgctl'), bgCtl);
+  put($('#menu-theme'), themeSeg);
+  put(box, modeSeg + acctHTML());
   $$('.acct .av img', box).forEach(img => img.addEventListener('error', () => { const av = img.parentElement; if (av) av.textContent = initials(S.user && S.user.name); }, { once: true }));
   Ink.run();
 }
+/* The last menu entry shares its row with the bottom-right controls: keep it clear of them. */
+if ('ResizeObserver' in window) new ResizeObserver(([e]) => { $('#menu-list').style.setProperty('--ob-w', Math.ceil(e.borderBoxSize ? e.borderBoxSize[0].inlineSize : e.contentRect.width) + 'px'); }).observe($('#menu-bottom'));
 function acctHTML() {
   if (S.backend !== 'supabase') return '';
   const u = S.user;
@@ -2923,15 +2969,27 @@ function acctHTML() {
 }
 function focusables(root) { return $$('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"]), label.ovsw', root).filter(el => el.getClientRects().length); }
 let ovReturn = null, ovTimer = 0;
-/* The reveal grows from the menu button. Only the solid background is clipped; the text moves with transform and opacity.
-   A timer always lands the overlay in its final state, so a stalled animation frame can never leave it half drawn. */
+/* The reveal is a circle growing from the menu button (transform only); the background fades in under it as it lands.
+   Nothing is clipped, and every animation is decoration over the final CSS state: when one ends, is cancelled or is
+   finished by the safety timer, the menu is fully drawn. */
 function revealGeom() {
   const b = $('#btn-menu').getBoundingClientRect(); const x = b.left + b.width / 2, y = b.top + b.height / 2;
   return { x, y, r0: Math.max(b.width / 2, 10), R: Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 4 };
 }
 function settle(ov) { ov.getAnimations({ subtree: true }).forEach(a => { try { a.finish(); } catch { try { a.cancel(); } catch {} } }); }
 document.addEventListener('visibilitychange', () => { if (document.hidden) $$('.ov.is-open').forEach(settle); });
-function openOverlay(kind, { instant = false } = {}) {
+function sizeReveal(g) {
+  const rv = $('#menu-reveal');
+  Object.assign(rv.style, { width: 2 * g.R + 'px', height: 2 * g.R + 'px', left: g.x - g.R + 'px', top: g.y - g.R + 'px' });
+  return rv;
+}
+function introMenu(ov, delay = 110, sel = '.ov-top, .ov-item, .ov-add, .ov-bottom') {
+  const els = $$(sel, ov);
+  els.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translate3d(0,26px,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)' }], { duration: 520, delay: delay + i * 40, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' }));
+  clearTimeout(ovTimer);
+  ovTimer = setTimeout(() => { if (S.overlay === 'menu') settle(ov); }, delay + els.length * 40 + 520 + 250);
+}
+function openOverlay(kind, { instant = false, landing = false } = {}) {
   if (S.overlay === kind) return;
   if (S.overlay) closeOverlay(true);
   closePop(true);
@@ -2947,22 +3005,23 @@ function openOverlay(kind, { instant = false } = {}) {
   if (!instant && !RM) {
     if (kind === 'menu') {
       const g = revealGeom();
-      $('#menu-bg').animate([{ clipPath: `circle(${g.r0}px at ${g.x}px ${g.y}px)` }, { clipPath: `circle(${g.R}px at ${g.x}px ${g.y}px)` }], { duration: 620, easing: 'cubic-bezier(.32,.72,0,1)' });
-      const els = $$('.ov-top, .ov-item, .ov-add, .ov-bottom', ov);
-      els.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translate3d(0,26px,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)' }], { duration: 520, delay: 110 + i * 40, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' }));
-      ovTimer = setTimeout(() => { if (S.overlay === kind) settle(ov); }, 110 + els.length * 40 + 520 + 250);
+      sizeReveal(g).animate([{ transform: `scale(${g.r0 / g.R})`, opacity: 1 }, { transform: 'scale(1)', opacity: 1 }], { duration: 620, easing: 'cubic-bezier(.32,.72,0,1)' });
+      $('#menu-bg').animate([{ opacity: 0 }, { opacity: 0, offset: .5 }, { opacity: 1 }], { duration: 620, easing: 'linear' });
+      introMenu(ov);
     } else {
       ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
       $('.srch', ov).animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: 'cubic-bezier(.23,1,.32,1)' });
       ovTimer = setTimeout(() => { if (S.overlay === kind) settle(ov); }, 550);
     }
   }
+  S.landing = landing;
+  if (landing) { if (!RM) introMenu(ov, 60, '.ov-top, .ov-bottom'); return; } /* the opening screen: no focus ring on load */
   requestAnimationFrame(() => { if (kind === 'search') $('#search-input').focus(); else { const f = $('.ov-cat[aria-current]', ov) || $('.ov-cat', ov) || $('#menu-close'); f && f.focus({ preventScroll: true }); } });
 }
 function closeOverlay(instant = false) {
   const kind = S.overlay; if (!kind) return;
   const ov = $('#' + kind);
-  S.overlay = null;
+  S.overlay = null; S.landing = false;
   if (S.inline && (S.inline.kind === 'cat' || S.inline.kind === 'rename-cat')) S.inline = null;
   clearTimeout(ovTimer);
   const fin = () => { if (S.overlay === kind) return; clearTimeout(ovTimer); ov.classList.remove('is-open'); ov.setAttribute('aria-hidden', 'true'); ov.getAnimations({ subtree: true }).forEach(a => a.cancel()); };
@@ -2974,7 +3033,8 @@ function closeOverlay(instant = false) {
   else if (kind === 'menu') {
     const g = revealGeom();
     $('.ov-inner', ov).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out', fill: 'forwards' });
-    $('#menu-bg').animate([{ clipPath: `circle(${g.R}px at ${g.x}px ${g.y}px)` }, { clipPath: `circle(${g.r0}px at ${g.x}px ${g.y}px)` }], { duration: 420, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' }).finished.then(fin, fin);
+    $('#menu-bg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
+    sizeReveal(g).animate([{ transform: 'scale(1)', opacity: 1 }, { transform: `scale(${g.r0 / g.R})`, opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' }).finished.then(fin, fin);
     ovTimer = setTimeout(fin, 720);
   } else { ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out', fill: 'forwards' }).finished.then(fin, fin); ovTimer = setTimeout(fin, 420); }
   if (ovReturn && ovReturn.isConnected && !instant) ovReturn.focus({ preventScroll: true });

@@ -18,6 +18,7 @@ const fake = new FakeSupabase(SUPA_URL);
 const ana = fake.addUser({ email: 'ana@paisanoscreando.com', name: 'Ana Gómez' });
 const leo = fake.addUser({ email: 'leo@paisanoscreando.com', name: 'Leo Suárez' });
 const pat = fake.addUser({ email: 'pat@gmail.com', name: 'Pat Outside' });
+const jo = fake.addUser({ email: 'jo@paisanos.io', name: 'Jo Venezia' });
 const text = (id, t) => ({ id, layout: 'full', h: null, slots: [{ id: 'm_' + id, type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b_' + id, text: t, font: 'jakarta', size: 40, weight: 600, lh: 110, ls: -1, align: 'left', upper: false }] }] });
 fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [{ id: 'c_brand', name: 'Our Brand', subs: [{ id: 's_intro', name: 'Intro' }, { id: 's_logo', name: 'Logotipo' }] }, { id: 'c_voice', name: 'Voice & Tone', subs: [] }] }, leo.id);
 fake.seed('pages/s_intro', { rows: [text('r_a', 'Hola Belo'), text('r_b', 'Segundo bloque')] }, leo.id);
@@ -69,11 +70,13 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
     await p.waitForTimeout(300);
   };
 
-  // 1. A visitor sees the shared content, read-only, with a way to sign in.
+  const menuUp = (p) => p.evaluate(() => document.querySelector('#menu').classList.contains('is-open') && getComputedStyle(document.querySelector('#menu-bg')).opacity === '1');
+
+  // 1. A visitor lands on the menu, sees the shared content read-only, and has a way to sign in.
   const A = await open('ana');
+  check(await menuUp(A), 'the link opens on the menu, fully drawn');
   check(await mode(A) === 'viewer', 'visitor starts in viewer mode');
   check((await A.textContent('#s-s_intro .row[data-id="r_a"]')).includes('Hola Belo'), 'visitor sees content from Supabase');
-  await A.click('#btn-menu'); await A.waitForTimeout(800);
   check(await A.locator('#menu [data-action="mode"]').count() === 0, 'visitor has no Admin switch');
   check(await A.locator('#menu .acct-in').count() === 1, 'menu offers "Iniciar sesión"');
   await A.screenshot({ path: T + 'sb-01-menu-signed-out.png' });
@@ -90,17 +93,26 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
   check(/Hola, Ana/.test(await toasts(A)), 'welcome toast after sign-in');
   check(await A.evaluate(() => !location.search.includes('code=') && location.hash === '#s_logo'), 'auth code removed from the URL and section restored');
 
-  // 3. Leo is already signed in; Pat (gmail) can sign in but not edit.
+  check(!(await A.evaluate(() => document.querySelector('#menu').classList.contains('is-open'))), 'coming back from sign-in skips the opening menu');
+
+  // 3. Leo is already signed in; Pat (gmail) can sign in but not edit. Jo signs in with @paisanos.io.
   const L = await open('leo', leo);
   check(await mode(L) === 'admin', 'Leo (paisanos) opens in Admin');
+  await L.screenshot({ path: T + 'sb-03-menu-editor.png' });
   const O = await open('pat', pat);
   check(await mode(O) === 'viewer', 'Pat (gmail) stays in viewer');
-  await O.click('#btn-menu'); await O.waitForTimeout(800);
   check((await O.textContent('#menu .acct')).includes('Solo lectura') && await O.locator('#menu [data-action="mode"]').count() === 0, 'Pat sees "Solo lectura" and no Admin switch');
   await O.screenshot({ path: T + 'sb-02-menu-read-only.png' });
   await O.keyboard.press('Escape');
-  await L.click('#btn-menu'); await L.waitForTimeout(800);
-  await L.screenshot({ path: T + 'sb-03-menu-editor.png' });
+  const J = await open('jo', jo);
+  check(await mode(J) === 'admin', 'Jo (@paisanos.io) opens in Admin');
+  await J.close();
+  // Opening the menu with the button: the background lands even when every animation frame stalls.
+  await L.keyboard.press('Escape'); await L.waitForTimeout(400);
+  await L.evaluate(() => { const o = Element.prototype.animate; window.__stall = true; Element.prototype.animate = function (...a) { const an = o.apply(this, a); if (window.__stall && this.closest && this.closest('.ov')) an.pause(); return an; }; });
+  await L.click('#btn-menu'); await L.waitForTimeout(1600);
+  check(await menuUp(L), 'menu fully drawn after a stalled reveal (safety timer)');
+  await L.evaluate(() => { window.__stall = false; });
   await L.keyboard.press('Escape'); await L.waitForTimeout(300);
 
   // 4. Presence: Ana opens a block; Leo sees her in the rail and on the block.
