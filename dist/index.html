@@ -145,6 +145,18 @@ html.ov-open.no-lenis{overflow:hidden}
 .inline-input::placeholder{color:inherit;opacity:.4}
 .sub-item.is-new,.ov-item.is-new{animation:navIn 360ms var(--ease-out) both}
 .rail-empty{font-size:14px;opacity:.5;margin:0}
+/* Other editors, in their own color: initials after the section they are in, and an outline with a name tag on the block they have open */
+.peers{display:inline-flex;flex:none;margin-left:2px;animation:navIn 360ms var(--ease-out) both}
+.peers .peer + .peer{margin-left:-5px}
+.peer{width:20px;height:20px;flex:none;border-radius:50%;display:inline-grid;place-items:center;font-size:8.5px;font-weight:700;letter-spacing:.02em;line-height:1;background:var(--pc,var(--brand));color:#FFFFFF;box-shadow:0 0 0 2px var(--bg)}
+.sub-item[data-photo] .peer,.sub-item[data-ink="light"] .peer{box-shadow:none}
+.row.has-peer .row-grid > .slot{outline:1.5px solid var(--pc,var(--brand));outline-offset:4px}
+.row.has-peer .fs-media{outline:2px solid var(--pc,var(--brand));outline-offset:-8px}
+.row-peer{position:absolute;top:-5px;left:0;z-index:6;translate:0 -100%;display:flex;align-items:center;height:18px;padding:0 7px;border-radius:5px;background:var(--pc,var(--brand));color:#FFFFFF;font-size:10.5px;font-weight:600;letter-spacing:-.005em;white-space:nowrap;pointer-events:none;animation:navIn 280ms var(--ease-out) both}
+.row-peer.is-below{top:calc(100% + 5px);translate:none}
+.row[data-layout="fullscreen"] > .row-peer{top:16px;left:calc(var(--col-l) + 16px);translate:none}
+.sub-item.has-peers .sub{flex:0 1 auto}
+.sub-item.has-peers .more{margin-left:auto}
 .skel{display:block;border-radius:8px;background:var(--surface-2);animation:shimmer 1.4s ease-in-out infinite}
 .rail-nav .skel{height:16px;margin:8px 0}
 
@@ -502,6 +514,22 @@ html.is-editing .rail,html.is-editing .sec-mark,html.is-editing .adder,html.is-e
 .pill[data-ink="light"] button[aria-pressed="true"]{color:#FFFFFF}
 .pill[data-ink="dark"] button[aria-pressed="true"]{color:#000000}
 .pill svg.i{width:16px;height:16px}
+.acct{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 6px;border-radius:999px;transition:background-color 240ms ease,color 240ms ease}
+.acct[data-ink="light"]{background:#FFFFFF;color:#000000}
+.acct[data-ink="dark"]{background:#000000;color:#FFFFFF}
+.acct-in{padding:0 22px 0 18px;font-size:15px;font-weight:500;letter-spacing:-.01em;transition:background-color 240ms ease,color 240ms ease,transform 140ms var(--ease-out)}
+.acct-in:active{transform:scale(.97)}
+.acct-in svg.i{width:17px;height:17px}
+.acct .av{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:var(--ov-solid);font-size:13px;font-weight:700;letter-spacing:.02em}
+.acct[data-ink="light"] .av{color:#FFFFFF}
+.acct[data-ink="dark"] .av{color:#000000}
+.acct .av img{width:100%;height:100%;object-fit:cover}
+.acct-txt{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.acct-txt b{font-size:14px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:22ch}
+.acct-txt small{font-size:12px;opacity:.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:26ch}
+.acct-out{height:38px;padding:0 16px;margin-left:4px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 18%,transparent);transition:box-shadow 160ms ease,transform 140ms var(--ease-out)}
+.acct-out:hover{box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 50%,transparent)}
+.acct-out:active{transform:scale(.96)}
 .ovbg{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
 .ovbg .lbl{opacity:.75;margin-right:4px}
 .ovsw{position:relative;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;cursor:pointer;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,currentColor 35%,transparent);transition:transform 140ms var(--ease-out),box-shadow 160ms ease}
@@ -739,7 +767,8 @@ const ICONS = {
   height: '<path d="M12 4v16M8 7.5L12 4l4 3.5M8 16.5l4 3.5 4-3.5"/>',
   clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>',
   fs: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
-  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>'
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>'
 };
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n].replace(/class="f"/g, 'fill="currentColor" stroke="none"')}</svg>`;
 
@@ -854,7 +883,8 @@ const S = {
   pages: new Map(), loaded: new Set(), subsc: new Map(),
   edit: null, adder: null, inline: null, focusInline: false,
   pop: null, confirmDelete: null, uploading: new Map(), justAdded: new Set(),
-  overlay: null, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, srSel: 0
+  overlay: null, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
+  started: false, user: null, peers: [], importing: false
 };
 const B = { db: null, assets: null, user: null };
 let lenis = null;
@@ -897,35 +927,221 @@ const Local = (() => {
   };
   return { db, assets, urls, seed };
 })();
-const assetUrl = (id) => S.backend === 'local' ? (Local.urls.get(id) || '') : '/_blob/' + id;
+/* ================= Supabase backend (shared catalog outside claude.ai) ================= */
+/* The build injects the project URL and its publishable key. Without them the page runs on the artifact or the local demo. */
+const SUPA = null;
+const SB_SRC = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
+const SB_SRI = 'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok';
+let Cloud = null;
+function loadScript(src, integrity) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true; s.crossOrigin = 'anonymous';
+    if (integrity) s.integrity = integrity;
+    s.onload = () => res(); s.onerror = () => rej(new Error('load failed: ' + src));
+    document.head.append(s);
+  });
+}
+/* Same interface as the artifact db and assets. Documents carry a version: a save names the version it was built on,
+   and the database refuses it ('conflict') if someone saved in between. Live changes arrive through Realtime. */
+function supabaseBackend(sb, cfg) {
+  const watch = new Map(), seen = new Map(), timers = new Map();
+  let chan = null, joinedOnce = false;
+  const fail = (code, cause) => Object.assign(new Error(code), { code, cause });
+  const dbErr = (e) => {
+    const c = String((e && e.code) || ''), m = String((e && e.message) || '');
+    if (c === 'PT409' || m === 'conflict') return fail('conflict', e);
+    if (c === 'PT403' || c === '42501' || m === 'forbidden') return fail('revoked', e);
+    if (c === '23514' || c === '22P02') return fail('invalid_argument', e);
+    return fail('unavailable', e);
+  };
+  const metaOf = (r) => ({ at: r.updated_at || null, by: r.updated_by_name || '', uid: r.updated_by || null });
+  const toSnap = (path, row) => ({ id: path.split('/').pop(), exists: !!row, version: row ? row.version : 0, meta: row ? metaOf(row) : null, data: () => row ? clone(row.data) : undefined });
+  async function fetchDoc(path) {
+    const { data, error } = await sb.from('docs').select('data,version,updated_at,updated_by,updated_by_name').eq('path', path).maybeSingle();
+    if (error) throw dbErr(error);
+    return toSnap(path, data);
+  }
+  /* Fetches can come back out of order: never hand out a version older than one already seen (0 means deleted). */
+  function deliver(path, snap, only) {
+    const last = seen.get(path) || 0;
+    if (snap.version && snap.version < last) return;
+    seen.set(path, snap.version);
+    (only ? [only] : (watch.get(path) || []).slice()).forEach(w => w.next(snap));
+  }
+  function refresh(path) {
+    clearTimeout(timers.get(path));
+    timers.set(path, setTimeout(() => { if (watch.has(path)) fetchDoc(path).then(s => deliver(path, s), () => {}); }, 40));
+  }
+  function listen() {
+    if (chan) return;
+    chan = sb.channel('docs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'docs' }, (p) => {
+        const path = (p.new && p.new.path) || (p.old && p.old.path);
+        if (path && watch.has(path)) refresh(path);
+      })
+      .subscribe((st) => {
+        if (st !== 'SUBSCRIBED') return;
+        if (joinedOnce) watch.forEach((_, path) => refresh(path)); /* catch up on what was missed while offline */
+        joinedOnce = true;
+      });
+  }
+  async function save(path, data, version) {
+    const { data: r, error } = await sb.rpc('save_doc', { p_path: path, p_data: data, p_expected: version || 0 });
+    if (error) throw dbErr(error);
+    seen.set(path, r.version);
+    return { version: r.version, meta: data === null ? null : metaOf(r) };
+  }
+  const db = {
+    doc(path) {
+      return {
+        get: () => fetchDoc(path),
+        set: (data, o = {}) => save(path, data, o.version),
+        delete: (o = {}) => save(path, null, o.version),
+        onSnapshot(next, error) {
+          listen();
+          const w = { next };
+          watch.set(path, [...(watch.get(path) || []), w]);
+          fetchDoc(path).then(s => { if ((watch.get(path) || []).includes(w)) deliver(path, s, w); }, (e) => { if (error) error(e); });
+          return () => { const a = (watch.get(path) || []).filter(x => x !== w); if (a.length) watch.set(path, a); else watch.delete(path); };
+        }
+      };
+    }
+  };
+  const base = cfg.url.replace(/\/+$/, '');
+  const publicUrl = (id) => base + '/storage/v1/object/public/assets/' + encodeURIComponent(id);
+  const EXT_OF = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg', 'video/mp4': 'mp4', 'video/webm': 'webm' };
+  const upErr = (e) => {
+    const s = Number(e && e.statusCode) || Number(e && e.status) || 0;
+    return fail(s === 413 ? 'too_large' : s === 415 ? 'unsupported_type' : s === 429 ? 'rate_limited' : (s === 401 || s === 403) ? 'not_granted' : 'store_unavailable', e);
+  };
+  const assets = {
+    async upload(blob, { type } = {}) {
+      const ct = type || blob.type;
+      const id = (crypto.randomUUID ? crypto.randomUUID() : uid('a')) + '.' + (EXT_OF[ct] || 'bin');
+      const { error } = await sb.storage.from('assets').upload(id, blob, { contentType: ct, cacheControl: '31536000', upsert: false });
+      if (error) throw upErr(error);
+      return { id, url: publicUrl(id), sizeBytes: blob.size, contentType: ct };
+    },
+    async delete(id) {
+      const { error } = await sb.storage.from('assets').remove([id]);
+      if (error) throw upErr(error);
+      return { deleted: true };
+    }
+  };
+  const auth = {
+    async session() { const { data } = await sb.auth.getSession(); return (data && data.session) || null; },
+    onChange(fn) { sb.auth.onAuthStateChange((ev, s) => setTimeout(() => fn(ev, s), 0)); },
+    signIn() { return sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: 'select_account' } } }); },
+    signOut() { return sb.auth.signOut({ scope: 'local' }); },
+    async canEdit() { const { data, error } = await sb.rpc('can_edit'); return !error && data === true; }
+  };
+  /* Who is editing what, shared between editors through Realtime Presence. */
+  function presence(key, onPeers) {
+    let state = null, ready = false;
+    const ch = sb.channel('catalog-presence', { config: { presence: { key } } });
+    ch.on('presence', { event: 'sync' }, () => {
+      const all = ch.presenceState();
+      onPeers(Object.keys(all).filter(k => k !== key).map(k => { const m = all[k][all[k].length - 1] || {}; return { key: k, uid: m.uid || null, name: m.name || '', sub: m.sub || null, row: m.row || null }; }));
+    }).subscribe((st) => { if (st === 'SUBSCRIBED') { ready = true; if (state) ch.track(state); } });
+    return {
+      set(s) { if (same(s, state)) return; state = s; if (ready) ch.track(s); },
+      leave() { sb.removeChannel(ch); }
+    };
+  }
+  return { db, assets, auth, presence, assetUrl: publicUrl };
+}
+
+const assetUrl = (id) => S.backend === 'local' ? (Local.urls.get(id) || '') : S.backend === 'supabase' ? Cloud.assetUrl(id) : '/_blob/' + id;
 
 /* ================= Persistence ================= */
-const Q = new Map();
-function save(path, data) {
-  let q = Q.get(path); if (!q) { q = { busy: false, next: null }; Q.set(path, q); }
-  q.next = data === null ? { __delete: true } : clone(data);
-  if (!q.busy) drain(path, q);
+/* Each document keeps the last state the backend confirmed (base, at version ver) and the local changes that are not
+   saved yet (ops). The page shows base with the ops applied on top. A save sends that result together with the version
+   it was built on. If someone else saved first, the backend answers 'conflict': the page reloads the document and
+   applies the same ops again, so both changes survive. Ops are pure functions of the document (null when it is missing). */
+const D = new Map();
+function docOf(path) {
+  let d = D.get(path);
+  if (!d) D.set(path, d = { base: undefined, ver: undefined, meta: null, ops: [], busy: false, later: null, retry: 0, timer: 0, fns: new Set() });
+  return d;
 }
-async function drain(path, q) {
-  q.busy = true; renderStatus();
-  while (q.next) {
-    const d = q.next; q.next = null;
-    try { await writeOnce(path, d); S.saveError = false; }
-    catch (e) { S.saveError = true; writeFailed(e); }
+const viewOf = (path) => { const d = docOf(path); return d.ops.reduce((acc, op) => op(acc), d.base == null ? null : clone(d.base)); };
+function land(d, data, ver, meta) { d.base = data == null ? null : data; d.ver = ver; d.meta = meta || null; }
+function notify(path) { const d = docOf(path); d.fns.forEach(fn => fn(viewOf(path))); }
+function watchDoc(path, onData, onError) {
+  const d = docOf(path);
+  let first = true;
+  d.fns.add(onData);
+  const un = B.db.doc(path).onSnapshot(snap => {
+    const data = snap.exists ? snap.data() : null;
+    if (d.busy && d.base !== undefined) {
+      d.later = { data, ver: snap.version, meta: snap.meta }; /* settled when the save in flight lands */
+      if (first) { first = false; onData(viewOf(path)); } /* a new watcher still needs something to show */
+      return;
+    }
+    first = false;
+    land(d, data, snap.version, snap.meta);
+    onData(viewOf(path));
+  }, onError);
+  return () => { d.fns.delete(onData); un(); };
+}
+function commit(path, op) {
+  const d = docOf(path);
+  d.ops.push(op);
+  if (!d.busy) drain(path, d);
+}
+const pendingWrites = () => [...D.values()].some(d => d.busy || d.ops.length) || S.uploading.size > 0;
+async function drain(path, d) {
+  d.busy = true; clearTimeout(d.timer); renderStatus();
+  let conflicts = 0;
+  while (d.ops.length) {
+    const n = d.ops.length;
+    try {
+      if (d.base === undefined) { const s = await B.db.doc(path).get(); land(d, s.exists ? s.data() : null, s.version, s.meta); }
+      const next = viewOf(path);
+      if (same(next, d.base)) { d.ops.splice(0, n); continue; }
+      const res = await writeOnce(path, next, d.ver);
+      d.ops.splice(0, n);
+      land(d, next, res && res.version, (res && res.meta) || d.meta);
+      const l = d.later; d.later = null;
+      if (l && isNum(l.ver) && isNum(d.ver) && l.ver > d.ver) { land(d, l.data, l.ver, l.meta); notify(path); }
+      d.retry = 0; S.saveError = false; S.savedAt = Date.now(); setTimeout(renderStatus, 2600);
+    } catch (err) {
+      let e = err;
+      if (e && e.code === 'conflict' && conflicts++ < 8) {
+        try { const s = await B.db.doc(path).get(); d.later = null; land(d, s.exists ? s.data() : null, s.version, s.meta); notify(path); continue; }
+        catch (e2) { e = e2; }
+      }
+      S.saveError = true;
+      const fatal = !!(e && ['revoked', 'invalid_argument', 'quota_exceeded'].includes(e.code));
+      if (fatal) { d.ops.length = 0; notify(path); }
+      if (fatal || !d.retry) writeFailed(e);
+      if (!fatal && d.retry < 5) { const wait = 2000 * 2 ** d.retry++; d.timer = setTimeout(() => { if (!d.busy && d.ops.length) drain(path, d); }, wait); }
+      break;
+    }
   }
-  q.busy = false; renderStatus();
+  d.busy = false; renderStatus();
 }
-async function writeOnce(path, d) {
-  const run = () => d.__delete ? B.db.doc(path).delete() : B.db.doc(path).set(d);
-  try { await run(); }
-  catch (e) { if (e && e.code === 'unavailable') { await sleep(300 + Math.random() * 500); await run(); } else throw e; }
+async function writeOnce(path, data, ver) {
+  const ref = B.db.doc(path);
+  const opt = B.versioned ? [{ version: ver || 0 }] : [];
+  const run = () => data === null ? ref.delete(...opt) : ref.set(data, ...opt);
+  try { return await run(); }
+  catch (e) { if (e && e.code === 'unavailable') { await sleep(300 + Math.random() * 500); return await run(); } throw e; }
 }
 function writeFailed(e) {
   const c = e && e.code;
   if (c === 'quota_exceeded') toast('El catálogo llegó a su límite de almacenamiento. Elimina contenido para seguir guardando.');
   else if (c === 'invalid_argument') toast('No se pudo guardar el cambio. Puede que no tengas permiso de edición.');
   else if (c === 'revoked') { S.canEdit = false; applyMode('viewer'); toast('Tu acceso de edición cambió. Ahora estás en modo Viewer.'); }
-  else toast('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.');
+  else toast('No se pudo guardar. Revisa tu conexión: se reintentará solo.');
+}
+addEventListener('beforeunload', (ev) => { if (pendingWrites()) { ev.preventDefault(); ev.returnValue = ''; } });
+function commitPage(subId, fn) {
+  const path = 'pages/' + subId;
+  commit(path, d => ({ ...(d || {}), rows: fn(d && Array.isArray(d.rows) ? d.rows : []) }));
+  const v = viewOf(path);
+  return v && Array.isArray(v.rows) ? v.rows.map(normRow) : [];
 }
 const assetsOfSlot = (s) => !s ? [] : s.type === 'carousel' ? (s.images || []).map(i => i.id) : (s.asset ? [s.asset] : []);
 const assetsOfRow = (r) => (r.slots || []).flatMap(assetsOfSlot);
@@ -938,12 +1154,11 @@ const catOf = (subId) => cats().find(c => c.subs.some(s => s.id === subId)) || n
 const subById = (id) => { for (const c of cats()) { const s = c.subs.find(x => x.id === id); if (s) return s; } return null; };
 const inCurrent = (subId) => { const c = currentCat(); return !!(c && c.subs.some(s => s.id === subId)); };
 function mutateTree(fn) {
-  const t = clone(S.tree || normTree({}));
-  fn(t); S.tree = normTree(t);
+  commit('catalog/tree', d => { const t = normTree(d); fn(t); return normTree(t); });
+  S.tree = normTree(viewOf('catalog/tree'));
   syncSubscriptions();
   renderLogos(); renderRail(); renderStage();
   if (S.overlay === 'menu') renderMenu();
-  save('catalog/tree', S.tree);
 }
 
 /* ================= Theme ================= */
@@ -975,7 +1190,7 @@ async function boot() {
   renderAll();
   initLenis();
   const c = window.claude;
-  if (!c || typeof c.use !== 'function') return startLocal();
+  if (!c || typeof c.use !== 'function') return SUPA && SUPA.url && SUPA.key ? startSupabase(SUPA) : startLocal();
   const safe = (p) => Promise.resolve(p).catch(() => null);
   const [db, assets, user] = await Promise.all([safe(c.use('db')), safe(c.use('assets')), safe(c.use('user'))]);
   if (!db) return startLocal();
@@ -992,17 +1207,98 @@ function startLocal() {
   S.backend = 'local'; S.canEdit = true;
   start();
 }
+async function startSupabase(cfg) {
+  const back = authReturn();
+  try { await loadScript(SB_SRC, SB_SRI); }
+  catch { toast('No se pudo conectar con el catálogo. Recarga la página para intentarlo de nuevo.'); return; }
+  const sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  Cloud = supabaseBackend(sb, cfg);
+  B.db = Cloud.db; B.assets = Cloud.assets; B.versioned = true;
+  S.backend = 'supabase';
+  let session = null;
+  try { session = await Cloud.auth.session(); } catch {}
+  authCleanUrl(back);
+  await setUser(session, back.code && session ? 'signin' : null);
+  if (back.error) toast('No se pudo iniciar sesión. Inténtalo de nuevo.');
+  Cloud.auth.onChange((ev, s) => { if (['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED', 'TOKEN_REFRESHED'].includes(ev)) setUser(s, ev === 'SIGNED_IN' ? 'signin' : null); });
+  setInterval(renderStatus, 30000);
+  start();
+}
 function start() {
   const pref = ls.get('mode');
+  S.started = true;
   applyMode(S.canEdit ? (pref === 'viewer' ? 'viewer' : 'admin') : 'viewer', false);
-  B.db.doc('catalog/tree').onSnapshot(snap => {
-    const t = normTree(snap.exists ? clone(snap.data()) : null);
+  watchDoc('catalog/tree', data => {
+    const t = normTree(data);
     if (S.tree && same(t, S.tree)) return;
     S.tree = t;
     onTree();
   }, () => toast('No se pudo cargar el catálogo. Recarga la página para intentarlo de nuevo.'));
   renderStatus();
 }
+
+/* ================= Accounts (Supabase only) ================= */
+/* Google sign-in uses the PKCE flow: Google sends the visitor back with ?code=…, which supabase-js exchanges for a session.
+   The section hash is kept aside during the round trip because the redirect URL cannot carry it. */
+function authReturn() {
+  const q = new URLSearchParams(location.search);
+  let hash = '';
+  try { hash = sessionStorage.getItem('bc.authHash') || ''; sessionStorage.removeItem('bc.authHash'); } catch {}
+  return { code: q.has('code'), error: q.has('error') || q.has('error_description'), hash };
+}
+function authCleanUrl(back) {
+  const q = new URLSearchParams(location.search);
+  if (!['code', 'error', 'error_code', 'error_description'].some(k => q.has(k))) return;
+  ['code', 'error', 'error_code', 'error_description'].forEach(k => q.delete(k));
+  const s = q.toString();
+  try { history.replaceState(null, '', location.pathname + (s ? '?' + s : '') + (location.hash || back.hash || '')); } catch {}
+}
+const personName = (u) => { const m = (u && u.user_metadata) || {}; return String(m.full_name || m.name || (u && u.email ? u.email.split('@')[0] : '') || '').trim(); };
+const firstName = (n) => String(n || '').split(/\s+/)[0] || '';
+const initials = (n) => String(n || '?').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+async function setUser(session, why) {
+  const u = session && session.user;
+  const prev = S.user && S.user.id;
+  S.user = u ? { id: u.id, email: u.email || '', name: personName(u), avatar: (u.user_metadata && (u.user_metadata.avatar_url || u.user_metadata.picture)) || '' } : null;
+  let can = false;
+  if (u) { try { can = await Cloud.auth.canEdit(); } catch {} }
+  const was = S.canEdit;
+  S.canEdit = can;
+  if (S.started && can !== was) applyMode(can ? (ls.get('mode') === 'viewer' ? 'viewer' : 'admin') : 'viewer');
+  if (u && u.id !== prev && why === 'signin') toast(can ? `Hola, ${firstName(S.user.name)}. Ya puedes editar el catálogo.` : `La cuenta ${u.email} no tiene permiso de edición.`);
+  if (!u && prev) toast('Cerraste sesión.');
+  syncPresence();
+  renderStatus();
+  if (S.overlay === 'menu') renderMenuBottom();
+}
+async function signIn() {
+  if (!Cloud) return;
+  try { sessionStorage.setItem('bc.authHash', location.hash || ''); } catch {}
+  try { const { error } = await Cloud.auth.signIn(); if (error) throw error; }
+  catch { toast('No se pudo iniciar sesión. Inténtalo de nuevo.'); }
+}
+async function signOut() {
+  if (!Cloud) return;
+  if (S.edit) await cancelEdit();
+  try { await Cloud.auth.signOut(); } catch {}
+  setUser(null, null);
+}
+
+/* ================= Presence (Supabase only) ================= */
+/* Editors share which section and block they have open. Others see it in the rail and on the block. */
+let Pres = null;
+const PRES_KEY = uid('tab');
+function syncPresence() {
+  const on = S.backend === 'supabase' && S.canEdit && S.user;
+  if (!on) { if (Pres) { Pres.leave(); Pres = null; S.peers = []; renderPeers(); } return; }
+  if (!Pres) Pres = Cloud.presence(PRES_KEY, (peers) => { S.peers = peers.filter(p => p.uid !== S.user.id); renderPeers(); });
+  const e = S.edit;
+  Pres.set({ uid: S.user.id, name: S.user.name, sub: e ? e.subId : null, row: e && !e.isNew ? e.rowId : null });
+}
+const peersOn = (pred) => (S.peers || []).filter(pred);
+const PEER_COLORS = ['#002FA7', '#E5484D', '#12A594', '#F76B15', '#8E4EC6', '#D6409F'];
+const peerColor = (id) => { let h = 0; for (const c of String(id || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PEER_COLORS[h % PEER_COLORS.length]; };
+function renderPeers() { updateRailState(); refreshRowTools(); }
 function onTree() {
   renderLogos();
   if (!currentCat()) {
@@ -1099,19 +1395,51 @@ function updateRailState() {
     b.classList.toggle('has-draft', !!(S.edit && S.edit.subId === id));
     if (on) b.setAttribute('aria-current', 'location'); else b.removeAttribute('aria-current');
     if (empty) { b.setAttribute('aria-disabled', 'true'); b.title = 'Próximamente'; } else { b.removeAttribute('aria-disabled'); b.removeAttribute('title'); }
+    /* Other editors working in this section */
+    const who = S.mode === 'admin' ? peersOn(p => p.sub === id) : [];
+    const sig = who.map(p => p.key + p.name).join('|');
+    const item = b.parentElement;
+    let tag = item.querySelector(':scope > .peers');
+    item.classList.toggle('has-peers', who.length > 0);
+    if (!who.length) { if (tag) tag.remove(); return; }
+    if (tag && tag.dataset.sig === sig) return;
+    if (!tag) { tag = document.createElement('span'); tag.className = 'peers'; b.after(tag); }
+    tag.dataset.sig = sig;
+    tag.title = who.map(p => p.name).join(', ') + (who.length > 1 ? ' están editando aquí' : ' está editando aquí');
+    tag.innerHTML = who.slice(0, 3).map(p => `<span class="peer" style="--pc:${peerColor(p.uid)}">${esc(initials(p.name))}</span>`).join('');
   });
 }
 
 function renderStatus() {
   const el = $('#status');
   if (S.backend === 'loading') { el.innerHTML = ''; return; }
-  let st = 'ok', label = 'Guardado';
-  const busy = [...Q.values()].some(q => q.busy) || S.uploading.size > 0;
+  let st = 'ok', label = 'Guardado', title = '';
+  const busy = [...D.values()].some(d => d.busy) || S.uploading.size > 0;
   if (S.backend === 'local') { st = 'local'; label = 'Vista local · los cambios no se guardan'; }
   else if (busy) { st = 'saving'; label = S.uploading.size ? 'Subiendo…' : 'Guardando…'; }
   else if (S.saveError) { st = 'error'; label = 'Sin guardar'; }
+  else {
+    /* The last edit of the section in view: who and when. */
+    const meta = S.active && D.has('pages/' + S.active) ? docOf('pages/' + S.active).meta : null;
+    if (meta && meta.at && Date.now() - S.savedAt > 2500) {
+      const mine = S.user && meta.uid === S.user.id;
+      label = `Editado por ${mine ? 'ti' : esc(meta.by || 'alguien')} · ${esc(ago(meta.at))}`;
+      const sub = subById(S.active);
+      title = `Última edición de ${sub ? '«' + sub.name + '»' : 'esta sección'}: ${mine ? 'tú' : meta.by || 'alguien'}, ${new Date(meta.at).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+    }
+  }
+  const html = `<i aria-hidden="true"></i><span>${label}</span>`;
   el.dataset.state = st;
-  el.innerHTML = `<i aria-hidden="true"></i><span>${label}</span>`;
+  if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+  if (title) el.title = title; else el.removeAttribute('title');
+}
+const RTF = (() => { try { return new Intl.RelativeTimeFormat('es', { numeric: 'auto', style: 'short' }); } catch { return null; } })();
+function ago(at) {
+  const s = Math.round((new Date(at).getTime() - Date.now()) / 1000);
+  if (!RTF || !isFinite(s)) return '';
+  if (s > -60) return 'hace un momento';
+  const [v, u] = Math.abs(s) < 3600 ? [s / 60, 'minute'] : Math.abs(s) < 86400 ? [s / 3600, 'hour'] : Math.abs(s) < 604800 ? [s / 86400, 'day'] : [null, null];
+  return u ? RTF.format(Math.round(v), u) : new Date(at).toLocaleDateString('es', { day: 'numeric', month: 'short' });
 }
 
 /* ================= Category page ================= */
@@ -1122,16 +1450,26 @@ function syncSubscriptions() {
   want.forEach(id => { if (!S.subsc.has(id)) S.subsc.set(id, subscribePage(id)); });
 }
 function subscribePage(id) {
-  return B.db.doc('pages/' + id).onSnapshot(snap => {
-    const d = snap.exists ? snap.data() : null;
-    const rows = d && Array.isArray(d.rows) ? clone(d.rows).map(normRow) : [];
+  return watchDoc('pages/' + id, d => {
+    const rows = d && Array.isArray(d.rows) ? d.rows.map(normRow) : [];
     const prev = S.pages.get(id);
     const first = !S.loaded.has(id);
     S.loaded.add(id);
     if (!first && prev && same(prev, rows)) return;
     S.pages.set(id, rows);
-    if (inCurrent(id)) { renderStage(); updateRailState(); }
+    if (!first) noticeRemoteEdit(id, rows);
+    if (inCurrent(id)) { renderStage(); updateRailState(); renderStatus(); }
   }, () => { S.loaded.add(id); if (inCurrent(id)) renderStage(); });
+}
+/* Someone else saved the block that is open here: say so once, since confirming will replace their version. */
+function noticeRemoteEdit(subId, rows) {
+  const e = S.edit; if (!e || e.isNew || e.subId !== subId || e.warned) return;
+  const now = rows.find(r => r.id === e.rowId);
+  if (now && same(now, e.origin)) return;
+  e.warned = true;
+  const meta = docOf('pages/' + subId).meta;
+  const who = meta && meta.by && !(S.user && meta.uid === S.user.id) ? meta.by : 'Otra persona';
+  toast(now ? `${who} acaba de cambiar este bloque. Si confirmas, tu versión reemplaza la suya.` : `${who} eliminó este bloque. Si confirmas, vuelve a aparecer con tu versión.`);
 }
 function whenLoaded(cat) {
   return new Promise(res => {
@@ -1169,6 +1507,7 @@ const rowSig = (item) => item.editing ? `E:${S.edit.v}` : 'V:' + JSON.stringify(
 
 function renderStage() {
   const stage = $('#stage');
+  syncPresence();
   ROOT.classList.toggle('is-editing', !!(S.edit && S.mode === 'admin'));
   if (!S.tree) { stage.dataset.cat = ''; stage.innerHTML = `<div class="skel skel-block col"></div>`; return; }
   const cat = currentCat();
@@ -1305,6 +1644,17 @@ function setAdder(subId) {
 /* ---------- Row tools ---------- */
 function refreshRowTools() {
   $$('#stage .row').forEach(el => {
+    const who = S.mode === 'admin' && !el.classList.contains('is-editing') ? peersOn(p => p.row === el.dataset.id)[0] : null;
+    let chip = el.querySelector(':scope > .row-peer');
+    el.classList.toggle('has-peer', !!who);
+    if (!who) { if (chip) chip.remove(); el.style.removeProperty('--pc'); }
+    else {
+      const label = `${firstName(who.name) || 'Alguien'} está editando`;
+      el.style.setProperty('--pc', peerColor(who.uid));
+      if (!chip) { chip = document.createElement('div'); chip.className = 'row-peer admin-only'; el.append(chip); }
+      if (chip.textContent !== label) chip.textContent = label;
+      chip.classList.toggle('is-below', el.getBoundingClientRect().top + scrollY < 48);
+    }
     const t = $(':scope > .row-tools', el); if (!t) return;
     const rows = S.pages.get(el.dataset.sub) || [];
     const i = rows.findIndex(r => r.id === el.dataset.id);
@@ -1843,8 +2193,10 @@ function startEdit(subId, rowId) {
   const rows = S.pages.get(subId) || []; const i = rows.findIndex(r => r.id === rowId); if (i < 0) return;
   S.confirmDelete = null;
   const draft = clone(rows[i]);
-  S.edit = { subId, rowId, isNew: false, index: i, draft, v: 1, slot: draft.slots[0] && draft.slots[0].id, blocks: {}, ...editMeta() };
+  S.edit = { subId, rowId, isNew: false, index: i, draft, origin: clone(rows[i]), v: 1, slot: draft.slots[0] && draft.slots[0].id, blocks: {}, ...editMeta() };
   renderStage(); updateRailState();
+  const other = peersOn(p => p.row === rowId)[0];
+  if (other) toast(`${firstName(other.name) || 'Otra persona'} también está editando este bloque. Gana el último que confirme.`);
 }
 function startNew(subId, layout) {
   if (S.edit) return;
@@ -1883,16 +2235,16 @@ function confirmEdit() {
   syncTextFromDom();
   if (!rowValid(e.draft)) return;
   const sub = e.subId;
-  const rows = (S.pages.get(sub) || []).slice();
   const row = cleanRow(e.draft);
-  const i = rows.findIndex(r => r.id === e.rowId);
-  const before = i >= 0 ? rows[i] : null;
-  if (i >= 0) rows[i] = row; else rows.splice(Math.min(e.index, rows.length), 0, row);
+  const before = (S.pages.get(sub) || []).find(r => r.id === e.rowId) || null;
   S.edit = null;
-  S.pages.set(sub, rows);
+  S.pages.set(sub, commitPage(sub, rows => {
+    const i = rows.findIndex(r => r.id === row.id);
+    if (i >= 0) rows[i] = clone(row); else rows.splice(Math.min(e.index, rows.length), 0, clone(row));
+    return rows;
+  }));
   { const keep = new Set(assetsOfRow(row)); dropAssets([...new Set([...(before ? assetsOfRow(before) : []), ...e.uploaded])].filter(id => !keep.has(id))); }
   renderStage();
-  save('pages/' + sub, { rows });
   toast(e.isNew ? 'Bloque añadido' : 'Cambios guardados');
 }
 async function cancelEdit() {
@@ -1925,11 +2277,14 @@ function flip(mutate) {
   });
 }
 function moveRow(subId, id, dir) {
-  const rows = (S.pages.get(subId) || []).slice(); const i = rows.findIndex(r => r.id === id); const j = i + dir;
-  if (i < 0 || j < 0 || j >= rows.length) return;
-  [rows[i], rows[j]] = [rows[j], rows[i]];
+  const cur = S.pages.get(subId) || []; const i0 = cur.findIndex(r => r.id === id);
+  if (i0 < 0 || i0 + dir < 0 || i0 + dir >= cur.length) return;
+  const rows = commitPage(subId, rows => {
+    const i = rows.findIndex(r => r.id === id), j = i + dir;
+    if (i >= 0 && j >= 0 && j < rows.length) [rows[i], rows[j]] = [rows[j], rows[i]];
+    return rows;
+  });
   flip(() => { S.pages.set(subId, rows); renderStage(); });
-  save('pages/' + subId, { rows });
   const btn = $(`#stage .row[data-id="${id}"] [data-action="${dir < 0 ? 'row-up' : 'row-down'}"]`);
   if (btn && !btn.disabled) btn.focus({ preventScroll: true });
 }
@@ -1937,12 +2292,10 @@ async function deleteRow(subId, id) {
   const el = $(`#stage .row[data-id="${id}"]`);
   S.confirmDelete = null;
   if (el) await collapse(el);
-  const rows = (S.pages.get(subId) || []).slice(); const i = rows.findIndex(r => r.id === id); if (i < 0) return;
-  const [gone] = rows.splice(i, 1);
-  S.pages.set(subId, rows);
+  const gone = (S.pages.get(subId) || []).find(r => r.id === id); if (!gone) return;
+  S.pages.set(subId, commitPage(subId, rows => rows.filter(r => r.id !== id)));
   dropAssets(assetsOfRow(gone));
   renderStage();
-  save('pages/' + subId, { rows });
 }
 
 /* ================= Live DOM updates while editing ================= */
@@ -2473,7 +2826,7 @@ function updateSpy() {
   let act = vis[0].dataset.sub;
   for (const el of vis) { if (el.getBoundingClientRect().top <= line) act = el.dataset.sub; else break; }
   if (innerHeight + scrollY >= ROOT.scrollHeight - 4 && scrollY > 0) act = vis[vis.length - 1].dataset.sub;
-  if (act !== S.active) { S.active = act; updateRailState(); setHash(act); }
+  if (act !== S.active) { S.active = act; updateRailState(); setHash(act); renderStatus(); }
 }
 function scrollTop() { if (lenis) lenis.scrollTo(0, { immediate: true }); else window.scrollTo(0, 0); }
 function sectionOffset(el) {
@@ -2485,7 +2838,7 @@ function scrollToSub(id, { row = null, instant = false } = {}) {
   const sec = document.getElementById('s-' + id); if (!sec) return;
   const target = row ? $(`#stage .row[data-id="${row}"]`) : sec;
   if (!target) return;
-  S.active = id; updateRailState(); setHash(id);
+  S.active = id; updateRailState(); setHash(id); renderStatus();
   const off = row ? (target.dataset.layout === 'fullscreen' ? 0 : (MOBILE.matches ? -96 : -40)) : sectionOffset(sec);
   const y = Math.max(0, target.getBoundingClientRect().top + scrollY + off);
   S.spyLock = performance.now() + (instant ? 200 : 1500);
@@ -2557,8 +2910,16 @@ function renderMenuBottom() {
     <label class="ovsw" aria-pressed="${bg.kind === 'color' && !isBrand}" title="Otro color"><i style="background:${bg.kind === 'color' && !isBrand ? esc(bg.color) : 'conic-gradient(from 0deg,#ff5f57,#ffbd2e,#28c840,#1ec8e5,#002FA7,#bf5af2,#ff5f57)'}"></i><input type="color" id="menu-color" value="${bg.kind === 'color' ? esc(bg.color) : BRAND}" aria-label="Elegir color de fondo"></label>
     <label class="ovsw" aria-pressed="${bg.kind === 'image'}" title="Imagen de fondo">${icon('image')}<input type="file" id="menu-bg-file" accept="${ACCEPT.image}" aria-label="Subir imagen de fondo"></label>
     ${bg.kind === 'image' ? `<input type="range" id="menu-dim" min="0" max="80" step="5" value="${bg.dim || 0}" aria-label="Oscurecer imagen">` : ''}</div>`;
-  box.innerHTML = `<div class="pills">${modePill}${themePill}</div>${bgCtl}`;
+  box.innerHTML = `<div class="pills">${acctHTML()}${modePill}${themePill}</div>${bgCtl}`;
+  $$('.acct .av img', box).forEach(img => img.addEventListener('error', () => { const av = img.parentElement; if (av) av.textContent = initials(S.user && S.user.name); }, { once: true }));
   Ink.run();
+}
+function acctHTML() {
+  if (S.backend !== 'supabase') return '';
+  const u = S.user;
+  if (!u) return `<button type="button" class="acct acct-in" data-adapt="menu" data-action="signin">${icon('user')}<span>Iniciar sesión</span></button>`;
+  const av = `<span class="av" aria-hidden="true">${u.avatar ? `<img src="${esc(u.avatar)}" alt="" referrerpolicy="no-referrer">` : esc(initials(u.name))}</span>`;
+  return `<div class="acct" data-adapt="menu">${av}<span class="acct-txt"><b>${esc(u.name || u.email)}</b><small>${S.canEdit ? esc(u.email) : 'Solo lectura'}</small></span><button type="button" class="acct-out" data-action="signout">Salir</button></div>`;
 }
 function focusables(root) { return $$('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"]), label.ovsw', root).filter(el => el.getClientRects().length); }
 let ovReturn = null, ovTimer = 0;
@@ -2704,7 +3065,7 @@ async function purgePage(subId) {
   if (!rows) { try { const snap = await B.db.doc('pages/' + subId).get(); rows = snap.exists && Array.isArray(snap.data().rows) ? snap.data().rows : []; } catch { rows = []; } }
   dropAssets(rows.flatMap(assetsOfRow));
   S.pages.delete(subId); S.loaded.delete(subId);
-  save('pages/' + subId, null);
+  commit('pages/' + subId, () => null);
 }
 function deleteItem(kind, id) {
   let doomed = [];
@@ -2808,6 +3169,8 @@ document.addEventListener('click', (ev) => {
     case 'menu-cat': { const same0 = id === S.cat; closeOverlay(); if (!same0) openCategory(id); else scrollTop(); break; }
     case 'mode': applyMode(a.dataset.mode); ls.set('mode', a.dataset.mode); break;
     case 'scheme': setScheme(a.dataset.scheme); break;
+    case 'signin': signIn(); break;
+    case 'signout': signOut(); break;
     case 'menu-bg': {
       const kind = a.dataset.kind; const old = S.tree.menu.bg.kind === 'image' ? S.tree.menu.bg.asset : null;
       mutateTree(t => { t.menu.bg = kind === 'theme' ? { kind: 'theme' } : { kind: 'color', color: BRAND }; });
@@ -2958,7 +3321,7 @@ document.addEventListener('input', (ev) => {
   }
   if (el.id === 'search-input') { S.srSel = 0; renderSearch(el.value); return; }
   if (el.id === 'menu-color') { const c = el.value; S.tree.menu.bg = { kind: 'color', color: c }; $('#menu-bg').style.background = c; $('#menu').style.setProperty('--ov-solid', c); const i = el.parentElement.querySelector('i'); if (i) i.style.background = c; Ink.run(); return; }
-  if (el.id === 'menu-dim') { const v = +el.value; const d = $('#menu-bg .fs-dim'); if (d) d.style.opacity = v / 100; S.tree.menu.bg.dim = v; Ink.run(); clearTimeout(el._t); el._t = setTimeout(() => save('catalog/tree', S.tree), 400); return; }
+  if (el.id === 'menu-dim') { const v = +el.value; const d = $('#menu-bg .fs-dim'); if (d) d.style.opacity = v / 100; S.tree.menu.bg.dim = v; Ink.run(); clearTimeout(el._t); el._t = setTimeout(() => commit('catalog/tree', t => { if (t && t.menu && t.menu.bg && t.menu.bg.kind === 'image') t.menu.bg.dim = v; return t; }), 400); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
   if (k === 'bgcolor' || k === 'fscolor') { onField(k, el.value); return; }
   if (k === 'dim') { onField('dim', +el.value); return; }
@@ -3035,8 +3398,10 @@ document.addEventListener('focusout', (ev) => {
 
 /* Drag and drop of files */
 let overEl = null;
+const canImport = () => S.backend === 'supabase' && S.canEdit && S.mode === 'admin' && !S.edit && !S.importing;
 document.addEventListener('dragover', (ev) => {
   const z = ev.target.closest && ev.target.closest('[data-drop]');
+  if (!z && canImport() && ev.dataTransfer && [...ev.dataTransfer.types].includes('Files')) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; return; }
   if (!z || !S.edit || !ev.dataTransfer || ![...ev.dataTransfer.types].includes('Files')) return;
   ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy';
   if (overEl !== z) { overEl && overEl.classList.remove('is-over'); overEl = z; z.classList.add('is-over'); }
@@ -3045,10 +3410,53 @@ document.addEventListener('dragleave', (ev) => { if (overEl && !overEl.contains(
 document.addEventListener('drop', (ev) => {
   const z = ev.target.closest && ev.target.closest('[data-drop]');
   if (overEl) { overEl.classList.remove('is-over'); overEl = null; }
+  if (!z && canImport() && ev.dataTransfer && [...ev.dataTransfer.files].some(f => /\.json$/i.test(f.name))) { ev.preventDefault(); importExport(ev.dataTransfer.files); return; }
   if (!z || !S.edit) return;
   ev.preventDefault();
   handleFiles(z.dataset.drop, ev.dataTransfer.files);
 });
+
+/* ---------- One-time import of the artifact content (Supabase) ----------
+   An editor drops the export (belo-export.json plus its image files) anywhere on the page. Every file is uploaded to
+   the bucket, the old asset ids are swapped for the new ones, and the documents are saved through the normal save path. */
+async function importExport(fileList) {
+  const files = [...fileList];
+  const jf = files.find(f => /\.json$/i.test(f.name));
+  let exp = null;
+  try { exp = JSON.parse(await jf.text()); } catch {}
+  if (!exp || exp.format !== 'belo-catalog-export' || !exp.docs || !exp.docs['catalog/tree']) { toast('Ese archivo no es una exportación del catálogo.'); return; }
+  const byName = new Map(files.filter(f => f !== jf).map(f => [f.name, f]));
+  const olds = Object.keys(exp.assets || {});
+  const missing = olds.filter(id => !byName.has(exp.assets[id].file));
+  if (missing.length) { toast(`Faltan ${missing.length} ${missing.length === 1 ? 'archivo' : 'archivos'} de la exportación. Suelta el .json junto con todas sus imágenes.`); return; }
+  const paths = Object.keys(exp.docs).filter(p => /^(catalog\/tree|pages\/[A-Za-z0-9_-]{1,64})$/.test(p));
+  const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const what = `${count(paths.length - 1, 'sección', 'secciones')} y ${count(olds.length, 'archivo', 'archivos')}`;
+  if (!confirm(`Importar ${what} al catálogo compartido. Reemplaza el árbol de categorías actual. ¿Seguir?`)) return;
+  S.importing = true;
+  const map = new Map();
+  try {
+    for (let i = 0; i < olds.length; i++) {
+      const a = exp.assets[olds[i]];
+      S.uploading.set('import', { label: `Importando ${i + 1} de ${olds.length}` }); renderStatus();
+      const r = await B.assets.upload(byName.get(a.file), { type: a.type || byName.get(a.file).type });
+      map.set(olds[i], r.id);
+    }
+  } catch (e) {
+    S.uploading.delete('import'); S.importing = false; renderStatus();
+    dropAssets([...map.values()]);
+    toast(UPLOAD_ERR[e && e.code] || 'No se pudo subir un archivo de la exportación. No se importó nada.');
+    return;
+  }
+  S.uploading.delete('import');
+  const swap = (v) => typeof v === 'string' ? (map.get(v) || v) : Array.isArray(v) ? v.map(swap) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, swap(x)])) : v;
+  paths.forEach(p => { const data = swap(exp.docs[p]); commit(p, () => clone(data)); notify(p); });
+  S.importing = false;
+  S.tree = normTree(viewOf('catalog/tree'));
+  S.cat = null;
+  onTree();
+  toast(`Listo: se importaron ${what}.`);
+}
 document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.closest('#pop') && !ev.target.closest('[data-action="item-menu"], [data-action="dd"]')) closePop(); }, true);
 
 /* ================= Smooth scroll ================= */

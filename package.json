@@ -1,14 +1,15 @@
 {
   "name": "belo-brandbook-styleguidelines",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "private": true,
-  "description": "Catálogo modular de la marca Belo: categorías, secciones y módulos editables, publicado como artifact de Claude.",
+  "description": "Catálogo modular de la marca Belo: categorías, secciones y módulos editables. Publicado en Vercel con guardado compartido en Supabase.",
   "scripts": {
     "build": "node scripts/build.mjs",
     "serve": "node scripts/build.mjs && node scripts/serve.mjs",
     "test": "node scripts/build.mjs && node tests/run.cjs"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "2.117.2",
     "playwright": "^1.56.0"
   }
 }
