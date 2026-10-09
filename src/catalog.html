@@ -343,6 +343,35 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .icon-btn:active{transform:scale(.92)}
 .icon-btn:disabled{opacity:.28;pointer-events:none}
 .icon-btn.danger:hover{color:var(--danger)}
+.row-tools:has([aria-expanded="true"]){opacity:1;transform:none;pointer-events:auto}
+.rt-sep{flex:none;width:1px;height:18px;margin:0 3px 0 1px;background:var(--line-strong);opacity:.7}
+.icon-btn.rt-grip{cursor:grab;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;color:var(--muted)}
+.icon-btn.rt-grip:hover{color:var(--ink)}
+
+/* Block organization: the dragged block stays dimmed in place, a light ghost follows the pointer and a brand line
+   marks where it lands (between blocks, in an empty section, or on a section of the rail) */
+html.is-row-drag,html.is-row-drag *{cursor:grabbing!important;-webkit-user-select:none!important;user-select:none!important}
+html.is-row-drag .row-tools,html.is-row-drag .row-peer{opacity:0!important;pointer-events:none!important}
+.row.is-dragging{opacity:.35}
+.drop-line{position:absolute;z-index:8;left:var(--col-l);right:var(--col-r);top:0;height:3px;margin-top:-1.5px;border-radius:3px;background:var(--focus);box-shadow:0 0 0 2px var(--bg);pointer-events:none;opacity:0;transition:opacity 140ms ease}
+.drop-line::before{content:"";position:absolute;left:-4px;top:50%;width:11px;height:11px;margin-top:-5.5px;border-radius:50%;background:var(--bg);box-shadow:inset 0 0 0 3px var(--focus)}
+.drop-line.is-on{opacity:1}
+.drop-line.is-on.is-moving{transition:opacity 140ms ease,top 150ms var(--ease-out)}
+.drag-ghost{position:fixed;left:0;top:0;z-index:140;display:flex;align-items:center;gap:11px;max-width:min(320px,calc(100vw - 32px));padding:6px 16px 6px 6px;border-radius:16px;background:var(--material);color:var(--ink);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:inset 0 0 0 .5px var(--material-edge),var(--shadow-float);pointer-events:none;will-change:transform;transform-origin:25px 25px;font-size:13px;line-height:1.3}
+.dg-ico{width:38px;height:38px;flex:none;border-radius:11px;display:grid;place-items:center;background:var(--brand);color:#FFFFFF}
+.dg-ico svg.i{width:18px;height:18px}
+.dg-txt{min-width:0;display:flex;flex-direction:column;gap:1px}
+.dg-txt b{font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dg-txt small{font-size:11.5px;font-weight:500;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color 160ms ease}
+.drag-ghost.is-away .dg-txt small{color:var(--focus)}
+html.is-row-drag .sec.is-empty .adder::after{content:"Suelta aquí";position:absolute;inset:0;display:grid;place-items:center;border-radius:inherit;background:var(--surface);box-shadow:inset 0 0 0 1.5px transparent;outline:1.5px dashed var(--line-strong);outline-offset:-1.5px;color:var(--muted);font-size:14px;font-weight:600;letter-spacing:-.01em;transition:background-color 160ms ease,color 160ms ease,outline-color 160ms ease}
+html.is-row-drag .sec.is-empty.is-drop .adder::after{background:color-mix(in srgb,var(--focus) 8%,var(--surface));outline-color:var(--focus);color:var(--focus)}
+.sub-item{position:relative}
+.sub-item::before{content:"";position:absolute;inset:0;border-radius:10px;pointer-events:none;opacity:0;transition:opacity 140ms ease}
+.sub-item .sub{transition:opacity 200ms ease,translate 200ms var(--ease-out)}
+.sub-item.is-drop::before{opacity:1;background:color-mix(in srgb,var(--focus) 12%,transparent);box-shadow:inset 0 0 0 1.5px var(--focus)}
+:root:not([data-scheme="dark"]) .sub-item.is-drop[data-ink="light"]::before,.sub-item.is-drop[data-photo]::before{background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1.5px #FFFFFF}
+.sub-item.is-drop .sub{opacity:1!important;translate:10px 0}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:999px;font-size:13px;font-weight:600;letter-spacing:-.005em;white-space:nowrap;cursor:pointer;transition:transform 140ms var(--ease-out),background-color 160ms ease,opacity 200ms ease,color 160ms ease}
 .btn:active{transform:scale(.97)}
@@ -647,6 +676,11 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .mi svg.i{width:16px;height:16px}
 .mi .mi-v{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
 .mi[aria-checked="true"]{font-weight:700}
+.mi:disabled{opacity:.4;pointer-events:none}
+.mi[aria-current]{font-weight:650}
+.mi-h{margin:10px 12px 3px;font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.mi-h:first-child{margin-top:6px}
+.mi-none{margin:0 12px 6px;font-size:12.5px;color:var(--muted)}
 .pop-q{margin:4px 8px 10px;font-size:13px;line-height:1.4}
 .pop-q strong{font-weight:650}
 .pop-actions{display:flex;gap:6px;justify-content:flex-end;padding:0 2px 2px}
@@ -691,7 +725,7 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
   @keyframes inspIn{from{opacity:0}to{opacity:1}}
   @keyframes popIn{from{opacity:0}to{opacity:1}}
   @keyframes toastIn{from{opacity:0}to{opacity:1}}
-  .pill-ind,.thumb{transition-duration:0ms!important}
+  .pill-ind,.thumb,.drop-line,.sub-item .sub{transition-duration:0ms!important}
   .skel,.status i{animation:none!important}
 }
 
@@ -847,7 +881,10 @@ const ICONS = {
   eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
   delay: '<path d="M7 4h10M7 20h10M8 4c0 4 8 4 8 8s-8 4-8 8M16 4c0 4-8 4-8 8s8 4 8 8"/>',
   stagger: '<path d="M4 7h7M8 12h7M12 17h8"/>',
-  motion: '<path d="M3 12h4l2.5-6 5 12 2.5-6h4"/>'
+  motion: '<path d="M3 12h4l2.5-6 5 12 2.5-6h4"/>',
+  grip: '<circle cx="9" cy="6" r="1.4" class="f"/><circle cx="15" cy="6" r="1.4" class="f"/><circle cx="9" cy="12" r="1.4" class="f"/><circle cx="15" cy="12" r="1.4" class="f"/><circle cx="9" cy="18" r="1.4" class="f"/><circle cx="15" cy="18" r="1.4" class="f"/>',
+  dup: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="3"/><path d="M15.5 8.5V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v5.5a3 3 0 0 0 3 3h1.5"/>',
+  moveTo: '<path d="M10 4.5h7.5a2.5 2.5 0 0 1 2.5 2.5v10a2.5 2.5 0 0 1-2.5 2.5H10"/><path d="M3.5 12h11M11 8.5l3.5 3.5-3.5 3.5"/>'
 };
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n].replace(/class="f"/g, 'fill="currentColor" stroke="none"')}</svg>`;
 
@@ -1276,11 +1313,12 @@ const assetUrl = (id) => S.backend === 'local' ? (Local.urls.get(id) || '') : S.
 const D = new Map();
 function docOf(path) {
   let d = D.get(path);
-  if (!d) D.set(path, d = { base: undefined, ver: undefined, meta: null, ops: [], busy: false, later: null, retry: 0, timer: 0, fns: new Set() });
+  if (!d) D.set(path, d = { base: undefined, ver: undefined, meta: null, ops: [], busy: false, later: null, retry: 0, stalled: false, timer: 0, fns: new Set() });
   return d;
 }
-/* A change that throws is skipped instead of breaking the whole document (and every later save of it). */
-const viewOf = (path) => { const d = docOf(path); return d.ops.reduce((acc, op) => { try { return op(acc); } catch (e) { console.error('Skipped a change that failed to apply to ' + path, e); return acc; } }, d.base == null ? null : clone(d.base)); };
+/* A change that throws is skipped instead of breaking the whole document (and every later save of it).
+   n limits the view to the first n changes (what a save sends when a later change is still waiting, see commit). */
+const viewOf = (path, n) => { const d = docOf(path); return (n == null ? d.ops : d.ops.slice(0, n)).reduce((acc, op) => { try { return op(acc); } catch (e) { console.error('Skipped a change that failed to apply to ' + path, e); return acc; } }, d.base == null ? null : clone(d.base)); };
 function land(d, data, ver, meta) { d.base = data == null ? null : data; d.ver = ver; d.meta = meta || null; }
 function notify(path) { const d = docOf(path); d.fns.forEach(fn => fn(viewOf(path))); }
 function watchDoc(path, onData, onError) {
@@ -1300,8 +1338,12 @@ function watchDoc(path, onData, onError) {
   }, onError);
   return () => { d.fns.delete(onData); un(); };
 }
-function commit(path, op) {
+/* gate: a promise of true/false. The change shows at once, but it is saved only once the gate settles true and is
+   dropped if it settles false (a block moved between sections leaves its section only once the other one has it).
+   The changes queued before it are saved meanwhile; the ones after it wait their turn. */
+function commit(path, op, gate) {
   const d = docOf(path);
+  if (gate) op.gate = gate;
   d.ops.push(op);
   if (!d.busy) drain(path, d);
 }
@@ -1310,17 +1352,24 @@ async function drain(path, d) {
   d.busy = true; clearTimeout(d.timer); renderStatus();
   let conflicts = 0;
   while (d.ops.length) {
-    const n = d.ops.length;
+    const g = d.ops.findIndex(o => o.gate);
+    if (g === 0) {
+      const o = d.ops[0], ok = await o.gate;
+      delete o.gate;
+      if (!ok) { const i = d.ops.indexOf(o); if (i >= 0) d.ops.splice(i, 1); notify(path); }
+      continue;
+    }
+    const n = g > 0 ? g : d.ops.length;
     try {
       if (d.base === undefined) { const s = await B.db.doc(path).get(); land(d, s.exists ? s.data() : null, s.version, s.meta); }
-      const next = viewOf(path);
+      const next = viewOf(path, n);
       if (same(next, d.base)) { d.ops.splice(0, n); continue; }
       const res = await writeOnce(path, next, d.ver);
       d.ops.splice(0, n);
       land(d, next, res && res.version, (res && res.meta) || d.meta);
       const l = d.later; d.later = null;
       if (l && isNum(l.ver) && isNum(d.ver) && l.ver > d.ver) { land(d, l.data, l.ver, l.meta); notify(path); }
-      d.retry = 0; S.saveError = false; S.savedAt = Date.now(); setTimeout(renderStatus, 2600);
+      d.retry = 0; d.stalled = false; S.saveError = false; S.savedAt = Date.now(); setTimeout(renderStatus, 2600);
     } catch (err) {
       let e = err;
       if (e && e.code === 'conflict' && conflicts++ < 8) {
@@ -1332,10 +1381,25 @@ async function drain(path, d) {
       if (fatal) { d.ops.length = 0; notify(path); }
       if (fatal || !d.retry) writeFailed(e);
       if (!fatal && d.retry < 5) { const wait = 2000 * 2 ** d.retry++; d.timer = setTimeout(() => { if (!d.busy && d.ops.length) drain(path, d); }, wait); }
+      else if (!fatal) d.stalled = true; /* out of retries: the changes wait for the next save of this document */
       break;
     }
   }
+  /* A snapshot that arrived while a gate held the queue and nothing was written after it */
+  const l = d.later;
+  if (l && !d.ops.length && isNum(l.ver) && isNum(d.ver) && l.ver > d.ver) { d.later = null; land(d, l.data, l.ver, l.meta); notify(path); }
   d.busy = false; renderStatus();
+}
+/* Resolves once a queued change has left its queue: true when the saved document passes test, false when the change
+   was refused. If the queue ran out of retries (offline for a long while) the change is taken back and it answers
+   false, so the change is never saved later on its own. */
+async function landed(path, op, test) {
+  const d = docOf(path);
+  while (d.ops.includes(op)) {
+    if (d.stalled && !d.busy) { d.ops.splice(d.ops.indexOf(op), 1); notify(path); return false; }
+    await sleep(60);
+  }
+  return !!test(d.base);
 }
 async function writeOnce(path, data, ver) {
   const ref = B.db.doc(path);
@@ -1352,9 +1416,9 @@ function writeFailed(e) {
   else toast('No se pudo guardar. Revisa tu conexión: se reintentará solo.');
 }
 addEventListener('beforeunload', (ev) => { if (pendingWrites()) { ev.preventDefault(); ev.returnValue = ''; } });
-function commitPage(subId, fn) {
+function commitPage(subId, fn, gate) {
   const path = 'pages/' + subId;
-  commit(path, d => ({ ...(d || {}), rows: fn(d && Array.isArray(d.rows) ? d.rows : []) }));
+  commit(path, d => ({ ...(d || {}), rows: fn(d && Array.isArray(d.rows) ? d.rows : []) }), gate);
   const v = viewOf(path);
   return v && Array.isArray(v.rows) ? v.rows.map(normRow) : [];
 }
@@ -1800,6 +1864,7 @@ function renderSection(el, sub) {
 }
 function afterStage() {
   refreshRowTools();
+  if (rdrag && rdrag.active) { const el = rowEl(rdrag.id); el && el.classList.add('is-dragging'); }
   markStartsFull();
   updateRailState();
   renderInspector();
@@ -1892,7 +1957,10 @@ function setRowTools(t, id, confirm) {
   t.classList.toggle('is-confirm', confirm);
   t.innerHTML = confirm
     ? `<span class="rt-q">¿Eliminar este bloque?</span><button type="button" class="btn plain sm" data-action="row-delete-cancel" data-id="${id}">Cancelar</button><button type="button" class="btn danger sm" data-action="row-delete-confirm" data-id="${id}">Eliminar</button>`
-    : `<button type="button" class="btn plain sm" data-action="row-edit" data-id="${id}">${icon('edit')}Editar</button>
+    : `<button type="button" class="icon-btn rt-grip" data-action="row-drag" data-id="${id}" aria-label="Arrastrar para mover" title="Arrastrar para mover">${icon('grip')}</button><span class="rt-sep" aria-hidden="true"></span>
+       <button type="button" class="btn plain sm" data-action="row-edit" data-id="${id}">${icon('edit')}Editar</button>
+       <button type="button" class="icon-btn" data-action="row-dup" data-id="${id}" aria-label="Duplicar" title="Duplicar">${icon('dup')}</button>
+       <button type="button" class="icon-btn" data-action="row-move" data-id="${id}" aria-label="Mover a…" title="Mover a…" aria-haspopup="menu" aria-expanded="false">${icon('moveTo')}</button>
        <button type="button" class="icon-btn" data-action="row-up" data-id="${id}" aria-label="Subir bloque">${icon('up')}</button>
        <button type="button" class="icon-btn" data-action="row-down" data-id="${id}" aria-label="Bajar bloque">${icon('dn')}</button>
        <button type="button" class="icon-btn danger" data-action="row-delete" data-id="${id}" aria-label="Eliminar bloque">${icon('trash')}</button>`;
@@ -2420,7 +2488,7 @@ function syncBack() { const b = $('#insp-back'); if (b) b.disabled = !S.edit || 
 function backToChooser() {
   const e = S.edit; if (!e) return;
   S.edit = null;
-  dropAssets([...e.uploaded]);
+  safeDrop([...e.uploaded]);
   S.adder = e.subId;
   const sec = document.getElementById('s-' + e.subId); if (sec) $('.adder', sec).dataset.state = '';
   renderStage();
@@ -2483,7 +2551,7 @@ function confirmEdit() {
     if (i >= 0) rows[i] = clone(row); else rows.splice(Math.min(e.index, rows.length), 0, clone(row));
     return rows;
   }));
-  { const keep = new Set(assetsOfRow(row)); dropAssets([...new Set([...(before ? assetsOfRow(before) : []), ...e.uploaded])].filter(id => !keep.has(id))); }
+  { const keep = new Set(assetsOfRow(row)); safeDrop([...new Set([...(before ? assetsOfRow(before) : []), ...e.uploaded])].filter(id => !keep.has(id))); }
   renderStage();
   toast(e.isNew ? 'Bloque añadido' : 'Cambios guardados');
 }
@@ -2496,7 +2564,7 @@ async function cancelEdit() {
   if (!committed && el) await collapse(el);
   if (S.edit !== e) return;
   S.edit = null;
-  dropAssets([...e.uploaded].filter(id => !keep.has(id)));
+  safeDrop([...e.uploaded].filter(id => !keep.has(id)));
   renderStage();
 }
 async function collapse(el) {
@@ -2534,8 +2602,254 @@ async function deleteRow(subId, id) {
   if (el) await collapse(el);
   const gone = (S.pages.get(subId) || []).find(r => r.id === id); if (!gone) return;
   S.pages.set(subId, commitPage(subId, rows => rows.filter(r => r.id !== id)));
-  dropAssets(assetsOfRow(gone));
+  safeDrop(assetsOfRow(gone));
   renderStage();
+}
+
+/* ================= Organizing blocks: duplicate, move, drag ================= */
+/* Files are deleted only when nothing points at them any more, because a duplicated block shares its files with the
+   original. Every section of the catalog is searched (the open ones as shown here, the others fresh from the
+   database, both with the changes not saved yet), plus the tree and the block being edited. If a section cannot be
+   read, nothing is deleted: a stray file is better than a missing one. */
+async function safeDrop(ids) {
+  const want = new Set((ids || []).filter(Boolean));
+  if (!want.size || !B.assets) return;
+  let docs;
+  try {
+    docs = await Promise.all(cats().flatMap(c => c.subs.map(s => s.id)).map(async id => {
+      const path = 'pages/' + id, out = [];
+      if (S.subsc.has(id) && S.pages.has(id)) out.push(S.pages.get(id));
+      else { const snap = await B.db.doc(path).get(); out.push(snap.exists ? snap.data() : null); }
+      if (D.has(path)) out.push(viewOf(path));
+      return out;
+    }));
+  } catch { return; }
+  const found = new Set();
+  const scan = (v) => { if (typeof v === 'string') { if (want.has(v)) found.add(v); } else if (v && typeof v === 'object') Object.values(v).forEach(scan); };
+  scan(docs); scan(S.tree);
+  if (D.has('catalog/tree')) scan(viewOf('catalog/tree'));
+  const e = S.edit; if (e) scan([e.draft, e.origin, e.stash, e.hist, e.fut]);
+  dropAssets([...want].filter(id => !found.has(id)));
+}
+const rowEl = (id) => $(`#stage .row[data-id="${id}"]`);
+/* A copy gets its own ids everywhere (block, modules, text blocks); content, settings and style links stay the same. */
+function freshIds(row) {
+  row.id = uid('r');
+  allSlots(row).forEach(s => { s.id = uid('m'); (s.blocks || []).forEach(b => { b.id = uid('b'); }); });
+  return row;
+}
+function dupRow(subId, id) {
+  const src = (S.pages.get(subId) || []).find(r => r.id === id); if (!src || S.edit) return;
+  const copy = freshIds(clone(src));
+  const rows = commitPage(subId, rs => { const i = rs.findIndex(r => r.id === id); rs.splice(i < 0 ? rs.length : i + 1, 0, clone(copy)); return rs; });
+  S.justAdded.add(copy.id);
+  flip(() => { S.pages.set(subId, rows); renderStage(); });
+  S.justAdded.delete(copy.id);
+  const el = rowEl(copy.id);
+  if (el) { flashRow(el); if (el.getBoundingClientRect().top > innerHeight * .72) scrollIntoViewSoft(el); }
+  toast('Bloque duplicado');
+}
+/* Puts a block before the block `before`, else at `index` (counted without it), else at the end. In its own section
+   that is one change. Into another section the insert is saved first and the removal waits for it (commit gate): if
+   the insert is refused or never gets saved, the block stays where it was. A failure never loses a block. */
+async function moveRowTo(fromSub, id, toSub, { before = null, index = Infinity, follow = false } = {}) {
+  const src = S.pages.get(fromSub) || []; const i0 = src.findIndex(r => r.id === id);
+  if (i0 < 0 || S.edit || !subById(toSub)) return false;
+  const place = (rs, r) => { const j = before ? rs.findIndex(x => x.id === before) : -1; rs.splice(j >= 0 ? j : Math.min(index, rs.length), 0, r); return rs; };
+  const el = rowEl(id);
+  let top = null;
+  const measure = () => { const n = rowEl(id); if (n) { n.classList.remove('is-dragging'); top = n.getBoundingClientRect().top; } };
+  if (fromSub === toSub) {
+    if (place(src.filter(r => r.id !== id), src[i0]).indexOf(src[i0]) === i0) return false;
+    const rows = commitPage(fromSub, rs => { const i = rs.findIndex(r => r.id === id); if (i < 0) return rs; const [m] = rs.splice(i, 1); return place(rs, m); });
+    flip(() => { S.pages.set(fromSub, rows); renderStage(); measure(); });
+    landRow(id, toSub, top, follow);
+    return true;
+  }
+  const row = clone(src[i0]);
+  const name = (s) => (subById(s) || {}).name || '';
+  const shown = inCurrent(toSub) && !!document.getElementById('s-' + toSub);
+  if (!shown && el) await collapse(el);
+  const ins = commitPage(toSub, rs => rs.some(r => r.id === id) ? rs : place(rs, clone(row)));
+  const insOp = docOf('pages/' + toSub).ops.at(-1); /* the insert just queued (if it changed nothing it is already gone, and the test still holds) */
+  const gate = landed('pages/' + toSub, insOp, doc => !!(doc && Array.isArray(doc.rows) && doc.rows.some(r => r.id === id)));
+  const rem = commitPage(fromSub, rs => rs.filter(r => r.id !== id), gate);
+  gate.then(ok => { if (!ok) toast(`No se pudo mover el bloque. Sigue en «${name(fromSub)}».`); });
+  const apply = () => {
+    if (S.subsc.has(toSub)) S.pages.set(toSub, ins); else S.pages.delete(toSub); /* another category: read it whole when it opens */
+    S.pages.set(fromSub, rem);
+    /* The same element changes section, so its media and animations carry over */
+    const list = shown && el && el.isConnected && $(`#s-${toSub} > .rows`);
+    if (list && !list.dataset.loading) { el.dataset.sub = toSub; list.append(el); }
+    renderStage(); measure();
+  };
+  if (shown) { flip(apply); landRow(id, toSub, top, follow); } else apply();
+  toast(`Bloque movido a «${name(toSub)}»`);
+  return true;
+}
+/* After a move: flash the block, or follow it when it landed out of sight (from the rail or "Mover a…") */
+function landRow(id, subId, top, follow) {
+  const el = rowEl(id); if (!el) return;
+  if (follow && top != null && (top < 0 || top > innerHeight * .62)) scrollToSub(subId, { row: id });
+  else flashRow(el);
+}
+/* "Mover a…": every subcategory of every category; the block goes to the end of the one picked */
+function movePop(trigger, subId, id) {
+  const rows = S.pages.get(subId) || []; const last = rows.length > 0 && rows[rows.length - 1].id === id;
+  const html = cats().map(c => `<p class="mi-h" role="presentation">${esc(c.name)}</p>` + (c.subs.length ? c.subs.map(s => {
+    const here = s.id === subId;
+    return `<button type="button" class="mi" role="menuitem" data-action="row-move-to" data-sub="${s.id}"${here ? ` aria-current="location"${last ? ' disabled' : ''}` : ''}>${esc(s.name)}${here ? `<span class="mi-v">${last ? 'Aquí' : 'Al final'}</span>` : ''}</button>`;
+  }).join('') : '<p class="mi-none">Sin subcategorías</p>')).join('');
+  openPop(trigger, html, { data: { sub: subId, id } });
+  if (S.pop && S.pop.trigger === trigger) { const f = $$('#pop .mi').find(b => !b.disabled); f && f.focus({ preventScroll: true }); }
+}
+
+/* ---------- Dragging a block by its handle ---------- */
+/* The block stays dimmed in place while a light ghost follows the pointer and a line marks where it will land:
+   between blocks of any section on the page, in an empty section, or on a section of the rail (its end). The page
+   scrolls near the top and bottom edges (Lenis is paused, so the drag scrolls it), and Esc cancels. */
+let rdrag = null, rdragMoved = false;
+const rowIcon = (row) => row.layout === 'fullscreen' ? 'fs' : ((TYPES[(row.slots.find(s => s.type) || {}).type] || {}).icon || 'text');
+const layoutName = (row) => (LAYOUTS.find(l => l[0] === row.layout) || [0, 'Bloque'])[1];
+/* The ghost names the block by its most prominent text (its title), else by what it holds */
+function rowTitle(row) {
+  const bs = allSlots(row).filter(s => s.type === 'text').flatMap(s => s.blocks || []).filter(b => b.text && b.text.trim());
+  const t = bs.reduce((m, b) => !m || b.size > m.size ? b : m, null);
+  if (t) return t.text.replace(/\s+/g, ' ').trim().slice(0, 90);
+  const types = [...new Set(allSlots(row).filter(s => s.type).map(s => (TYPES[s.type] || {}).label).filter(Boolean))];
+  return types.length ? types.join(' y ') : 'Bloque';
+}
+function rowDragDown(e) {
+  const g = e.target.closest && e.target.closest('[data-action="row-drag"]');
+  if (!g || e.button !== 0 || (rdrag && rdrag.active) || S.edit || S.mode !== 'admin' || S.overlay) return;
+  const el = g.closest('.row'); if (!el || !el.dataset.sub) return;
+  e.preventDefault();
+  rdragMoved = false;
+  rdrag = { id: el.dataset.id, from: el.dataset.sub, grip: g, pid: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, active: false, t: null };
+}
+function rowDragMove(e) {
+  const d = rdrag; if (!d || e.pointerId !== d.pid) return;
+  d.x = e.clientX; d.y = e.clientY;
+  if (!d.active) { if (Math.hypot(d.x - d.x0, d.y - d.y0) < 4) return; if (!rowDragStart(d)) { rdrag = null; return; } }
+  rowDragGhost(d);
+  rowDragTarget(d);
+}
+function rowDragStart(d) {
+  const rows = S.pages.get(d.from) || []; const row = rows.find(r => r.id === d.id);
+  if (!row || S.edit) return false;
+  d.active = true; rdragMoved = true;
+  d.i0 = rows.indexOf(row);
+  try { d.grip.setPointerCapture(d.pid); } catch {}
+  closePop(true);
+  if (S.confirmDelete) { S.confirmDelete = null; refreshRowTools(); }
+  ROOT.classList.add('is-row-drag');
+  const el = rowEl(d.id); el && el.classList.add('is-dragging');
+  const g = document.createElement('div'); g.className = 'drag-ghost'; g.setAttribute('aria-hidden', 'true');
+  g.innerHTML = `<span class="dg-ico">${icon(rowIcon(row))}</span><span class="dg-txt"><b>${esc(rowTitle(row))}</b><small>${esc(layoutName(row))}</small></span>`;
+  document.body.append(g);
+  d.ghost = g; d.meta = $('small', g); d.layout = layoutName(row); d.gw = g.offsetWidth;
+  if (!RM) g.animate([{ opacity: 0, scale: .9 }, { opacity: 1, scale: 1 }], { duration: 200, easing: 'cubic-bezier(.23,1,.32,1)' });
+  d.line = document.createElement('div'); d.line.className = 'drop-line';
+  d.gap = parseFloat(getComputedStyle(ROOT).getPropertyValue('--gap')) || 20;
+  if (lenis && !S.overlay) { lenis.stop(); d.lenis = true; }
+  d.raf = requestAnimationFrame(() => rowDragTick(d));
+  return true;
+}
+/* The ghost rides just below and right of the pointer, so the spot under it (a line, a rail item) stays visible */
+function rowDragGhost(d) { d.ghost.style.transform = `translate3d(${Math.round(clamp(d.x + 14, 8, Math.max(8, innerWidth - d.gw - 8)))}px,${Math.round(clamp(d.y + 12, 8, innerHeight - 58))}px,0)${RM ? '' : ' rotate(-1.5deg)'}`; }
+function rowDragTarget(d) {
+  const hitEl = document.elementFromPoint(d.x, d.y);
+  const item = hitEl && hitEl.closest && hitEl.closest('#rail-nav .sub-item[data-sub]');
+  let t;
+  if (item) {
+    const sub = item.dataset.sub, rows = S.pages.get(sub) || [];
+    t = { sub, rail: item, before: null, index: Infinity, noop: sub === d.from && rows.length > 0 && rows[rows.length - 1].id === d.id };
+  } else if (!MOBILE.matches && hitEl && hitEl.closest && hitEl.closest('#rail')) t = null; /* beside the page only its sections take a block */
+  else t = stageTarget(d);
+  d.t = t;
+  paintTarget(d, t);
+}
+function stageTarget(d) {
+  let best = null, bd = Infinity;
+  $$('#stage > .sec').forEach(s => { const r = s.getBoundingClientRect(); if (!r.height) return; const dist = d.y < r.top ? r.top - d.y : d.y > r.bottom ? d.y - r.bottom : 0; if (dist < bd) { bd = dist; best = s; } });
+  if (!best || !S.loaded.has(best.dataset.sub)) return null;
+  const sub = best.dataset.sub;
+  const rows = $$(':scope > .rows > .row', best).filter(r => r.dataset.id !== d.id);
+  let index = rows.length;
+  for (let i = 0; i < rows.length; i++) { const r = rows[i].getBoundingClientRect(); if (d.y < r.top + r.height / 2) { index = i; break; } }
+  const pr = rows[index - 1] && rows[index - 1].getBoundingClientRect(), nr = rows[index] && rows[index].getBoundingClientRect();
+  const y = pr && nr ? (pr.bottom + nr.top) / 2 : nr ? nr.top - d.gap / 2 : pr ? pr.bottom + d.gap / 2 : null;
+  return { sub, sec: best, before: rows[index] ? rows[index].dataset.id : null, index, y, empty: !rows.length, noop: sub === d.from && index === d.i0 };
+}
+function paintTarget(d, t) {
+  const live = t && !t.noop ? t : null;
+  $$('#rail-nav .sub-item.is-drop').forEach(n => { if (!live || n !== live.rail) n.classList.remove('is-drop'); });
+  $$('#stage .sec.is-drop').forEach(n => { if (!live || n !== live.sec || !live.empty) n.classList.remove('is-drop'); });
+  if (live && live.rail) live.rail.classList.add('is-drop');
+  if (live && live.sec && live.empty) live.sec.classList.add('is-drop');
+  const line = d.line, stage = $('#stage');
+  if (live && live.sec && !live.empty && live.y != null) {
+    if (line.parentNode !== stage) { stage.append(line); line.classList.remove('is-on'); }
+    line.classList.toggle('is-moving', line.classList.contains('is-on'));
+    line.style.top = Math.max(2, live.y - stage.getBoundingClientRect().top) + 'px';
+    line.classList.add('is-on');
+  } else line.classList.remove('is-on', 'is-moving');
+  const away = !!(live && live.sub !== d.from);
+  d.ghost.classList.toggle('is-away', away);
+  const meta = away ? `Mover a «${(subById(live.sub) || {}).name || ''}»` : d.layout;
+  if (d.meta.textContent !== meta) { d.meta.textContent = meta; d.gw = d.ghost.offsetWidth; }
+}
+/* Auto-scroll: faster the closer the pointer is to the edge. It arms once the pointer has left the edge band it may
+   have started in, so grabbing a block near the top does not scroll the page at once. */
+function rowDragTick(d) {
+  if (rdrag !== d || !d.active) return;
+  const top = MOBILE.matches ? $('.rail-top').getBoundingClientRect().bottom : 0;
+  const zone = Math.min(96, innerHeight / 6);
+  const inBand = d.y < top + zone || d.y > innerHeight - zone;
+  if (!d.armed) d.armed = !inBand || Math.abs(d.y - d.y0) > 48;
+  if (d.armed && inBand) {
+    const v = d.y < top + zone ? -Math.min(1, (top + zone - d.y) / zone) : Math.min(1, (d.y - innerHeight + zone) / zone);
+    const y = clamp(scrollY + Math.sign(v) * v * v * 24, 0, Math.max(0, ROOT.scrollHeight - innerHeight));
+    if (Math.abs(y - scrollY) >= 1) { window.scrollTo(0, y); rowDragTarget(d); }
+  }
+  d.raf = requestAnimationFrame(() => rowDragTick(d));
+}
+function rowDragUp(e) {
+  const d = rdrag; if (!d || e.pointerId !== d.pid) return;
+  rdrag = null;
+  if (!d.active) return;
+  rowDragTarget(d);
+  rowDragEnd(d, d.t && !d.t.noop ? d.t : null);
+}
+function rowDragCancel() {
+  const d = rdrag; if (!d) return;
+  rdrag = null;
+  if (d.active) rowDragEnd(d, null);
+}
+function rowDragEnd(d, t) {
+  cancelAnimationFrame(d.raf);
+  try { d.grip.releasePointerCapture(d.pid); } catch {}
+  ROOT.classList.remove('is-row-drag');
+  $$('.sub-item.is-drop, #stage .sec.is-drop').forEach(n => n.classList.remove('is-drop'));
+  const lr = d.line.isConnected && d.line.classList.contains('is-on') ? d.line.getBoundingClientRect() : null;
+  d.line.remove();
+  if (d.lenis && lenis && !S.overlay) lenis.start();
+  /* The ghost goes back to the handle it came from, or into the place the block lands (its icon ends on the spot) */
+  const g = d.ghost, el = rowEl(d.id);
+  const box = (n) => n && n.getBoundingClientRect();
+  const grip = box(el && $('[data-action="row-drag"]', el)), adder = box(t && t.sec && $('.adder', t.sec)), item = box(t && t.rail);
+  const spot = !t ? grip && { x: grip.left + grip.width / 2, y: grip.top + grip.height / 2 }
+    : item ? { x: item.left + 12, y: item.top + item.height / 2 }
+    : lr ? { x: lr.left, y: lr.top + lr.height / 2 }
+    : adder ? { x: adder.left + adder.width / 2, y: adder.top + adder.height / 2 } : null;
+  const done = () => g.remove();
+  if (RM || !spot) done();
+  else {
+    g.animate([{ transform: g.style.transform, opacity: 1 }, { transform: `translate3d(${Math.round(spot.x - 25)}px,${Math.round(spot.y - 25)}px,0) scale(.82)`, opacity: 0 }], { duration: t ? 260 : 320, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' }).finished.then(done, done);
+    setTimeout(done, 700);
+  }
+  if (!t) { el && el.classList.remove('is-dragging'); return; }
+  moveRowTo(d.from, d.id, t.sub, { before: t.before, index: t.index, follow: !!t.rail });
 }
 
 /* ================= Live DOM updates while editing ================= */
@@ -3192,7 +3506,7 @@ async function uploadLogo(file) {
   if (!res) return;
   const old = S.tree && S.tree.logo && S.tree.logo.id;
   mutateTree(tr => { tr.logo = { id: res.id, w: res.w, h: res.h, mono: res.mono !== false }; });
-  if (old) dropAssets([old]);
+  if (old) safeDrop([old]);
 }
 async function uploadMenuBg(file) {
   const t = accept(file, 'image'); if (!t) return;
@@ -3202,7 +3516,7 @@ async function uploadMenuBg(file) {
   if (!res) return;
   const old = S.tree.menu.bg.kind === 'image' ? S.tree.menu.bg.asset : null;
   mutateTree(tr => { tr.menu.bg = { kind: 'image', asset: res.id, w: res.w, h: res.h, dim: 30 }; });
-  if (old) dropAssets([old]);
+  if (old) safeDrop([old]);
 }
 
 /* ---------- Thumbnail reorder ---------- */
@@ -3597,6 +3911,7 @@ function scrollIntoViewSoft(el) {
 function flashRow(el) { if (!el) return; el.classList.remove('is-flash'); void el.offsetWidth; el.classList.add('is-flash'); setTimeout(() => el.classList.remove('is-flash'), 1700); }
 function onScroll() {
   Ink.schedule(); spySchedule();
+  if (rdrag && rdrag.active) rowDragTarget(rdrag);
   ROOT.classList.toggle('is-scrolled', scrollY > 8);
   if (S.pop && !S.pop.sticky) closePop();
 }
@@ -3824,10 +4139,10 @@ function commitInline(value) {
 function cancelInline() { const p = S.inline; if (!p) return; S.inline = null; if (p.kind === 'cat' || p.kind === 'rename-cat') renderMenu(); else renderRail(); }
 
 async function purgePage(subId) {
-  if (S.edit && S.edit.subId === subId) { dropAssets(assetsOfRow(S.edit.draft)); S.edit = null; }
+  if (S.edit && S.edit.subId === subId) { const e = S.edit; S.edit = null; safeDrop([...assetsOfRow(e.draft), ...e.uploaded]); }
   let rows = S.pages.get(subId);
   if (!rows) { try { const snap = await B.db.doc('pages/' + subId).get(); rows = snap.exists && Array.isArray(snap.data().rows) ? snap.data().rows : []; } catch { rows = []; } }
-  dropAssets(rows.flatMap(assetsOfRow));
+  safeDrop(rows.flatMap(assetsOfRow));
   S.pages.delete(subId); S.loaded.delete(subId);
   commit('pages/' + subId, () => null);
 }
@@ -3920,7 +4235,7 @@ function toast(msg) {
 /* ================= Events ================= */
 document.addEventListener('click', (ev) => {
   const a = ev.target.closest('[data-action]');
-  if (S.pop && !ev.target.closest('#pop') && !(a && (a.dataset.action === 'item-menu' || a.dataset.action === 'dd'))) closePop();
+  if (S.pop && !ev.target.closest('#pop') && !(a && (a.dataset.action === 'item-menu' || a.dataset.action === 'dd' || a.dataset.action === 'row-move'))) closePop();
   if (!a || a.disabled) return;
   const act = a.dataset.action, id = a.dataset.id, slotId = a.dataset.slot;
   switch (act) {
@@ -3938,7 +4253,7 @@ document.addEventListener('click', (ev) => {
     case 'menu-bg': {
       const kind = a.dataset.kind; const old = S.tree.menu.bg.kind === 'image' ? S.tree.menu.bg.asset : null;
       mutateTree(t => { t.menu.bg = kind === 'theme' ? { kind: 'theme' } : { kind: 'color', color: BRAND }; });
-      if (old) dropAssets([old]); break;
+      if (old) safeDrop([old]); break;
     }
     case 'go-sub': if (a.getAttribute('aria-disabled') !== 'true') scrollToSub(id); break;
     case 'add-cat': beginInline({ kind: 'cat' }); break;
@@ -4049,6 +4364,10 @@ document.addEventListener('click', (ev) => {
     case 'row-edit': { const r = a.closest('.row'); startEdit(r.dataset.sub, id); break; }
     case 'row-up': case 'row-down': { const r = a.closest('.row'); moveRow(r.dataset.sub, id, act === 'row-up' ? -1 : 1); break; }
     case 'row-delete': S.confirmDelete = id; refreshRowTools(); break;
+    case 'row-dup': { const r = a.closest('.row'); dupRow(r.dataset.sub, id); break; }
+    case 'row-move': { ev.stopPropagation(); const r = a.closest('.row'); movePop(a, r.dataset.sub, id); break; }
+    case 'row-move-to': { const P = S.pop; closePop(true); if (P && P.data && P.data.id) moveRowTo(P.data.sub, P.data.id, a.dataset.sub, { follow: true }); break; }
+    case 'row-drag': if (!rdragMoved) toast('Arrastra para mover el bloque'); rdragMoved = false; break;
     case 'row-delete-cancel': S.confirmDelete = null; refreshRowTools(); break;
     case 'row-delete-confirm': { const r = a.closest('.row'); deleteRow(r.dataset.sub, id); break; }
     case 'vid-play': {
@@ -4068,11 +4387,14 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('pointerdown', (ev) => {
   const s = ev.target.closest && ev.target.closest('#stage .row.is-editing [data-slot]');
   if (s && !ev.target.closest('.spl, .thumbs')) setActiveSlot(s.dataset.slot);
-  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev);
+  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev); rowDragDown(ev);
 });
-document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); });
-document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); });
-document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); });
+document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); rowDragMove(ev); });
+document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); rowDragUp(ev); });
+document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); if (rdrag && ev.pointerId === rdrag.pid) rowDragCancel(); });
+/* While a block is dragged Lenis is paused (it swallows the wheel), so the wheel scrolls the page directly */
+addEventListener('wheel', (ev) => { if (rdrag && rdrag.active && rdrag.lenis) window.scrollBy(0, ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY); }, { passive: true });
+addEventListener('blur', () => rowDragCancel());
 document.addEventListener('dblclick', (ev) => { if (ev.target.closest('[data-rz]') && S.edit) onField('hmode', 'auto'); });
 
 /* Scrub numeric fields by dragging their icon */
@@ -4156,6 +4478,9 @@ document.addEventListener('paste', (ev) => {
 });
 
 document.addEventListener('keydown', (ev) => {
+  /* First in the Esc chain. While a block is carried, other shortcuts (search, undo…) wait; scroll keys still scroll */
+  if (rdrag && ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); rowDragCancel(); return; }
+  if (rdrag && rdrag.active) return;
   const t = ev.target;
   const typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
   if (t && t.id === 'style-name') {
@@ -4166,6 +4491,14 @@ document.addEventListener('keydown', (ev) => {
   if (t && t.id === 'inline-input') {
     if (ev.key === 'Enter') { ev.preventDefault(); commitInline(t.value); }
     else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); cancelInline(); }
+    return;
+  }
+  /* Arrow keys walk the items of an open menu (the "Mover a…" list can be long) */
+  if (S.pop && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && t && t.closest && t.closest('#pop')) {
+    const items = $$('#pop .mi:not(:disabled)'); if (!items.length) return;
+    ev.preventDefault();
+    const i = items.indexOf(t), down = ev.key === 'ArrowDown';
+    items[i < 0 ? (down ? 0 : items.length - 1) : (i + (down ? 1 : items.length - 1)) % items.length].focus();
     return;
   }
   if (S.edit && S.mode === 'admin' && (ev.metaKey || ev.ctrlKey) && !ev.altKey && (ev.key === 'z' || ev.key === 'Z' || ev.key === 'y' || ev.key === 'Y')) {
@@ -4273,7 +4606,7 @@ async function importExport(fileList) {
   onTree();
   toast(`Listo: se importaron ${what}.`);
 }
-document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.closest('#pop') && !ev.target.closest('[data-action="item-menu"], [data-action="dd"]')) closePop(); }, true);
+document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.closest('#pop') && !ev.target.closest('[data-action="item-menu"], [data-action="dd"], [data-action="row-move"]')) closePop(); }, true);
 
 /* ================= Smooth scroll ================= */
 function initLenis() {
