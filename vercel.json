@@ -3,5 +3,6 @@
   "framework": null,
   "installCommand": "echo 'El build no necesita dependencias'",
   "buildCommand": "node scripts/build.mjs",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/login", "destination": "/index.html" }]
 }

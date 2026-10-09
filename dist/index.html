@@ -589,9 +589,6 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .acct{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 6px;border-radius:999px;transition:background-color 240ms ease,color 240ms ease}
 .acct[data-ink="light"]{background:#FFFFFF;color:#000000}
 .acct[data-ink="dark"]{background:#000000;color:#FFFFFF}
-.acct-in{padding:0 22px 0 18px;font-size:15px;font-weight:500;letter-spacing:-.01em;transition:background-color 240ms ease,color 240ms ease,transform 140ms var(--ease-out)}
-.acct-in:active{transform:scale(.97)}
-.acct-in svg.i{width:17px;height:17px}
 .acct .av{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:var(--ov-solid);font-size:13px;font-weight:700;letter-spacing:.02em}
 .acct[data-ink="light"] .av{color:#FFFFFF}
 .acct[data-ink="dark"] .av{color:#000000}
@@ -843,7 +840,6 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>',
   fs: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
   eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
   delay: '<path d="M7 4h10M7 20h10M8 4c0 4 8 4 8 8s-8 4-8 8M16 4c0 4-8 4-8 8s8 4 8 8"/>',
   stagger: '<path d="M4 7h7M8 12h7M12 17h8"/>',
@@ -1246,7 +1242,7 @@ function supabaseBackend(sb, cfg) {
   const auth = {
     async session() { const { data } = await sb.auth.getSession(); return (data && data.session) || null; },
     onChange(fn) { sb.auth.onAuthStateChange((ev, s) => setTimeout(() => fn(ev, s), 0)); },
-    signIn() { return sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: 'select_account' } } }); },
+    signIn() { return sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + appPath(), queryParams: { prompt: 'select_account' } } }); },
     signOut() { return sb.auth.signOut({ scope: 'local' }); },
     async canEdit() { const { data, error } = await sb.rpc('can_edit'); return !error && data === true; }
   };
@@ -1407,8 +1403,9 @@ async function boot() {
   Motion.init();
   /* The menu is the opening screen, unless the link points at a section (or a sign-in is coming back to one). */
   let back = ''; try { back = sessionStorage.getItem('bc.authHash') || ''; } catch {}
-  if (location.hash.length < 2 && back.length < 2) openOverlay('menu', { instant: true, landing: true });
+  if (location.hash.length < 2 && back.length < 2 && !onLogin()) openOverlay('menu', { instant: true, landing: true });
   const c = window.claude;
+  if (onLogin() && !(SUPA && SUPA.url && SUPA.key)) leaveLogin();
   if (!c || typeof c.use !== 'function') return SUPA && SUPA.url && SUPA.key ? startSupabase(SUPA) : startLocal();
   const safe = (p) => Promise.resolve(p).catch(() => null);
   const [db, assets, user] = await Promise.all([safe(c.use('db')), safe(c.use('assets')), safe(c.use('user'))]);
@@ -1437,8 +1434,13 @@ async function startSupabase(cfg) {
   let session = null;
   try { session = await Cloud.auth.session(); } catch {}
   authCleanUrl(back);
+  if (onLogin()) {
+    if (!session && await signIn()) return; /* on its way to Google */
+    leaveLogin();
+  }
   await setUser(session, back.code && session ? 'signin' : null);
-  if (back.error) toast('No se pudo iniciar sesión. Inténtalo de nuevo.');
+  if (back.closed) toast('Esa cuenta no tiene acceso al catálogo.');
+  else if (back.error) toast('No se pudo iniciar sesión. Inténtalo de nuevo.');
   Cloud.auth.onChange((ev, s) => { if (['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED', 'TOKEN_REFRESHED'].includes(ev)) setUser(s, ev === 'SIGNED_IN' ? 'signin' : null); });
   setInterval(renderStatus, 30000);
   start();
@@ -1457,13 +1459,19 @@ function start() {
 }
 
 /* ================= Accounts (Supabase only) ================= */
+/* Sign-in lives at /login, off the menu: that page goes straight to Google and comes back to the catalog.
+   Only accounts that already exist can sign in (see supabase/migrations); Auth refuses to create any other. */
+const onLogin = () => /\/login\/?$/.test(location.pathname);
+const appPath = () => location.pathname.replace(/\/login\/?$/, '/');
+function leaveLogin() { try { history.replaceState(null, '', appPath() + location.search + location.hash); } catch {} }
 /* Google sign-in uses the PKCE flow: Google sends the visitor back with ?code=…, which supabase-js exchanges for a session.
    The section hash is kept aside during the round trip because the redirect URL cannot carry it. */
 function authReturn() {
   const q = new URLSearchParams(location.search);
   let hash = '';
   try { hash = sessionStorage.getItem('bc.authHash') || ''; sessionStorage.removeItem('bc.authHash'); } catch {}
-  return { code: q.has('code'), error: q.has('error') || q.has('error_description'), hash };
+  const why = String(q.get('error_description') || '');
+  return { code: q.has('code'), error: q.has('error') || q.has('error_description'), closed: /saving new user|signups? not allowed/i.test(why), hash };
 }
 function authCleanUrl(back) {
   const q = new URLSearchParams(location.search);
@@ -1493,8 +1501,8 @@ async function setUser(session, why) {
 async function signIn() {
   if (!Cloud) return;
   try { sessionStorage.setItem('bc.authHash', location.hash || ''); } catch {}
-  try { const { error } = await Cloud.auth.signIn(); if (error) throw error; }
-  catch { toast('No se pudo iniciar sesión. Inténtalo de nuevo.'); }
+  try { const { error } = await Cloud.auth.signIn(); if (error) throw error; return true; }
+  catch { toast('No se pudo iniciar sesión. Inténtalo de nuevo.'); return false; }
 }
 async function signOut() {
   if (!Cloud) return;
@@ -3665,7 +3673,7 @@ if ('ResizeObserver' in window) new ResizeObserver(([e]) => { $('#menu-list').st
 function acctHTML() {
   if (S.backend !== 'supabase') return '';
   const u = S.user;
-  if (!u) return `<button type="button" class="acct acct-in" data-adapt="menu" data-action="signin">${icon('user')}<span>Iniciar sesión</span></button>`;
+  if (!u) return '';
   const av = `<span class="av" aria-hidden="true">${u.avatar ? `<img src="${esc(u.avatar)}" alt="" referrerpolicy="no-referrer">` : esc(initials(u.name))}</span>`;
   return `<div class="acct" data-adapt="menu">${av}<span class="acct-txt"><b>${esc(u.name || u.email)}</b><small>${S.canEdit ? esc(u.email) : 'Solo lectura'}</small></span><button type="button" class="acct-out" data-action="signout">Salir</button></div>`;
 }
@@ -3933,7 +3941,6 @@ document.addEventListener('click', (ev) => {
     case 'menu-cat': { const same0 = id === S.cat; closeOverlay(); if (!same0) openCategory(id); else scrollTop(); break; }
     case 'mode': applyMode(a.dataset.mode); ls.set('mode', a.dataset.mode); break;
     case 'scheme': setScheme(a.dataset.scheme); break;
-    case 'signin': signIn(); break;
     case 'signout': signOut(); break;
     case 'menu-bg': {
       const kind = a.dataset.kind; const old = S.tree.menu.bg.kind === 'image' ? S.tree.menu.bg.asset : null;

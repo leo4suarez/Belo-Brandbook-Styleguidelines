@@ -19,6 +19,10 @@ const ana = fake.addUser({ email: 'ana@paisanoscreando.com', name: 'Ana Gómez' 
 const leo = fake.addUser({ email: 'leo@paisanoscreando.com', name: 'Leo Suárez' });
 const pat = fake.addUser({ email: 'pat@gmail.com', name: 'Pat Outside' });
 const jo = fake.addUser({ email: 'jo@paisanos.io', name: 'Jo Venezia' });
+const max = fake.addUser({ email: 'max@paisanos.io', name: 'Max Nuevo' });
+const kim = fake.addUser({ email: 'kim@paisanos.io', name: 'Kim SinCuenta', registered: false });
+[ana, leo, jo].forEach(u => fake.editors.add(u.email));
+const LOGIN = new URL('login', BASE).href;
 const text = (id, t) => ({ id, layout: 'full', h: null, slots: [{ id: 'm_' + id, type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b_' + id, text: t, font: 'jakarta', size: 40, weight: 600, lh: 110, ls: -1, align: 'left', upper: false }] }] });
 fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [{ id: 'c_brand', name: 'Our Brand', subs: [{ id: 's_intro', name: 'Intro' }, { id: 's_logo', name: 'Logotipo' }] }, { id: 'c_voice', name: 'Voice & Tone', subs: [] }] }, leo.id);
 fake.seed('pages/s_intro', { rows: [text('r_a', 'Hola Belo'), text('r_b', 'Segundo bloque')] }, leo.id);
@@ -29,7 +33,7 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
 
 (async () => {
   const browser = await chromium.launch();
-  const open = async (label, user) => {
+  const open = async (label, user, url = BASE) => {
     const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1 });
     await fake.attach(ctx, label);
     await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
@@ -44,7 +48,8 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
     page.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !/ERR_FAILED|ERR_CONNECTION_RESET|Failed to fetch|status of 409|status of 403/.test(m.text())) page.errors.push(label + ' ' + m.type() + ': ' + m.text()); });
     page.on('pageerror', e => page.errors.push(label + ' pageerror: ' + e.message));
     await page.emulateMedia({ colorScheme: 'light' });
-    await page.goto(BASE);
+    if (url === LOGIN) { await page.goto(url, { waitUntil: 'commit' }); await page.waitForURL(u => !u.pathname.endsWith('/login')); }
+    else await page.goto(url);
     await page.waitForSelector('#s-s_intro .row');
     await page.waitForTimeout(500);
     return page;
@@ -73,26 +78,23 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
 
   const menuUp = (p) => p.evaluate(() => document.querySelector('#menu').classList.contains('is-open') && getComputedStyle(document.querySelector('#menu-bg')).opacity === '1');
 
-  // 1. A visitor lands on the menu, sees the shared content read-only, and has a way to sign in.
+  // 1. A visitor lands on the menu and sees the shared content read-only. Signing in is not offered there.
   const A = await open('ana');
   check(await menuUp(A), 'the link opens on the menu, fully drawn');
   check(await mode(A) === 'viewer', 'visitor starts in viewer mode');
   check((await A.textContent('#s-s_intro .row[data-id="r_a"]')).includes('Hola Belo'), 'visitor sees content from Supabase');
   check(await A.locator('#menu [data-action="mode"]').count() === 0, 'visitor has no Admin switch');
-  check(await A.locator('#menu .acct-in').count() === 1, 'menu offers "Iniciar sesión"');
+  check(await A.locator('#menu .acct').count() === 0 && !/iniciar sesión/i.test(await A.textContent('#menu')), 'menu has no "Iniciar sesión"');
   await A.screenshot({ path: T + 'sb-01-menu-signed-out.png' });
 
-  // 2. Google sign-in round trip (PKCE): Ana comes back signed in, in Admin, on the section she was viewing.
-  await A.keyboard.press('Escape'); await A.waitForTimeout(400);
-  await A.evaluate(() => history.replaceState(null, '', '#s_logo'));
-  await A.click('#btn-menu'); await A.waitForTimeout(800);
+  // 2. Google sign-in round trip (PKCE) from /login: Ana comes back to the catalog signed in, in Admin, on the section in the link.
   fake.nextLogin = ana.id;
-  await Promise.all([A.waitForNavigation({ url: /code=/ }), A.click('#menu .acct-in')]);
+  await Promise.all([A.waitForNavigation({ url: /code=/ }), A.goto(LOGIN + '#s_logo', { waitUntil: 'commit' })]);
   await A.waitForSelector('#s-s_intro .row');
   await until(async () => await mode(A) === 'admin');
   check(await mode(A) === 'admin', 'after Google sign-in Ana is in Admin');
   check(/Hola, Ana/.test(await toasts(A)), 'welcome toast after sign-in');
-  check(await A.evaluate(() => !location.search.includes('code=') && location.hash === '#s_logo'), 'auth code removed from the URL and section restored');
+  check(await A.evaluate(() => !location.search.includes('code=') && location.hash === '#s_logo' && !location.pathname.includes('login')), 'back on the catalog: auth code removed from the URL and section restored');
 
   check(!(await A.evaluate(() => document.querySelector('#menu').classList.contains('is-open'))), 'coming back from sign-in skips the opening menu');
 
@@ -108,6 +110,18 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
   const J = await open('jo', jo);
   check(await mode(J) === 'admin', 'Jo (@paisanos.io) opens in Admin');
   await J.close();
+  const M = await open('max', max);
+  check(await mode(M) === 'viewer', 'an existing @paisanos.io account that is not listed stays in viewer');
+  await M.close();
+  fake.nextLogin = kim.id;
+  const K = await open('kim', null, LOGIN);
+  check(await until(async () => /no tiene acceso/.test(await toasts(K))) && await mode(K) === 'viewer', 'a Google account without a user cannot sign up: refused, stays in viewer');
+  check(await K.evaluate(() => location.pathname.endsWith('/') && !location.search), 'the refused sign-in lands on the clean catalog URL');
+  await K.close();
+  // Already signed in: /login goes straight back to the catalog.
+  const L2 = await open('leo2', leo, LOGIN);
+  check(await mode(L2) === 'admin' && await L2.evaluate(() => !location.pathname.includes('login')), '/login with a session returns to the catalog in Admin');
+  await L2.close();
   // Opening the menu with the button: the background lands even when every animation frame stalls.
   await L.keyboard.press('Escape'); await L.waitForTimeout(400);
   await L.evaluate(() => { const o = Element.prototype.animate; window.__stall = true; Element.prototype.animate = function (...a) { const an = o.apply(this, a); if (window.__stall && this.closest && this.closest('.ov')) an.pause(); return an; }; });
@@ -259,7 +273,7 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
   await A.evaluate(() => scrollTo(0, 0)); await A.waitForTimeout(300);
   await A.click('#btn-menu'); await A.waitForTimeout(800);
   await A.click('#menu [data-action="signout"]');
-  check(await until(async () => await mode(A) === 'viewer' && await A.locator('#menu .acct-in').count() === 1), 'sign-out returns to viewer with "Iniciar sesión"');
+  check(await until(async () => await mode(A) === 'viewer' && await A.locator('#menu .acct').count() === 0), 'sign-out returns to viewer, with no account in the menu');
 
   const errors = [...A.errors, ...L.errors, ...O.errors];
   check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + JSON.stringify(errors, null, 1) : ''));

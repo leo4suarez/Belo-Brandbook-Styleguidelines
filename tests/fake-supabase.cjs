@@ -1,8 +1,8 @@
 // An in-memory stand-in for the Supabase project, served through Playwright routes so the real supabase-js
 // (installed as a dev dependency) runs against it: Auth (Google PKCE round trip), the Data API (docs, save_doc,
 // can_edit), Storage (assets bucket) and Realtime (postgres_changes on docs, presence) over a mocked WebSocket.
-// The rules mirror supabase/migrations: anyone reads, only confirmed @paisanoscreando.com and @paisanos.io accounts write,
-// and save_doc refuses a stale version with PT409.
+// The rules mirror supabase/migrations: anyone reads, only confirmed accounts listed in editors write, Google sign-in
+// cannot create an account that does not exist yet, and save_doc refuses a stale version with PT409.
 const crypto = require('crypto');
 
 const b64u = (o) => Buffer.from(typeof o === 'string' ? o : JSON.stringify(o)).toString('base64url');
@@ -11,7 +11,8 @@ class FakeSupabase {
   constructor(url) {
     this.url = url.replace(/\/+$/, '');
     this.ref = new URL(this.url).hostname.split('.')[0];
-    this.users = new Map();      // id -> { id, email, name, confirmed }
+    this.users = new Map();      // id -> { id, email, name, confirmed, registered }
+    this.editors = new Set();    // emails listed in private.editors
     this.revoked = new Set();    // user ids that lost edit rights
     this.docs = new Map();       // path -> { data, version, updated_at, updated_by, updated_by_name }
     this.files = new Map();      // name -> { body, type }
@@ -24,12 +25,13 @@ class FakeSupabase {
     this.log = [];
   }
 
-  addUser({ id, email, name, confirmed = true }) {
-    const u = { id: id || crypto.randomUUID(), email, name, confirmed };
+  // registered: false is a Google account with no Supabase user behind it (sign-ups are closed).
+  addUser({ id, email, name, confirmed = true, registered = true }) {
+    const u = { id: id || crypto.randomUUID(), email, name, confirmed, registered };
     this.users.set(u.id, u);
     return u;
   }
-  isEditor(u) { return !!(u && u.confirmed && !this.revoked.has(u.id) && /@(paisanoscreando\.com|paisanos\.io)$/i.test(u.email)); }
+  isEditor(u) { return !!(u && u.confirmed && !this.revoked.has(u.id) && this.editors.has(u.email.toLowerCase())); }
 
   token(u) {
     const now = Math.floor(Date.now() / 1000);
@@ -100,6 +102,7 @@ class FakeSupabase {
       const to = u.searchParams.get('redirect_to');
       const who = this.users.get(this.nextLogin);
       if (!who) return route.fulfill({ status: 302, headers: { location: to + '?error=access_denied&error_description=cancelled' } });
+      if (!who.registered) return route.fulfill({ status: 302, headers: { location: to + '?error=server_error&error_code=unexpected_failure&error_description=Database+error+saving+new+user' } });
       const code = crypto.randomUUID();
       this.codes.set(code, who.id);
       return route.fulfill({ status: 302, headers: { location: to + (to.includes('?') ? '&' : '?') + 'code=' + code } });

@@ -21,7 +21,7 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 - Menú de pantalla completa: es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección).
   - Categorías grandes abajo a la izquierda.
   - Arriba a la derecha, junto a la X: los selectores del fondo del menú (solo en Admin) y claro/oscuro con íconos.
-  - Abajo a la derecha, viewer/admin con íconos (ojo y lápiz) al lado del usuario, o "Iniciar sesión".
+  - Abajo a la derecha, viewer/admin con íconos (ojo y lápiz) al lado del usuario. El menú no ofrece iniciar sesión: eso está en `/login`.
 - Buscador.
 - Sidebar sin contenedor, con el título de la categoría y las subcategorías. Hace scroll-spy y auto-scroll dentro de la misma página.
 - Color de texto adaptativo sobre fondos blancos, azules o fotos, para el sidebar, el menú y el texto sobre imágenes.
@@ -82,9 +82,10 @@ npm test                          # build + flows, panel, menu, motion y collab
 - **Proyecto:** `belo-brandbook` (id `tdrlxenjgfvnjzmuixhy`, región São Paulo).
 - **Base:** una tabla `docs` con un documento JSON por ruta (`catalog/tree` y `pages/{subId}`), el mismo modelo que el artifact. El esquema está en `supabase/migrations/`.
 - **Quién ve:** cualquiera con el link, sin login.
-- **Quién edita:** cuentas con email confirmado de `@paisanoscreando.com` o `@paisanos.io`. Se entra con Google desde el menú ("Iniciar sesión"). Una cuenta de otro dominio entra en "Solo lectura".
-  - Para sumar a una persona puntual: `insert into private.editors (email) values ('alguien@belo.app');`
-  - Para sumar un dominio entero: `insert into private.editor_domains (domain) values ('belo.app');`
+- **Quién edita:** solo las cuentas listadas en `private.editors` (las que ya estaban registradas y editaban al cerrar los registros). Se entra con Google en `/login` (por ejemplo <https://belo-brandbook.vercel.app/login>), que vuelve al catálogo.
+  - **Registros cerrados:** Supabase no crea cuentas nuevas. Un trigger en `auth.users` rechaza cualquier email que no esté en `private.editors`, y la página muestra "Esa cuenta no tiene acceso al catálogo". Un dominio ya no da acceso por sí solo.
+  - Para sumar a una persona: `insert into private.editors (email) values ('alguien@belo.app');`. Después puede entrar por `/login`.
+  - Para quitarle la edición: `delete from private.editors where email = 'alguien@belo.app';`.
 - **Archivos:** bucket público `assets`. Solo los editores suben y borran.
 - **Cambios de varias personas a la vez:**
   - Cada guardado lleva la versión sobre la que se armó. Si alguien guardó antes, la página vuelve a cargar el documento, reaplica el cambio encima y guarda de nuevo, así no se pisan.
@@ -179,3 +180,4 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
 - **v5.2:** animaciones de Fran (presets por módulo y por bloque de texto, curvas, vista previa y estilos vinculados) integradas con el guardado compartido. Aplicar un estilo a todos guarda solo la animación de cada elemento, así no pisa cambios de otros.
   - Si un cambio no se puede aplicar a un documento, se saltea en lugar de trabar los guardados siguientes.
   - Al cerrar el menú de inicio, las animaciones de entrada vuelven a correr.
+- **v5.3:** registros cerrados: solo editan las cuentas que ya existían (listadas por email en `private.editors`), y Supabase rechaza cuentas nuevas. El login pasa a `/login` y sale del menú.

@@ -10,7 +10,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 export function serve(port = 8765, dir = dist) {
   const server = createServer(async (req, res) => {
     const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^([/\\])+/, '');
-    const file = join(dir, path || 'index.html');
+    const file = join(dir, !path || path === 'login' ? 'index.html' : path);
     if (!file.startsWith(dir)) { res.writeHead(403).end(); return; }
     try {
       const body = await readFile(file);
