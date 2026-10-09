@@ -2578,11 +2578,14 @@ function flip(mutate) {
   if (RM) { mutate(); return; }
   const first = new Map($$('#stage .row').map(el => [el.dataset.id, el.getBoundingClientRect().top]));
   mutate();
+  let moved = false;
   $$('#stage .row').forEach(el => {
     const f = first.get(el.dataset.id); if (f == null) return;
     const d = f - el.getBoundingClientRect().top; if (Math.abs(d) < 1) return;
     el.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: 460, easing: 'cubic-bezier(.77,0,.175,1)' });
+    moved = true;
   });
+  if (moved) setTimeout(() => Ink.schedule(), 480); /* the ink was sampled while the rows were still on their way */
 }
 function moveRow(subId, id, dir) {
   const cur = S.pages.get(subId) || []; const i0 = cur.findIndex(r => r.id === id);
@@ -2725,7 +2728,7 @@ function rowDragDown(e) {
   const el = g.closest('.row'); if (!el || !el.dataset.sub) return;
   e.preventDefault();
   rdragMoved = false;
-  rdrag = { id: el.dataset.id, from: el.dataset.sub, grip: g, pid: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, active: false, t: null };
+  rdrag = { id: el.dataset.id, from: el.dataset.sub, grip: g, pid: e.pointerId, touch: e.pointerType === 'touch', x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, active: false, t: null };
 }
 function rowDragMove(e) {
   const d = rdrag; if (!d || e.pointerId !== d.pid) return;
@@ -2744,10 +2747,11 @@ function rowDragStart(d) {
   if (S.confirmDelete) { S.confirmDelete = null; refreshRowTools(); }
   ROOT.classList.add('is-row-drag');
   const el = rowEl(d.id); el && el.classList.add('is-dragging');
+  Ink.schedule();
   const g = document.createElement('div'); g.className = 'drag-ghost'; g.setAttribute('aria-hidden', 'true');
   g.innerHTML = `<span class="dg-ico">${icon(rowIcon(row))}</span><span class="dg-txt"><b>${esc(rowTitle(row))}</b><small>${esc(layoutName(row))}</small></span>`;
   document.body.append(g);
-  d.ghost = g; d.meta = $('small', g); d.layout = layoutName(row); d.gw = g.offsetWidth;
+  d.ghost = g; d.meta = $('small', g); d.layout = layoutName(row); d.gw = g.offsetWidth; d.gh = g.offsetHeight;
   if (!RM) g.animate([{ opacity: 0, scale: .9 }, { opacity: 1, scale: 1 }], { duration: 200, easing: 'cubic-bezier(.23,1,.32,1)' });
   d.line = document.createElement('div'); d.line.className = 'drop-line';
   d.gap = parseFloat(getComputedStyle(ROOT).getPropertyValue('--gap')) || 20;
@@ -2755,8 +2759,12 @@ function rowDragStart(d) {
   d.raf = requestAnimationFrame(() => rowDragTick(d));
   return true;
 }
-/* The ghost rides just below and right of the pointer, so the spot under it (a line, a rail item) stays visible */
-function rowDragGhost(d) { d.ghost.style.transform = `translate3d(${Math.round(clamp(d.x + 14, 8, Math.max(8, innerWidth - d.gw - 8)))}px,${Math.round(clamp(d.y + 12, 8, innerHeight - 58))}px,0)${RM ? '' : ' rotate(-1.5deg)'}`; }
+/* The ghost rides just below and right of the pointer, so the spot under it (a line, a rail item) stays visible.
+   Under a finger it rides above the touch instead, where the hand does not cover it. */
+function rowDragGhost(d) {
+  const x = d.x + (d.touch ? -44 : 14), y = d.y + (d.touch ? -d.gh - 40 : 12);
+  d.ghost.style.transform = `translate3d(${Math.round(clamp(x, 8, Math.max(8, innerWidth - d.gw - 8)))}px,${Math.round(clamp(y, 8, innerHeight - d.gh - 8))}px,0)${RM ? '' : ' rotate(-1.5deg)'}`;
+}
 function rowDragTarget(d) {
   const hitEl = document.elementFromPoint(d.x, d.y);
   const item = hitEl && hitEl.closest && hitEl.closest('#rail-nav .sub-item[data-sub]');
@@ -2848,7 +2856,7 @@ function rowDragEnd(d, t) {
     g.animate([{ transform: g.style.transform, opacity: 1 }, { transform: `translate3d(${Math.round(spot.x - 25)}px,${Math.round(spot.y - 25)}px,0) scale(.82)`, opacity: 0 }], { duration: t ? 260 : 320, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' }).finished.then(done, done);
     setTimeout(done, 700);
   }
-  if (!t) { el && el.classList.remove('is-dragging'); return; }
+  if (!t) { if (el) { el.classList.remove('is-dragging'); Ink.schedule(); } return; }
   moveRowTo(d.from, d.id, t.sub, { before: t.before, index: t.index, follow: !!t.rail });
 }
 
@@ -3671,7 +3679,8 @@ const Ink = {
         const row = el.closest('.row'); const m = row && $('.fs-media', row);
         set(el, m ? mediaInk(m, r) : null); return;
       }
-      if (!rows) rows = $$('#stage .row').map(n => ({ n, r: n.getBoundingClientRect() })).filter(o => o.r.bottom > 0 && o.r.top < innerHeight);
+      /* A block being dragged is dimmed over the page, so the page decides the ink there */
+      if (!rows) rows = $$('#stage .row:not(.is-dragging)').map(n => ({ n, r: n.getBoundingClientRect() })).filter(o => o.r.bottom > 0 && o.r.top < innerHeight);
       const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       const o = rows.find(o => hit(o.r, cx, cy));
       const sf = o ? surfaceAt(o.n, cx, cy) : null;
@@ -4392,8 +4401,12 @@ document.addEventListener('pointerdown', (ev) => {
 document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); rowDragMove(ev); });
 document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); rowDragUp(ev); });
 document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); if (rdrag && ev.pointerId === rdrag.pid) rowDragCancel(); });
-/* While a block is dragged Lenis is paused (it swallows the wheel), so the wheel scrolls the page directly */
-addEventListener('wheel', (ev) => { if (rdrag && rdrag.active && rdrag.lenis) window.scrollBy(0, ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY); }, { passive: true });
+/* While a block is dragged Lenis is paused (it swallows the wheel), so the wheel scrolls the page directly; the
+   panels Lenis leaves alone (the rail list) keep scrolling on their own */
+addEventListener('wheel', (ev) => {
+  if (!rdrag || !rdrag.active || !rdrag.lenis || (ev.target.closest && ev.target.closest('[data-lenis-prevent]'))) return;
+  window.scrollBy(0, ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY);
+}, { passive: true });
 addEventListener('blur', () => rowDragCancel());
 document.addEventListener('dblclick', (ev) => { if (ev.target.closest('[data-rz]') && S.edit) onField('hmode', 'auto'); });
 
