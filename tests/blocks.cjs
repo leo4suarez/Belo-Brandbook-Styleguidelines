@@ -45,6 +45,13 @@ const ids = (p, sub) => p.evaluate((sub) => [...document.querySelectorAll(`#s-${
 const toasts = (p) => p.evaluate(() => [...document.querySelectorAll('.toast')].map(t => t.textContent).join(' | '));
 const scrollIdle = (p) => p.waitForFunction(() => !document.documentElement.classList.contains('lenis-scrolling'), null, { timeout: 5000 }).catch(() => {});
 const center = (b) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+/* Puts a block well inside the window and shows its toolbar (it fades in on hover). A click on a toolbar that is still
+   fading in makes Playwright scroll to retry, and a scroll closes the popovers. */
+async function bring(p, id) {
+  await p.evaluate((id) => { const r = document.querySelector(`#stage .row[data-id="${id}"]`); scrollTo(0, r.getBoundingClientRect().top + scrollY - 180); }, id);
+  await p.waitForTimeout(350); await scrollIdle(p);
+  await p.locator(`#stage .row[data-id="${id}"]`).hover(); await p.waitForTimeout(300);
+}
 /* Presses the handle of a block (shown on hover) and returns where the pointer is */
 async function grab(p, id) {
   const row = p.locator(`#stage .row[data-id="${id}"]`);
@@ -96,7 +103,8 @@ const dragState = (p) => p.evaluate(() => {
   const same = await P.evaluate((dup) => {
     const a = document.querySelector('#stage .row[data-id="r_t"]'), b = document.querySelector(`#stage .row[data-id="${dup}"]`);
     const slots = (r) => [...r.querySelectorAll('[data-slot]')].map(s => s.dataset.slot), blocks = (r) => [...r.querySelectorAll('.tb[data-block]')].map(s => s.dataset.block);
-    return { text: a.innerText === b.innerText, slots: slots(b).every(id => !slots(a).includes(id)) && slots(b).length === slots(a).length, blocks: blocks(b).every(id => !blocks(a).includes(id)) && blocks(b).length === 2, entering: b.classList.contains('is-entering') || b.classList.contains('is-flash') };
+    const words = (r) => r.textContent.replace(/\s+/g, ' ').trim();
+    return { text: words(a) === words(b), slots: slots(b).every(id => !slots(a).includes(id)) && slots(b).length === slots(a).length, blocks: blocks(b).every(id => !blocks(a).includes(id)) && blocks(b).length === 2, entering: b.classList.contains('is-entering') || b.classList.contains('is-flash') };
   }, dup);
   check(same.text && same.slots && same.blocks, 'duplicate keeps the content with fresh module and text block ids ' + JSON.stringify(same));
   check(same.entering && /Bloque duplicado/.test(await toasts(P)), 'duplicate enters, flashes and says "Bloque duplicado"');
@@ -157,6 +165,16 @@ const dragState = (p) => p.evaluate(() => {
   check(await until(async () => (await ids(P, 's_proposito')).join() === dup && (await ids(P, 's_sepuede')).join() === 'r_sp'), 'drop on the rail moves the block to «Propósito, misión y visión»');
   check(await until(() => P.evaluate(() => location.hash === '#s_proposito'), 3000), 'the page follows the block to its new section');
 
+  // 7b. Beside the page, only the sections of the rail take a block: over its title nothing is marked and nothing moves
+  await P.waitForTimeout(800);
+  at = await grab(P, 'r_t');
+  const title = await P.locator('#rail-nav .rail-title').boundingBox();
+  at = await glide(P, at, { x: title.x + 40, y: title.y + title.height / 2 });
+  st = await dragState(P);
+  check(st.on && !st.line && !st.rail.length && !st.empty.length && !/Mover a/.test(st.ghost), 'over the rail title: no target');
+  await P.mouse.up(); await P.waitForTimeout(500);
+  check((await ids(P, 's_poder')).join() === 'r_t', 'dropped over the rail title: nothing moved');
+
   // 8. Esc cancels the drag
   await P.waitForTimeout(800);
   at = await grab(P, 'r_t');
@@ -176,12 +194,15 @@ const dragState = (p) => p.evaluate(() => {
   await P.click('#btn-menu'); await P.waitForTimeout(700);
   await P.click('#menu [data-action="menu-cat"][data-id="c_ourbrand"]'); await P.waitForTimeout(900);
   const mv = P.locator('#stage .row[data-id="r_t"]');
-  await mv.scrollIntoViewIfNeeded(); await scrollIdle(P); await mv.hover();
+  await bring(P, 'r_t');
   await mv.locator('[data-action="row-move"]').click(); await P.waitForTimeout(250);
   const pop = await P.evaluate(() => ({ heads: [...document.querySelectorAll('#pop .mi-h')].map(h => h.textContent), items: [...document.querySelectorAll('#pop [data-action="row-move-to"]')].map(b => b.textContent), here: (document.querySelector('#pop [aria-current]') || {}).textContent }));
   check(pop.heads.join(',') === 'Our Brand,Voice & Tone,Visual Identity,Resources' && pop.items.length === 9 && pop.items.includes('Tono') && /Poder, frontera y sonrisa/.test(pop.here || ''), '"Mover a…" lists every category and section: ' + pop.heads.join(' / '));
   check(await P.evaluate(() => getComputedStyle(document.querySelector('#stage .row[data-id="r_t"] .row-tools')).opacity === '1'), 'the toolbar stays visible while its popover is open');
   await P.screenshot({ path: T + 'blocks-04-move-to.png' });
+  const keys = [];
+  for (const k of ['ArrowDown', 'ArrowDown', 'ArrowUp', 'ArrowUp']) { await P.keyboard.press(k); keys.push(await P.evaluate(() => document.activeElement.textContent)); }
+  check(keys[0] === 'Se puede' && keys[1] === 'Propósito, misión y visión' && keys[2] === 'Se puede' && keys[3] === 'Dirección estratégica', 'arrow keys walk the list, skipping where the block already is: ' + keys.join(' / '));
   await P.click(`#pop [data-action="row-move-to"][data-sub="${tono}"]`);
   check(await until(async () => (await ids(P, 's_poder')).length === 0), 'block leaves «Poder, frontera y sonrisa»');
   check(/Bloque movido a «Tono»/.test(await toasts(P)), 'toast "Bloque movido a «Tono»"');
@@ -191,7 +212,7 @@ const dragState = (p) => p.evaluate(() => {
   await P.click('#btn-menu'); await P.waitForTimeout(700);
   await P.click('#menu [data-action="menu-cat"][data-id="c_voice"]');
   check(await until(async () => (await ids(P, tono)).join() === 'r_t'), 'the block is stored in «Tono» (Voice & Tone)');
-  check(await P.evaluate(() => /Tu dinero puede llegar más lejos/.test(document.querySelector('#stage .row[data-id="r_t"]').innerText)), 'and shows its content there');
+  check(await until(() => P.evaluate(() => /Tu dinero puede llegar más lejos/.test(((document.querySelector('#stage .row[data-id="r_t"]') || {}).textContent || '').replace(/\s+/g, ' ')))), 'and shows its content there');
   await P.click('#btn-menu'); await P.waitForTimeout(700);
   await P.click('#menu [data-action="menu-cat"][data-id="c_ourbrand"]');
   check(await until(async () => (await ids(P, 's_proposito')).join() === dup && (await ids(P, 's_direccion')).length === 0 && (await ids(P, 's_poder')).length === 0 && (await ids(P, 's_sepuede')).join() === 'r_sp'), 'Our Brand reloads with every move in place');
@@ -327,7 +348,7 @@ const dragState = (p) => p.evaluate(() => {
   await until(() => Q.evaluate(() => document.documentElement.dataset.mode === 'admin'));
   await Q.waitForTimeout(500);
   const qrow = (id) => Q.locator(`#stage .row[data-id="${id}"]`);
-  const act = async (id, action) => { const r = qrow(id); await r.scrollIntoViewIfNeeded(); await scrollIdle(Q); await r.hover(); await r.locator(`[data-action="${action}"]`).click(); };
+  const act = async (id, action) => { await bring(Q, id); await qrow(id).locator(`[data-action="${action}"]`).click(); };
   const del = async (id) => { await act(id, 'row-delete'); await Q.click(`#stage .row[data-id="${id}"] [data-action="row-delete-confirm"]`); };
 
   // 15. Duplicate is saved with the same file
@@ -388,6 +409,20 @@ const dragState = (p) => p.evaluate(() => {
   await glide(Q, qa, { x: qa.x - 300, y: ry.y + ry.height - 10 });
   await Q.mouse.up();
   check(await until(() => rowsOf('pages/s_two').map(r => r.id).join(',') === 'r_y,' + sDup2 && !rowsOf('pages/s_one').some(r => r.id === sDup2)), 'drag into «Dos» is saved in both sections');
+
+  // 21. Back and forth before the saves land: each removal waits only for its own insert, so nothing waits forever
+  const slow = async (r) => { await new Promise(res => setTimeout(res, 1200)); return r.fallback(); };
+  await Q.route(/\/rest\/v1\/rpc\/save_doc/, slow);
+  await act('r_y', 'row-move');
+  await Q.click('#pop [data-action="row-move-to"][data-sub="s_one"]');
+  await Q.waitForSelector('#s-s_one .row[data-id="r_y"]');
+  await act('r_y', 'row-move');
+  await Q.click('#pop [data-action="row-move-to"][data-sub="s_two"]');
+  const settled = await until(() => Q.evaluate(() => document.querySelector('#status').dataset.state === 'ok'), 20000);
+  await Q.unroute(/\/rest\/v1\/rpc\/save_doc/, slow);
+  const two = rowsOf('pages/s_two').map(r => r.id), one = rowsOf('pages/s_one').map(r => r.id);
+  check(settled && two.filter(x => x === 'r_y').length === 1 && two.includes(sDup2) && !one.includes('r_y'), `moved there and back while saving: everything saved once («Uno» ${one.join(', ')} · «Dos» ${two.join(', ')})`);
+  check(await Q.evaluate(() => [...document.querySelectorAll('#stage .row[data-id="r_y"]')].map(r => r.dataset.sub).join()) === 's_two', 'and the page shows it once, in «Dos»');
 
   const errors = [...errsLocal, ...errsMobile, ...errsRm, ...Q.errors];
   check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + JSON.stringify(errors, null, 1) : ''));
