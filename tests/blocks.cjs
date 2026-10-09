@@ -308,6 +308,21 @@ const dragState = (p) => p.evaluate(() => {
   const y1 = await M.evaluate(() => scrollY);
   await M.keyboard.press('Escape'); await M.mouse.up(); await M.waitForTimeout(300);
   check(y1 > y0 + 200, `the page scrolls while dragging near the bottom edge (${Math.round(y0)} → ${Math.round(y1)})`);
+  // A finger on the handle carries the block (the page does not pan) and the ghost rides above the finger
+  const cdp = await M.context().newCDPSession(M);
+  const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+  await M.evaluate(() => { const r = document.querySelector('#stage .row[data-id="r_t"]'); scrollTo(0, r.getBoundingClientRect().top + scrollY - 420); }); await M.waitForTimeout(500);
+  const tg = center(await M.locator('#stage .row[data-id="r_t"] [data-action="row-drag"]').boundingBox());
+  const tTop = (await M.locator(`#stage .row[data-id="${mdup}"]`).boundingBox()).y + 20;
+  const ty0 = await M.evaluate(() => scrollY);
+  await touch('touchStart', tg.x, tg.y);
+  for (let i = 1; i <= 16; i++) { await touch('touchMove', tg.x - i * 10, tg.y + (tTop - tg.y) * i / 16); await M.waitForTimeout(20); }
+  await M.waitForTimeout(250);
+  const tState = await dragState(M);
+  const above = await M.evaluate((y) => document.querySelector('.drag-ghost').getBoundingClientRect().bottom < y, tTop);
+  const ty1 = await M.evaluate(() => scrollY);
+  await touch('touchEnd'); await M.waitForTimeout(700);
+  check(tState.on && tState.line && above && ty1 === ty0 && (await ids(M, 's_direccion')).join(',') === 'r_t,' + mdup, 'touch: the finger drags the block from its handle, the page does not pan, the ghost stays above the finger');
   const errsMobile = M.errors;
   await M.context().close();
 
