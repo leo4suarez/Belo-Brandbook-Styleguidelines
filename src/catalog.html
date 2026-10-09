@@ -220,23 +220,28 @@ html.is-editing .rail,html.is-editing .sec-mark,html.is-editing .adder,html.is-e
 .ez-nums input:focus{box-shadow:inset 0 0 0 1.5px var(--focus)}
 .ez-code{flex:1;min-width:0;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .split-view{flex-wrap:wrap}
-.astyle{display:flex;flex-direction:column;gap:6px;padding:8px;margin:2px 0;border-radius:14px;background:color-mix(in srgb,var(--focus) 6%,var(--field))}
-.astyle .btn{align-self:flex-start}
-.astyle .insp-row .btn{align-self:auto}
-.astyle-meta{display:flex;gap:8px;align-items:center;margin:0;font-size:11.5px;color:var(--muted)}
-.astyle-mod{padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--ink);font-weight:600}
-.astyle-tools{flex-wrap:wrap;gap:2px}
-.astyle-q{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;background:var(--panel)}
-.astyle-q p{margin:0;font-size:12px;line-height:1.4}
+/* Named, linked presets: animation styles (.astyle) and text styles (.type-style) share one look */
+.astyle,.type-style{display:flex;flex-direction:column;gap:6px;padding:8px;margin:2px 0;border-radius:14px;background:color-mix(in srgb,var(--focus) 6%,var(--field))}
+.astyle .btn,.type-style .btn{align-self:flex-start}
+.astyle .insp-row .btn,.type-style .insp-row .btn{align-self:auto}
+.astyle-meta,.type-style-meta{display:flex;gap:8px;align-items:center;margin:0;font-size:11.5px;color:var(--muted)}
+.astyle-mod,.type-style-mod{padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--ink);font-weight:600}
+.astyle-tools,.type-style-tools{flex-wrap:wrap;gap:2px}
+.astyle-q,.type-style-q{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;background:var(--panel)}
+.astyle-q p,.type-style-q p{margin:0;font-size:12px;line-height:1.4}
 .grow-fld{flex:1;padding:0 12px}
 .anim-tp .rng output{min-width:52px}
 .row.is-previewing{pointer-events:none}
 html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);position:absolute;top:10px;right:10px;z-index:4;max-width:calc(100% - 20px);padding:5px 10px;border-radius:999px;background:var(--chip);color:var(--on-chip);font:600 11px/1.2 var(--font);letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:var(--shadow-soft);pointer-events:none;animation:fadeIn 200ms ease both}
-.insp-views{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin:8px 12px 0;padding:3px;border-radius:999px;background:var(--field)}
-.insp-views button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;border-radius:999px;font-size:12px;font-weight:600;color:var(--muted);transition:background-color 160ms ease,color 160ms ease}
+.insp-views{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;margin:8px 12px 0;padding:3px;border-radius:999px;background:var(--field)}
+.insp-views button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:0;height:28px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;color:var(--muted);transition:background-color 160ms ease,color 160ms ease}
+.insp-views button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .insp-views button:hover{color:var(--ink)}
 .insp-views button[aria-selected="true"]{background:var(--seg-on);color:var(--ink);box-shadow:var(--shadow-soft)}
 .insp-views svg.i{width:14px;height:14px}
+/* Three views or more fit the narrow panel as words only */
+.insp-views.is-compact button{padding:0 4px}
+.insp-views.is-compact svg.i{display:none}
 .alist{display:flex;flex-direction:column;gap:2px;padding:3px;border-radius:14px;background:var(--field)}
 .alist button{display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 12px;border-radius:11px;text-align:left;color:var(--muted);transition:background-color 160ms ease,color 160ms ease}
 .alist button:hover{color:var(--ink)}
@@ -251,8 +256,10 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .slot-text[data-ink="dark"]{color:#000000}
 .slot-text.bg-surface{background:var(--surface)}
 .slot-text.bg-color{background:var(--slot-bg)}
-.tpad{flex:1;display:flex;flex-direction:column;min-height:0}
-.slot-text:not(.bg-none) .tpad{padding:clamp(20px,3.2cqi,40px)}
+/* Inner spacing: --pt/--pr/--pb/--pl are set on the slot only for the sides the editor changed (design px × --k);
+   every other side keeps the automatic value, so a module nobody touched renders exactly as before */
+.tpad{flex:1;display:flex;flex-direction:column;min-height:0;padding:var(--pt,0px) var(--pr,0px) var(--pb,0px) var(--pl,0px)}
+.slot-text:not(.bg-none) .tpad{padding:var(--pt,clamp(20px,3.2cqi,40px)) var(--pr,clamp(20px,3.2cqi,40px)) var(--pb,clamp(20px,3.2cqi,40px)) var(--pl,clamp(20px,3.2cqi,40px))}
 .slot-text.bg-none{overflow:visible}
 .tblocks{display:flex;flex-direction:column;flex:1}
 .align-center .tblocks{justify-content:center}
@@ -290,9 +297,11 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .fs-media img,.fs-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .fs-dim{position:absolute;inset:0;background:#000;pointer-events:none;transition:opacity 200ms ease}
 .fs-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.46) 0%,rgba(0,0,0,.24) 20%,rgba(0,0,0,0) 38%)}
-.fs-overlay{position:relative;z-index:1;flex:1;display:flex;padding:clamp(20px,5vh,56px) var(--col-r) clamp(20px,5vh,56px) var(--col-l);pointer-events:none}
+/* The text over a full-screen background keeps its distance to the screen edges here; --ov-pt… (design px × --u)
+   replace a side only when the editor set it */
+.fs-overlay{position:relative;z-index:1;flex:1;display:flex;padding:var(--ov-pt,clamp(20px,5vh,56px)) var(--ov-pr,var(--col-r)) var(--ov-pb,clamp(20px,5vh,56px)) var(--ov-pl,var(--col-l));pointer-events:none}
 .fs-overlay > *{pointer-events:auto}
-.fs-overlay[data-w="screen"]{padding-left:20px}
+.fs-overlay[data-w="screen"]{padding-left:var(--ov-pl,20px)}
 .fs-overlay[data-pos^="t"]{align-items:flex-start}
 .fs-overlay[data-pos^="m"]{align-items:center}
 .fs-overlay[data-pos^="b"]{align-items:flex-end}
@@ -490,6 +499,7 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .fld input{flex:1;min-width:0;width:100%;height:100%;border:0;padding:0;background:transparent;outline:none;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
 .fld input::placeholder{color:var(--muted);font-weight:500}
 .fld-u{flex:none;padding-right:12px;font-size:11.5px;color:var(--muted)}
+.fld input:placeholder-shown + .fld-u{display:none}
 .fld-dd{flex:none;width:26px;height:100%;display:grid;place-items:center;color:var(--muted);border-left:1px solid var(--line);border-radius:0 999px 999px 0;width:30px}
 .fld-dd:hover{color:var(--ink)}
 .fld-dd svg.i{width:13px;height:13px;stroke-width:2.2}
@@ -499,7 +509,7 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .segc button:hover{color:var(--ink)}
 .segc button[aria-pressed="true"]{background:var(--seg-on);color:var(--ink);box-shadow:var(--shadow-soft)}
 .segc svg.i{width:16px;height:16px}
-.swatches{display:flex;gap:4px}
+.swatches{display:flex;flex-wrap:wrap;gap:4px}
 .swatch{position:relative;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--field);cursor:pointer;transition:background-color 160ms ease,transform 140ms var(--ease-out)}
 .swatch:hover{background:var(--field-hover)}
 .swatch:active{transform:scale(.92)}
@@ -510,6 +520,41 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .sw-color i{background:conic-gradient(from 0deg,#ff5f57,#ffbd2e,#28c840,#1ec8e5,#002FA7,#bf5af2,#ff5f57)}
 .sw-color.is-set i{background:var(--c)}
 .swatch input[type="color"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+/* Palette swatches (tree.palette), "Automático" (half ink, half paper: the text contrasts by itself) and the palette editor */
+.sw-pal i{background:var(--c)}
+.sw-pal[aria-pressed="true"] i{box-shadow:inset 0 0 0 1px var(--line),0 0 0 2px var(--panel),0 0 0 3.5px var(--ink)}
+.sw-auto i{background:linear-gradient(135deg,var(--ink) 0 50%,var(--bg) 50% 100%)}
+.sw-add{color:var(--muted)}
+.sw-add:hover,.sw-add[aria-expanded="true"]{color:var(--ink)}
+.sw-add[aria-expanded="true"]{box-shadow:inset 0 0 0 1.5px var(--focus)}
+.sw-add svg.i{width:16px;height:16px;stroke-width:2}
+.insp-line.wrap{align-items:start}
+.insp-line.wrap .lbl{padding-top:9px}
+.insp-sec h4 .h4-act{margin:-4px -6px -4px 0;padding:4px 6px;border-radius:999px;font-size:11.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted);transition:color 160ms ease,background-color 160ms ease,opacity 160ms ease}
+.insp-sec h4 .h4-act:hover{color:var(--ink);background:var(--field)}
+.insp-sec h4 .h4-act:disabled{opacity:.4;pointer-events:none}
+.btn.toggle{justify-content:flex-start;color:var(--muted)}
+.btn.toggle:hover{color:var(--ink)}
+.btn.toggle[aria-pressed="true"]{background:color-mix(in srgb,var(--focus) 12%,var(--field));color:var(--focus)}
+.pal{display:flex;flex-direction:column;gap:2px;width:252px;max-width:100%;padding:2px}
+.pal-h{margin:4px 8px 6px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.pal-row{display:flex;align-items:center;gap:6px;min-height:38px;padding:3px 2px 3px 5px;border-radius:999px;transition:background-color 120ms ease}
+.pal-row:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.pal-dot{position:relative;flex:none;width:26px;height:26px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px var(--line-strong);cursor:pointer;transition:transform 140ms var(--ease-out)}
+.pal-dot:active{transform:scale(.92)}
+.pal-dot input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.pal-name{flex:1;min-width:0;height:30px;padding:0 10px;border:0;border-radius:999px;background:transparent;font-size:13px;font-weight:500;outline:none;text-overflow:ellipsis}
+.pal-name:hover{background:var(--field)}
+.pal-name:focus{background:var(--field);box-shadow:inset 0 0 0 1.5px var(--focus)}
+.pal-hex{flex:none;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pal-row .icon-btn{width:28px;height:28px}
+.pal-row .icon-btn svg.i{width:14px;height:14px}
+.pal-new{margin-top:6px;padding-top:9px;border-top:1px solid var(--line);border-radius:0}
+.pal-new:hover{background:transparent}
+.pal-new .pal-name{background:var(--field)}
+.pal-q{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;background:color-mix(in srgb,var(--danger) 7%,transparent)}
+.pal-q p{margin:0;font-size:12.5px;line-height:1.4}
+.pal-empty{margin:0 8px 4px;font-size:12.5px;color:var(--muted)}
 .matrix{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:96px;padding:5px;border-radius:14px;background:var(--field)}
 .matrix button{height:24px;border-radius:999px;display:grid;place-items:center}
 .matrix button i{width:5px;height:5px;border-radius:50%;background:var(--muted);transition:transform 200ms var(--ease-out),background-color 160ms ease}
@@ -707,7 +752,7 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
   .stage{padding-top:calc(var(--nav-h,300px) + 8px)}
   .stage.starts-full{padding-top:0}
   .row[data-layout="half"] .row-grid{grid-template-columns:minmax(0,1fr)}
-  .fs-overlay{padding-left:16px;padding-right:16px}
+  .fs-overlay{padding-left:var(--ov-pl,16px);padding-right:var(--ov-pr,16px)}
   .fs-scrim{background:linear-gradient(180deg,rgba(0,0,0,.46) 0%,rgba(0,0,0,.2) 34%,rgba(0,0,0,0) 56%)}
   .fs-overlay[data-w="half"] > .slot{width:100%}
   .fs-media.slot-picker{padding-left:16px}
@@ -847,7 +892,12 @@ const ICONS = {
   eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
   delay: '<path d="M7 4h10M7 20h10M8 4c0 4 8 4 8 8s-8 4-8 8M16 4c0 4-8 4-8 8s8 4 8 8"/>',
   stagger: '<path d="M4 7h7M8 12h7M12 17h8"/>',
-  motion: '<path d="M3 12h4l2.5-6 5 12 2.5-6h4"/>'
+  motion: '<path d="M3 12h4l2.5-6 5 12 2.5-6h4"/>',
+  padT: '<rect x="4" y="4" width="16" height="16" rx="4" opacity=".5"/><path d="M8.5 8.5h7" stroke-width="2.2"/>',
+  padR: '<rect x="4" y="4" width="16" height="16" rx="4" opacity=".5"/><path d="M15.5 8.5v7" stroke-width="2.2"/>',
+  padB: '<rect x="4" y="4" width="16" height="16" rx="4" opacity=".5"/><path d="M8.5 15.5h7" stroke-width="2.2"/>',
+  padL: '<rect x="4" y="4" width="16" height="16" rx="4" opacity=".5"/><path d="M8.5 8.5v7" stroke-width="2.2"/>',
+  link: '<path d="M9.5 14.5l5-5"/><path d="M11 6.6l1.3-1.3a3.9 3.9 0 0 1 5.5 5.5L16.5 12.1"/><path d="M13 17.4l-1.3 1.3a3.9 3.9 0 0 1-5.5-5.5L7.5 11.9"/>'
 };
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n].replace(/class="f"/g, 'fill="currentColor" stroke="none"')}</svg>`;
 
@@ -874,8 +924,28 @@ const FIELD = {
   tstag: { min: 0, max: 1.5, step: .05, px: 6, dec: 2 },
   mdist: { min: 0, max: 400, step: 1, px: 1, dec: 0 },
   tdist: { min: 0, max: 400, step: 1, px: 1, dec: 0 },
-  tstep: { min: 0, max: 1, step: .005, px: 4, dec: 3 }
+  tstep: { min: 0, max: 1, step: .005, px: 4, dec: 3 },
+  pt: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  pr: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  pb: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  pl: { min: 0, max: 400, step: 1, px: 2, dec: 0 }
 };
+/* Text styles (tree.textStyles): the typography a block takes when it is linked. Color and alignment are not part of
+   a style. The seeds have fixed ids, so two people opening a catalog saved before styles existed create the same ones. */
+const TYPE_KEYS = ['font', 'size', 'weight', 'lh', 'ls', 'upper'];
+const TYPE_FIELDS = [...TYPE_KEYS, 'ts', 'tsOver'];
+const TEXT_STYLE_SEED = [
+  { id: 'ts_headline', name: 'Headline', font: 'phudu', size: 72, weight: 900, lh: 95, ls: -2, upper: true },
+  { id: 'ts_subheadline', name: 'Subheadline', font: 'jakarta', size: 32, weight: 600, lh: 120, ls: -1, upper: false },
+  { id: 'ts_body', name: 'Body', font: 'jakarta', size: 18, weight: 400, lh: 150, ls: 0, upper: false },
+  { id: 'ts_caption', name: 'Caption', font: 'jakarta', size: 13, weight: 600, lh: 140, ls: 0, upper: false }
+];
+/* Brand palette (tree.palette). Text blocks point to a color by id, so editing the palette recolors them. */
+const PALETTE_SEED = [{ id: 'pc_azul', name: 'Azul Belo', hex: '#002fa7' }, { id: 'pc_blanco', name: 'Blanco', hex: '#ffffff' }, { id: 'pc_negro', name: 'Negro', hex: '#0a0a0a' }];
+/* Inner spacing of a module (slot.pad): each side in design px, or null for the automatic value of that side */
+const PAD_SIDES = ['t', 'r', 'b', 'l'];
+const PAD_TYPES = ['text']; /* the svg module joins this list */
+const isPadKey = (k) => /^p[trbl]$/.test(k);
 /* Animation presets. Each module (image, video, color, the box of a text module) and each text block has its own
    animation; nothing is inherited. The block (row) only sets the sequence: the wait between modules and between texts.
    Enter presets play once when the block reaches the viewport; scroll presets are scrubbed by the scroll position.
@@ -1021,12 +1091,26 @@ function normBlock(b) {
   else { if (isNum(b.size)) o.size = b.size; if (isNum(b.lh)) o.lh = b.lh; if (isNum(b.ls)) o.ls = b.ls; }
   if (isNum(b.weight)) o.weight = b.weight;
   const F = FONTS[o.font]; o.weight = clamp(o.weight, F.min, F.max);
+  if (typeof b.ts === 'string' && b.ts) { o.ts = b.ts; if (b.tsOver) o.tsOver = true; }
+  if (typeof b.color === 'string' && b.color) o.color = b.color;
   if (b.anim) o.anim = normAnim(b.anim, 'text');
   return o;
 }
+function normPad(p) {
+  if (!p || typeof p !== 'object') return undefined;
+  const o = {}; let any = false;
+  PAD_SIDES.forEach(k => { o[k] = isNum(p[k]) ? clamp(Math.round(p[k]), 0, 400) : null; if (o[k] !== null) any = true; });
+  return any ? o : undefined;
+}
+function normTextStyle(x) {
+  const b = normBlock({ ...x, text: '' });
+  return { id: String(x.id), name: String(x.name || 'Estilo').slice(0, 60), ...Object.fromEntries(TYPE_KEYS.map(k => [k, b[k]])) };
+}
+const uniqueById = (list) => { const seen = new Set(); return list.filter(x => !seen.has(x.id) && seen.add(x.id)); };
 function normSlot(s) {
   if (!s) return { id: uid('m'), type: null };
   if (!s.id) s.id = uid('m');
+  { const pad = normPad(s.pad); if (pad) s.pad = pad; else delete s.pad; }
   if (s.type === 'text') {
     s.blocks = (s.blocks || []).map(normBlock);
     if (!s.blocks.length) s.blocks = [mkBlock('jakarta', 18, 400, 150, 0)];
@@ -1058,6 +1142,12 @@ function normTree(t) {
   t.logo = t.logo || null;
   t.animStyles = (Array.isArray(t.animStyles) ? t.animStyles : []).filter(x => x && x.id && (x.kind === 'mod' || x.kind === 'text'))
     .map(x => ({ id: String(x.id), name: String(x.name || 'Estilo').slice(0, 60), kind: x.kind, of: String(x.of || ''), anim: ownVals(normAnim(x.anim || {}, x.kind)) }));
+  /* Seeded only when the key is missing: an empty list means the editors removed them all */
+  if (!Array.isArray(t.textStyles)) t.textStyles = clone(TEXT_STYLE_SEED);
+  t.textStyles = uniqueById(t.textStyles.filter(x => x && typeof x.id === 'string' && x.id)).map(normTextStyle);
+  if (!Array.isArray(t.palette)) t.palette = clone(PALETTE_SEED);
+  t.palette = uniqueById(t.palette.filter(x => x && typeof x.id === 'string' && x.id && hexOk(x.hex || '')))
+    .map(x => ({ id: x.id, name: String(x.name || 'Color').slice(0, 40), hex: x.hex.toLowerCase() }));
   return t;
 }
 
@@ -1097,7 +1187,7 @@ const S = {
   pages: new Map(), loaded: new Set(), subsc: new Map(),
   edit: null, adder: null, inline: null, focusInline: false,
   pop: null, confirmDelete: null, uploading: new Map(), justAdded: new Set(),
-  overlay: null, inspView: ls.get('insp') === 'anim' ? 'anim' : 'design', easeEd: null, splitView: false, pvSpeed: 1, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
+  overlay: null, inspView: ls.get('insp') || 'design', typeStyleUi: null, palUi: null, easeEd: null, splitView: false, pvSpeed: 1, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
   started: false, user: null, peers: [], importing: false, landing: false
 };
 const B = { db: null, assets: null, user: null };
@@ -1368,6 +1458,13 @@ const currentCat = () => cats().find(c => c.id === S.cat) || null;
 const catOf = (subId) => cats().find(c => c.subs.some(s => s.id === subId)) || null;
 const subById = (id) => { for (const c of cats()) { const s = c.subs.find(x => x.id === id); if (s) return s; } return null; };
 const inCurrent = (subId) => { const c = currentCat(); return !!(c && c.subs.some(s => s.id === subId)); };
+const typeStyles = () => (S.tree && S.tree.textStyles) || [];
+const typeStyleById = (id) => typeStyles().find(x => x.id === id) || null;
+const palColors = () => (S.tree && S.tree.palette) || [];
+const palById = (id) => palColors().find(x => x.id === id) || null;
+const palByHex = (hex) => { const h = String(hex || '').toLowerCase(); return palColors().find(x => x.hex === h) || null; };
+/* The color a text block shows: its palette color, or null (the module's automatic ink) when it has none or it was removed */
+const blockColor = (b) => { const c = b && b.color && palById(b.color); return c ? c.hex : null; };
 function mutateTree(fn) {
   commit('catalog/tree', d => { const t = normTree(d); fn(t); return normTree(t); });
   S.tree = normTree(viewOf('catalog/tree'));
@@ -1532,6 +1629,7 @@ function onTree() {
     syncSubscriptions(); renderRail(); renderStage();
   }
   if (S.overlay === 'menu') renderMenu();
+  renderPalPop();
   if (intro && !RM) introMenu($('#menu'), 40, '.ov-item, .ov-add'); /* the categories arrive after the opening screen is up */
 }
 
@@ -1726,12 +1824,24 @@ const displayRows = (subId) => {
   return out;
 };
 const rowSig = (item) => item.editing ? `E:${S.edit.v}` : 'V:' + JSON.stringify(item.row);
+/* What rows read from the tree at render time. Text blocks keep concrete typography (a style update rewrites the
+   linked blocks in their pages, so those rows rebuild by their own signature), but their color is a palette id: when
+   the palette changes, the texts on screen are repainted in place. Rebuilding the rows instead would replay their
+   enter animations for everyone watching. Names are left out, so renaming a color repaints nothing. */
+const LOOK = { sig: null };
+function syncLook() {
+  const sig = JSON.stringify(palColors().map(p => [p.id, p.hex]));
+  if (sig === LOOK.sig) return;
+  LOOK.sig = sig;
+  $$('#stage .tb[data-color]').forEach(n => { const c = palById(n.dataset.color); n.style.color = c ? c.hex : ''; });
+}
 
 function renderStage() {
   const stage = $('#stage');
   syncPresence();
   ROOT.classList.toggle('is-editing', !!(S.edit && S.mode === 'admin'));
   if (!S.tree) { stage.dataset.cat = ''; stage.innerHTML = `<div class="skel skel-block col"></div>`; return; }
+  syncLook();
   const cat = currentCat();
   if (!cat || !cat.subs.length) {
     stage.dataset.cat = cat ? cat.id + ':empty' : '';
@@ -1934,8 +2044,18 @@ function applyBlockStyle(el, b) {
   el.style.letterSpacing = (b.ls / 100) + 'em';
   el.style.textAlign = b.align;
   el.style.textTransform = b.upper ? 'uppercase' : 'none';
+  el.style.color = blockColor(b) || ''; /* a palette color wins over the module's ink; none = automatic */
+  if (b.color) el.dataset.color = b.color; else delete el.dataset.color;
   el.dataset.align = b.align;
   el.classList.toggle('is-copy', b.size <= 28);
+}
+/* Inner spacing as custom properties: only the sides that were set, in design px scaled by `unit` (--k scales with
+   the module like its text, --u with the screen like the block height). The CSS keeps the automatic value otherwise. */
+function padVars(el, pad, prefix, unit) {
+  PAD_SIDES.forEach(k => {
+    const v = pad && isNum(pad[k]) ? pad[k] : null;
+    if (v === null) el.style.removeProperty(prefix + k); else el.style.setProperty(prefix + k, `calc(${v} * var(${unit}))`);
+  });
 }
 function textInk(s, overlay) {
   const bg = s.bg || { kind: 'none' };
@@ -1956,6 +2076,7 @@ function paintTextSlot(el, s, overlay) {
 function textShell(s, ref, overlay) {
   const el = document.createElement('div');
   el.className = 'slot slot-text'; el.dataset.slot = s.id; el.style.setProperty('--ref', ref);
+  if (!overlay) padVars(el, s.pad, '--p', '--k'); /* the text over a full-screen background pads its .fs-overlay */
   paintTextSlot(el, s, overlay);
   const pad = document.createElement('div'); pad.className = 'tpad';
   const w = document.createElement('div'); w.className = 'tblocks';
@@ -2046,6 +2167,7 @@ function buildFs(row, editing) {
   const ov = row.overlay;
   if (ov && ov.slot && (editing || (ov.slot.blocks || []).some(b => b.text.trim()))) {
     const o = document.createElement('div'); o.className = 'fs-overlay'; o.dataset.pos = ov.pos; o.dataset.w = ov.width;
+    padVars(o, ov.slot.pad, '--ov-p', '--u');
     o.append(editing ? buildTextEdit(ov.slot, OW_REF[ov.width], true) : buildTextView(ov.slot, OW_REF[ov.width], true));
     fs.append(o);
   }
@@ -2388,12 +2510,12 @@ function bump() {
 }
 function setActiveSlot(id) {
   const e = S.edit; if (!e || e.slot === id) return;
-  e.slot = id;
+  e.slot = id; S.typeStyleUi = null;
   $$('#stage .row.is-editing .is-active-slot').forEach(n => n.classList.remove('is-active-slot'));
   const el = $(`#stage .row.is-editing [data-slot="${id}"]`); el && el.classList.add('is-active-slot');
   renderInspector();
 }
-const editMeta = () => ({ hist: [], fut: [], stash: {}, uploaded: new Set(), lastKind: null, lastT: 0 });
+const editMeta = () => ({ hist: [], fut: [], stash: {}, uploaded: new Set(), lastKind: null, lastT: 0, padLink: {} });
 function snapEdit() { const e = S.edit; return { draft: clone(e.draft), slot: e.slot, blocks: { ...e.blocks } }; }
 function record(kind) {
   const e = S.edit; if (!e) return;
@@ -2407,6 +2529,7 @@ function restoreEdit(sn) {
   const e = S.edit;
   const a = document.activeElement; const fb = a && a.dataset && a.dataset.block;
   e.draft = sn.draft; e.slot = sn.slot; e.blocks = sn.blocks; e.lastKind = null;
+  syncTypeLinks(e.draft); S.typeStyleUi = null;
   if (fb && allSlots(e.draft).some(s => s.type === 'text' && s.blocks.some(b => b.id === fb))) S.focusKey = 'b:' + fb;
   bump();
 }
@@ -2430,8 +2553,8 @@ function startEdit(subId, rowId) {
   if (S.edit) return;
   const rows = S.pages.get(subId) || []; const i = rows.findIndex(r => r.id === rowId); if (i < 0) return;
   S.confirmDelete = null;
-  const draft = clone(rows[i]);
-  S.pagesAll = false; S.styleUi = null;
+  const draft = clone(rows[i]); syncTypeLinks(draft);
+  S.pagesAll = false; S.styleUi = null; S.typeStyleUi = null;
   S.edit = { subId, rowId, isNew: false, index: i, draft, origin: clone(rows[i]), v: 1, slot: draft.slots[0] && draft.slots[0].id, blocks: {}, ...editMeta() };
   renderStage(); updateRailState();
   const other = peersOn(p => p.row === rowId)[0];
@@ -2441,7 +2564,7 @@ function startNew(subId, layout) {
   if (S.edit) return;
   const row = { id: uid('r'), layout, h: null, slots: layout === 'half' ? [newSlot(), newSlot()] : [newSlot()] };
   if (layout === 'fullscreen') row.overlay = null;
-  S.pagesAll = false; S.styleUi = null;
+  S.pagesAll = false; S.styleUi = null; S.typeStyleUi = null;
   S.edit = { subId, rowId: row.id, isNew: true, index: (S.pages.get(subId) || []).length, draft: row, v: 1, slot: row.slots[0].id, blocks: {}, ...editMeta() };
   S.adder = null;
   const sec = document.getElementById('s-' + subId); if (sec) $('.adder', sec).dataset.state = '';
@@ -2553,9 +2676,24 @@ function applyOverlay(row) {
   o.dataset.pos = row.overlay.pos; o.dataset.w = row.overlay.width;
   const s = $('.slot', o); if (s) s.style.setProperty('--ref', OW_REF[row.overlay.width]);
 }
+function applyPad(s) {
+  if (isOverlaySlot(s)) { const o = $('#stage .row.is-editing .fs-overlay'); if (o) padVars(o, s.pad, '--ov-p', '--u'); return; }
+  const el = slotEl(s.id); if (el) padVars(el, s.pad, '--p', '--k');
+}
+/* The spacing a side shows right now, in design px: where stepping or scrubbing an empty (automatic) side starts */
+function padNow(k) {
+  const s = activeSlot(); if (!s) return 0;
+  const side = { pt: 'Top', pr: 'Right', pb: 'Bottom', pl: 'Left' }[k];
+  if (isOverlaySlot(s)) { const o = $('#stage .row.is-editing .fs-overlay'); return o ? Math.round(parseFloat(getComputedStyle(o)['padding' + side]) / uScale()) : 0; }
+  const el = slotEl(s.id); if (!el) return 0;
+  const box = $(':scope > .tpad', el) || el;
+  const scale = Math.min(1, el.clientWidth / (parseFloat(el.style.getPropertyValue('--ref')) || 1114)) || 1;
+  return Math.round(parseFloat(getComputedStyle(box)['padding' + side]) / scale);
+}
 
 /* ================= Inspector ================= */
-const fmt = (k, v) => { if (v === '' || v == null) return ''; const d = (FIELD[k] || {}).dec || 0; return d ? String(+(+v).toFixed(d)) : String(Math.round(v)); };
+/* Numeric fields show their FIELD decimals; any other field (the hex code) is free text */
+const fmt = (k, v) => { if (v === '' || v == null) return ''; if (!FIELD[k]) return String(v); const d = FIELD[k].dec || 0; return d ? String(+(+v).toFixed(d)) : String(Math.round(v)); };
 function fld(k, ico, val, unit, { dd = false, title = '', ph = '' } = {}) {
   return `<div class="fld" data-k="${k}"><span class="fld-k" data-scrub="${k}" title="${esc(title)} · arrastra para ajustar">${icon(ico)}</span><input id="f-${k}" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" data-f="${k}" value="${esc(fmt(k, val))}" placeholder="${esc(ph)}" aria-label="${esc(title)}">${unit ? `<span class="fld-u">${unit}</span>` : ''}${dd ? `<button type="button" class="fld-dd" data-action="dd" data-k="${k}" aria-label="Valores sugeridos de ${esc(title)}">${icon('down')}</button>` : ''}</div>`;
 }
@@ -2565,10 +2703,40 @@ function segc(k, opts, val, label) {
 function selc(k, opts, val, label, disabled = false) {
   return `<label class="sel"><span class="sr-only">${esc(label)}</span><select data-f="${k}"${disabled ? ' disabled' : ''}>${opts.map(([v, l]) => `<option value="${v}"${String(v) === String(val) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>${icon('down')}</label>`;
 }
+/* ---------- Inspector: views and sections ----------
+   The panel shows one view at a time (INSP_VIEWS). The design view is assembled from sections: DESIGN_SECTIONS lists,
+   per content type, the sections that apply to it, and ROW_SECTIONS (the block as a whole) follow. A section is a
+   function of the context c = { row, slot, fs, half, overlay } that returns its HTML, or '' when it does not apply in
+   that context (a full-screen background, the text over it…). A new content type registers its own list; a new view
+   is pushed to INSP_VIEWS (the "Interacción" view, data-v="act", goes after Animación). */
+const INSP_VIEWS = [
+  { v: 'design', label: 'Diseño', icon: 'edit', body: designView },
+  { v: 'anim', label: 'Animación', icon: 'motion', body: (c) => inspAnimView(c.row, c.slot) }
+];
+const inspViewOf = (v) => INSP_VIEWS.find(x => x.v === v) || INSP_VIEWS[0];
+const DESIGN_SECTIONS = {
+  text: [secTypography, secTextColor, secTextBlocks, secTextModule, secPadding],
+  image: [secMediaFile, secMediaFrame, secFsDim],
+  video: [secMediaFile, secMediaFrame, secFsDim],
+  carousel: [secCarouselImages, secCarouselPlay, secMediaFrame],
+  color: [secFsColor]
+};
+const ROW_SECTIONS = [secOverlayAdd, secHeight];
+const inspCtx = (row, slot) => ({ row, slot, fs: row.layout === 'fullscreen', half: row.layout === 'half', overlay: !!slot && isOverlaySlot(slot) });
+function designView(c) {
+  const head = !c.slot || !c.slot.type
+    ? `<div class="insp-sec"><p class="insp-hint">Elige en el bloque qué tipo de contenido va ${c.fs ? 'de fondo' : 'en este módulo'}.</p></div>`
+    : (DESIGN_SECTIONS[c.slot.type] || []).map(f => f(c)).join('');
+  return head + ROW_SECTIONS.map(f => f(c)).join('');
+}
 function renderInspector() {
   const el = $('#insp');
   const e = S.edit;
-  if (!e || S.mode !== 'admin') { if (!el.hidden || el.innerHTML) { el.hidden = true; el.innerHTML = ''; } ROOT.classList.remove('insp-anim'); renderTypes(); return; }
+  if (!e || S.mode !== 'admin') {
+    if (!el.hidden || el.innerHTML) { el.hidden = true; el.innerHTML = ''; }
+    if (S.pop && S.pop.data && S.pop.data.kind === 'palette') closePop(true);
+    ROOT.classList.remove('insp-anim'); renderTypes(); return;
+  }
   const b0 = $('.insp-body', el); const st = b0 ? b0.scrollTop : 0;
   const fa = document.activeElement; const keepF = fa && el.contains(fa) && fa.id ? { id: fa.id, s: fa.selectionStart, e: fa.selectionEnd } : null;
   const row = e.draft; const slot = activeSlot(); const fsRow = row.layout === 'fullscreen';
@@ -2576,26 +2744,19 @@ function renderInspector() {
   let tabs = '';
   if (row.layout === 'half') tabs = row.slots.map((s, i) => tab(s.id, (i ? 'Derecha' : 'Izquierda') + (s.type ? ' · ' + TYPES[s.type].label : ''))).join('');
   if (fsRow && row.overlay) tabs = tab(row.slots[0].id, 'Fondo') + tab(row.overlay.slot.id, 'Texto encima');
-  const animV = S.inspView === 'anim';
-  let body = '';
-  if (animV) body = inspAnimView(row, slot);
-  else if (!slot || !slot.type) body += `<div class="insp-sec"><p class="insp-hint">Elige en el bloque qué tipo de contenido va ${fsRow ? 'de fondo' : 'en este módulo'}.</p></div>`;
-  else if (slot.type === 'text') body += inspText(slot, isOverlaySlot(slot), row);
-  else if (slot.type === 'image' || slot.type === 'video') body += inspMedia(slot, row);
-  else if (slot.type === 'carousel') body += inspCarousel(slot, row);
-  else if (slot.type === 'color') body += inspColor(slot);
-  if (!animV && fsRow && slot && slot.id === row.slots[0].id && slot.type && !row.overlay) body += `<div class="insp-sec"><button type="button" class="btn ghost" data-action="ov-add">${icon('text')}Añadir texto encima</button></div>`;
-  if (!animV) body += inspHeight(row);
-  const view = (v, l, ic) => `<button type="button" role="tab" data-action="insp-view" data-v="${v}" aria-selected="${(S.inspView === 'anim' ? 'anim' : 'design') === v}">${icon(ic)}${l}</button>`;
+  const view = inspViewOf(S.inspView);
+  const body = view.body(inspCtx(row, slot));
+  const viewBtn = (x) => `<button type="button" role="tab" data-action="insp-view" data-v="${x.v}" aria-selected="${x === view}">${icon(x.icon)}<span>${esc(x.label)}</span></button>`;
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   el.innerHTML = `<div class="insp-head"><button type="button" class="insp-back" id="insp-back" data-action="undo" aria-label="Volver atrás" title="Volver atrás (${mac ? '⌘' : 'Ctrl'} + Z)">${icon('left')}</button>${tabs ? `<div class="insp-tabs" role="tablist">${tabs}</div>` : ''}</div>
-    <div class="insp-views" role="tablist" aria-label="Vista del panel">${view('design', 'Diseño', 'edit')}${view('anim', 'Animación', 'motion')}</div>
+    <div class="insp-views${INSP_VIEWS.length > 2 ? ' is-compact' : ''}" role="tablist" aria-label="Vista del panel">${INSP_VIEWS.map(viewBtn).join('')}</div>
     <div class="insp-body" data-lenis-prevent>${body}</div><div class="insp-foot" id="insp-foot">${footHTML()}</div>`;
   el.hidden = false;
   const b1 = $('.insp-body', el); if (b1) b1.scrollTop = st;
   syncBack(); renderTypes();
-  ROOT.classList.toggle('insp-anim', animV); paintAnimBadges(); Motion.syncSplit(); Motion.paintTransport();
+  ROOT.classList.toggle('insp-anim', view.v === 'anim'); paintAnimBadges(); Motion.syncSplit(); Motion.paintTransport();
   if (keepF) { const n = document.getElementById(keepF.id); if (n) { n.focus({ preventScroll: true }); try { n.setSelectionRange(keepF.s, keepF.e); } catch {} } }
+  anchorPalPop();
 }
 function renderTypes() {
   const bar = $('#types');
@@ -2624,58 +2785,260 @@ function footHTML() {
   return `<p class="foot-hint">${ok ? `Confirma con <kbd>${mac ? '⌘' : 'Ctrl'} + Enter</kbd>` : esc(invalidHint(r))}</p><div class="foot-row"><button type="button" class="btn ghost" data-action="cancel-edit">Cancelar</button><button type="button" class="btn solid grow" data-action="confirm-edit"${ok ? '' : ' disabled'}>Confirmar</button></div>`;
 }
 function updateFoot() { const f = $('#insp-foot'); if (f && S.edit) f.innerHTML = footHTML(); }
-function inspText(s, overlay, row) {
-  const b = activeBlockOf(s); const i = s.blocks.indexOf(b); const bg = s.bg || { kind: 'none' };
+/* ---------- Design sections ---------- */
+/* Text: the selected text block (typography with its linked style, color), the list of blocks, the module box and its
+   inner spacing */
+function secTypography(c) {
+  const s = c.slot, b = activeBlockOf(s), i = s.blocks.indexOf(b);
   return `<div class="insp-sec"><h4>Tipografía<span>Bloque ${i + 1} de ${s.blocks.length}</span></h4>
+      ${typeStyleRow(b)}
       ${segc('font', [['jakarta', 'Plus Jakarta'], ['phudu', 'Phudu']], b.font, 'Familia tipográfica')}
       <div class="grid2">${fld('weight', 'weight', b.weight, '', { dd: true, title: 'Peso' })}${fld('size', 'size', b.size, 'px', { dd: true, title: 'Tamaño' })}</div>
       <div class="grid2">${fld('lh', 'lh', b.lh, '%', { title: 'Interlineado' })}${fld('ls', 'ls', b.ls, '%', { title: 'Espaciado entre letras' })}</div>
       <div class="grid2">${segc('align', [['left', 'Izquierda', 'alL'], ['center', 'Centro', 'alC'], ['right', 'Derecha', 'alR']], b.align, 'Alineación')}${segc('upper', [['false', 'Aa'], ['true', 'AA']], String(b.upper), 'Mayúsculas')}</div>
-    </div>
-    <div class="insp-sec"><h4>Bloques de texto</h4><div class="insp-row">
+    </div>`;
+}
+const palSwatch = (k, p, on) => `<button type="button" class="swatch sw-pal" data-action="seg" data-k="${k}" data-v="${esc(p.id)}" aria-pressed="${on}" style="--c:${esc(p.hex)}" title="${esc(p.name)} · ${p.hex.toUpperCase()}" aria-label="${esc(p.name)}"><i></i></button>`;
+const palPopOpen = () => !!(S.pop && S.pop.data && S.pop.data.kind === 'palette');
+function secTextColor(c) {
+  const b = activeBlockOf(c.slot), cur = b.color && palById(b.color) ? b.color : 'auto';
+  return `<div class="insp-sec"><h4>Color del texto</h4><div class="swatches" role="group" aria-label="Color del texto">
+      <button type="button" class="swatch sw-auto" data-action="seg" data-k="tcolor" data-v="auto" aria-pressed="${cur === 'auto'}" title="Automático: claro u oscuro, según el tono del módulo" aria-label="Automático"><i></i></button>
+      ${palColors().map(p => palSwatch('tcolor', p, cur === p.id)).join('')}
+      <button type="button" class="swatch sw-add" data-action="pal-open" aria-haspopup="dialog" aria-expanded="${palPopOpen()}" title="Añadir un color a la paleta" aria-label="Paleta de colores">${icon('plus')}</button>
+    </div></div>`;
+}
+function secTextBlocks(c) {
+  const s = c.slot, i = s.blocks.indexOf(activeBlockOf(s));
+  return `<div class="insp-sec"><h4>Bloques de texto</h4><div class="insp-row">
       <button type="button" class="btn ghost sm grow" data-action="add-block" data-slot="${s.id}">${icon('plus')}Añadir bloque</button>
       <button type="button" class="icon-btn" data-action="block-up" data-slot="${s.id}" aria-label="Subir bloque de texto"${i <= 0 ? ' disabled' : ''}>${icon('up')}</button>
       <button type="button" class="icon-btn" data-action="block-down" data-slot="${s.id}" aria-label="Bajar bloque de texto"${i >= s.blocks.length - 1 ? ' disabled' : ''}>${icon('dn')}</button>
       <button type="button" class="icon-btn danger" data-action="block-delete" data-slot="${s.id}" aria-label="Eliminar bloque de texto"${s.blocks.length < 2 ? ' disabled' : ''}>${icon('trash')}</button>
-    </div></div>
-    <div class="insp-sec"><h4>Módulo</h4>
-      <div class="insp-line"><span class="lbl">Fondo</span><div class="swatches">
+    </div></div>`;
+}
+/* Background swatches: none, gray, the palette and any other color. The background stores the hex itself, so a
+   palette swatch shows as chosen whenever the color matches it. */
+function bgSwatches(bg) {
+  const hit = bg.kind === 'color' ? palByHex(bg.color) : null, custom = bg.kind === 'color' && !hit;
+  return `<div class="swatches" role="group" aria-label="Fondo del módulo">
         <button type="button" class="swatch sw-none" data-action="seg" data-k="bg" data-v="none" aria-pressed="${bg.kind === 'none'}" title="Sin fondo" aria-label="Sin fondo"><i></i></button>
         <button type="button" class="swatch sw-surface" data-action="seg" data-k="bg" data-v="surface" aria-pressed="${bg.kind === 'surface'}" title="Fondo gris" aria-label="Fondo gris"><i></i></button>
-        <label class="swatch sw-color${bg.kind === 'color' ? ' is-set' : ''}" style="--c:${bg.kind === 'color' ? esc(bg.color) : 'transparent'}" aria-pressed="${bg.kind === 'color'}" title="Fondo de color"><i></i><input type="color" data-f="bgcolor" value="${bg.kind === 'color' ? esc(bg.color) : BRAND}" aria-label="Color de fondo"></label>
-      </div></div>
-      <div class="insp-line"><span class="lbl">Color texto</span>${segc('ink', [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']], s.ink || 'auto', 'Color del texto')}</div>
-      ${overlay ? `<div class="insp-line top"><span class="lbl">Posición</span><div class="matrix" role="group" aria-label="Posición del texto">${['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'].map(p => `<button type="button" data-action="seg" data-k="pos" data-v="${p}" aria-pressed="${row.overlay.pos === p}" aria-label="${posLabel(p)}"><i></i></button>`).join('')}</div></div>
+        ${palColors().map(p => palSwatch('bgpal', p, !!hit && hit.id === p.id)).join('')}
+        <label class="swatch sw-color${custom ? ' is-set' : ''}" style="--c:${custom ? esc(bg.color) : 'transparent'}" aria-pressed="${custom}" title="Otro color"><i></i><input type="color" data-f="bgcolor" value="${bg.kind === 'color' ? esc(bg.color) : BRAND}" aria-label="Otro color de fondo"></label>
+      </div>`;
+}
+function paintBgSwatches(s) {
+  const bg = s.bg || { kind: 'none' }, hit = bg.kind === 'color' ? palByHex(bg.color) : null, custom = bg.kind === 'color' && !hit;
+  setPressed('bg', bg.kind); setPressed('bgpal', hit ? hit.id : '');
+  const inp = $('#insp [data-f="bgcolor"]'), lab = inp && inp.closest('.sw-color');
+  if (lab) { lab.classList.toggle('is-set', custom); lab.style.setProperty('--c', custom ? bg.color : 'transparent'); lab.setAttribute('aria-pressed', String(custom)); }
+}
+function secTextModule(c) {
+  const s = c.slot, row = c.row, bg = s.bg || { kind: 'none' };
+  return `<div class="insp-sec"><h4>Módulo</h4>
+      <div class="insp-line wrap"><span class="lbl">Fondo</span>${bgSwatches(bg)}</div>
+      <div class="insp-line"><span class="lbl">Texto</span>${segc('ink', [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']], s.ink || 'auto', 'Tono del texto')}</div>
+      ${c.overlay ? `<div class="insp-line top"><span class="lbl">Posición</span><div class="matrix" role="group" aria-label="Posición del texto">${['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'].map(p => `<button type="button" data-action="seg" data-k="pos" data-v="${p}" aria-pressed="${row.overlay.pos === p}" aria-label="${posLabel(p)}"><i></i></button>`).join('')}</div></div>
         <div class="insp-line"><span class="lbl">Ancho</span>${segc('ow', [['half', 'Mitad'], ['content', 'Columna'], ['screen', 'Pantalla']], row.overlay.width, 'Ancho del texto')}</div>
         <button type="button" class="btn ghost sm danger-text" data-action="ov-remove">${icon('trash')}Quitar texto encima</button>`
       : `<div class="insp-line"><span class="lbl">Distribución</span>${segc('valign', [['start', 'Arriba', 'vaT'], ['center', 'Centro', 'vaM'], ['end', 'Abajo', 'vaB'], ['spread', 'Repartido', 'vaS']], s.align || 'start', 'Distribución vertical')}</div>`}
     </div>`;
 }
 const posLabel = (p) => ({ t: 'Arriba', m: 'Centro', b: 'Abajo' }[p[0]] + ' ' + ({ l: 'izquierda', c: 'centro', r: 'derecha' }[p[1]]));
-function inspMedia(s, row) {
-  const fsRow = row.layout === 'fullscreen';
-  const t = TYPES[s.type];
+/* Inner spacing: four sides, linked by default while they are all equal. Empty is the automatic spacing. */
+function padLinked(s) {
+  const u = S.edit && S.edit.padLink[s.id];
+  if (typeof u === 'boolean') return u;
+  const p = s.pad || {}; return PAD_SIDES.every(k => (p[k] ?? null) === (p.t ?? null));
+}
+function secPadding(c) {
+  const s = c.slot; if (!PAD_TYPES.includes(s.type)) return '';
+  const p = s.pad || {};
+  const f = (k, ic, l) => fld(k, ic, isNum(p[k[1]]) ? p[k[1]] : '', 'px', { title: l, ph: 'Auto' });
+  return `<div class="insp-sec"><h4>Espaciado interno<button type="button" class="h4-act" data-action="pad-reset"${s.pad ? '' : ' disabled'}>Restablecer</button></h4>
+      <div class="grid2">${f('pt', 'padT', 'Arriba')}${f('pb', 'padB', 'Abajo')}${f('pl', 'padL', 'Izquierda')}${f('pr', 'padR', 'Derecha')}</div>
+      <button type="button" class="btn ghost sm toggle" data-action="pad-link" aria-pressed="${padLinked(s)}">${icon('link')}Mismo valor en los 4 lados</button>
+      ${c.overlay ? '<p class="insp-hint">Distancia del texto a los bordes del bloque.</p>' : ''}
+    </div>`;
+}
+/* Media */
+function secMediaFile(c) {
+  const s = c.slot, t = TYPES[s.type];
   return `<div class="insp-sec"><h4>${t.label}${s.w ? `<span>${s.w} × ${s.h}</span>` : ''}</h4>
       ${s.asset ? `<div class="file-row"><span class="file-thumb">${s.type === 'image' ? `<img src="${esc(assetUrl(s.asset))}" alt="">` : icon('video')}</span><span class="file-meta">${s.type === 'image' ? 'Imagen cargada' : 'Video cargado'}</span></div>` : ''}
       <div class="insp-row"><label class="btn ghost sm grow">${icon('upload')}${s.asset ? 'Reemplazar' : 'Subir archivo'}<input type="file" class="sr-only" data-upload="${s.id}" accept="${ACCEPT[s.type]}"></label></div>
-    </div>
-    ${fsRow ? dimSec(s) : `<div class="insp-sec"><h4>Encuadre</h4>${selc('ratio', RATIOS, s.ratio || 'auto', 'Proporción', !!row.h)}${row.h ? '<p class="insp-hint">El alto personalizado define el encuadre.</p>' : ''}</div>`}`;
+    </div>`;
 }
+function secMediaFrame(c) {
+  if (c.fs) return '';
+  return `<div class="insp-sec"><h4>Encuadre</h4>${selc('ratio', RATIOS, c.slot.ratio || 'auto', 'Proporción', !!c.row.h)}${c.row.h ? '<p class="insp-hint">El alto personalizado define el encuadre.</p>' : ''}</div>`;
+}
+function secFsDim(c) { return c.fs ? dimSec(c.slot) : ''; }
 const dimSec = (s) => `<div class="insp-sec"><h4>Oscurecer</h4><div class="rng"><input type="range" min="0" max="80" step="5" data-f="dim" value="${s.dim || 0}" aria-label="Oscurecer el fondo"><output id="dim-out">${s.dim || 0}%</output></div></div>
   <div class="insp-sec"><h4>Sombra bajo el menú</h4>${segc('scrim', [['true', 'Con sombra'], ['false', 'Sin sombra']], String(s.scrim !== false), 'Sombra bajo el menú')}<p class="insp-hint">Un degradado suave que ayuda a leer el menú lateral sobre la imagen.</p></div>`;
-function inspColor(s) {
-  return `<div class="insp-sec"><h4>Color de fondo</h4><div class="hex">
-      <label class="swatch sw-color is-set" style="--c:${esc(s.color)}" title="Elegir color"><i></i><input type="color" data-f="fscolor" value="${esc(s.color)}" aria-label="Color de fondo"></label>
-      <div class="fld" style="flex:1"><span class="fld-k" style="cursor:default">#</span><input id="f-hex" type="text" data-f="hex" value="${esc((s.color || '').replace('#', '').toUpperCase())}" maxlength="7" aria-label="Código hexadecimal"></div>
-    </div><div class="insp-row"><button type="button" class="btn ghost sm" data-action="fs-brand">Azul de marca</button></div></div>`;
-}
-function inspCarousel(s, row) {
+function secCarouselImages(c) {
+  const s = c.slot;
   return `<div class="insp-sec"><h4>Carrusel<span>${s.images.length} ${s.images.length === 1 ? 'imagen' : 'imágenes'}</span></h4>
       <div class="insp-row"><label class="btn ghost sm grow">${icon('plus')}Añadir imágenes<input type="file" class="sr-only" data-upload="${s.id}" accept="${ACCEPT.carousel}" multiple></label></div>
-      <p class="insp-hint">Reordena arrastrando las miniaturas debajo del carrusel.</p></div>
-    <div class="insp-sec"><h4>Reproducción</h4>${segc('autoplay', [['true', 'Automática'], ['false', 'Manual']], String(s.autoplay !== false), 'Reproducción')}
-      ${fld('pace', 'clock', s.pace || 5, 's por imagen', { title: 'Duración de cada imagen' })}</div>
-    <div class="insp-sec"><h4>Encuadre</h4>${selc('ratio', RATIOS, s.ratio || 'auto', 'Proporción', !!row.h)}</div>`;
+      <p class="insp-hint">Reordena arrastrando las miniaturas debajo del carrusel.</p></div>`;
+}
+function secCarouselPlay(c) {
+  const s = c.slot;
+  return `<div class="insp-sec"><h4>Reproducción</h4>${segc('autoplay', [['true', 'Automática'], ['false', 'Manual']], String(s.autoplay !== false), 'Reproducción')}
+      ${fld('pace', 'clock', s.pace || 5, 's por imagen', { title: 'Duración de cada imagen' })}</div>`;
+}
+/* Full-screen color: the palette, plus any other color by picker or hex */
+function secFsColor(c) {
+  const s = c.slot, hit = palByHex(s.color);
+  return `<div class="insp-sec"><h4>Color de fondo</h4>
+      ${palColors().length ? `<div class="swatches" role="group" aria-label="Paleta">${palColors().map(p => palSwatch('fspal', p, !!hit && hit.id === p.id)).join('')}</div>` : ''}
+      <div class="hex">
+      <label class="swatch sw-color is-set" style="--c:${esc(s.color)}" title="Otro color"><i></i><input type="color" data-f="fscolor" value="${esc(s.color)}" aria-label="Color de fondo"></label>
+      <div class="fld" style="flex:1"><span class="fld-k" style="cursor:default">#</span><input id="f-hex" type="text" data-f="hex" value="${esc((s.color || '').replace('#', '').toUpperCase())}" maxlength="7" aria-label="Código hexadecimal"></div>
+    </div></div>`;
+}
+/* The block as a whole */
+function secOverlayAdd(c) {
+  const { row, slot } = c;
+  return c.fs && slot && slot.id === row.slots[0].id && slot.type && !row.overlay ? `<div class="insp-sec"><button type="button" class="btn ghost" data-action="ov-add">${icon('text')}Añadir texto encima</button></div>` : '';
+}
+/* The text over a full-screen background is not the block: its height is on the Fondo tab */
+function secHeight(c) { return c.overlay ? '' : inspHeight(c.row); }
+
+/* ---------- Text styles: named typography shared by the whole catalog ---------- */
+/* Linking a text block copies the style's typography into it: the block always keeps concrete values, so it renders
+   the same with or without the style. Changing one of those values marks the link as modified until it is reset, or
+   pushed to the style with "Actualizar estilo", which also updates every linked, unmodified text of the catalog. */
+const pickType = (b) => Object.fromEntries(TYPE_KEYS.map(k => [k, b[k]]));
+const sameType = (b, st) => !!st && TYPE_KEYS.every(k => b[k] === st[k]);
+function linkTypeStyle(b, st) { Object.assign(b, pickType(st)); b.ts = st.id; delete b.tsOver; }
+/* Undo, redo or someone else's change can leave a linked text out of step with its style: it is "modified" exactly
+   when its values differ, and a link to a style that no longer exists is dropped (the text keeps its values) */
+function syncTypeLinks(row) {
+  allSlots(row).forEach(s => s.type === 'text' && s.blocks.forEach(b => {
+    if (!b.ts) return;
+    const st = typeStyleById(b.ts);
+    if (!st) { delete b.ts; delete b.tsOver; } else if (sameType(b, st)) delete b.tsOver; else b.tsOver = true;
+  }));
+}
+const paintBlock = (b) => { const n = blockEl(b.id); if (n) { applyBlockStyle(n, b); n.dataset.placeholder = placeholderFor(b); } };
+const typeStyleUses = (id) => { let n = 0; forEachTarget(t => { if (t.kind === 'text' && t.item.ts === id) n++; return false; }); return n; };
+/* Catalog-wide counts need every page: they load once per edit session and the panel refreshes when they arrive */
+function allPagesSoon() { if (S.pagesAll) return; S.pagesAll = 'loading'; animTargets().then(() => { S.pagesAll = true; if (S.edit) renderInspector(); }); }
+function typeStyleRow(b) {
+  const st = b.ts ? typeStyleById(b.ts) : null, ui = S.typeStyleUi;
+  const opt = (x) => `<option value="${esc(x.id)}"${st && st.id === x.id ? ' selected' : ''}>${esc(x.name)} · ${x.font === 'phudu' ? 'Phudu' : 'Jakarta'} ${x.size}</option>`;
+  let h = `<div class="type-style"><div class="insp-line"><span class="lbl">Estilo</span><label class="sel"><span class="sr-only">Estilo de texto</span><select data-f="typestyle"><option value="">Sin estilo</option>${typeStyles().map(opt).join('')}</select>${icon('down')}</label></div>`;
+  if (ui && (ui.mode === 'new' || ui.mode === 'rename')) {
+    h += `<div class="insp-row"><div class="fld grow-fld"><input id="type-style-name" type="text" maxlength="60" autocomplete="off" placeholder="Nombre del estilo" value="${esc(ui.mode === 'rename' && st ? st.name : '')}" aria-label="Nombre del estilo de texto"></div><button type="button" class="btn solid sm" data-action="type-style-name-ok">${ui.mode === 'rename' ? 'Renombrar' : 'Guardar'}</button><button type="button" class="icon-btn" data-action="type-style-cancel" aria-label="Cancelar">${icon('x')}</button></div>`;
+  } else if (!st) {
+    h += `<button type="button" class="btn ghost sm" data-action="type-style-new">${icon('plus')}Guardar como estilo</button>`;
+  } else {
+    allPagesSoon();
+    const uses = typeStyleUses(st.id);
+    h += `<p class="type-style-meta"><span>${uses === 1 ? 'Usado en 1 texto' : `Usado en ${uses} textos`}</span>${b.tsOver ? '<span class="type-style-mod">Modificado</span>' : ''}</p>`;
+    if (b.tsOver) h += `<div class="insp-row"><button type="button" class="btn solid sm grow" data-action="type-style-update">Actualizar estilo</button><button type="button" class="btn ghost sm" data-action="type-style-reset">Restablecer</button></div>`;
+    if (ui && ui.mode === 'delete') h += `<div class="type-style-q"><p>¿Eliminar «${esc(st.name)}»? ${uses === 1 ? 'El texto que lo usa conserva' : `Los ${uses} textos que lo usan conservan`} su tipografía, sin vínculo.</p><div class="insp-row"><button type="button" class="btn ghost sm" data-action="type-style-cancel">Cancelar</button><button type="button" class="btn danger sm grow" data-action="type-style-delete">Eliminar</button></div></div>`;
+    else h += `<div class="insp-row type-style-tools"><button type="button" class="btn plain sm" data-action="type-style-unlink">Desvincular</button><button type="button" class="btn plain sm" data-action="type-style-ask" data-mode="rename">Renombrar</button><button type="button" class="btn plain sm danger-text" data-action="type-style-ask" data-mode="delete">Eliminar</button></div>`;
+  }
+  return h + '</div>';
+}
+/* Live refresh of the style card only, so a field being typed in keeps its focus */
+function paintTypeStyle() { const el = $('#insp .type-style'), b = activeBlock(); if (el && b) el.outerHTML = typeStyleRow(b); }
+async function typeStyleOp(op) {
+  const b = activeBlock(); if (!b) return;
+  const st = b.ts ? typeStyleById(b.ts) : null;
+  if (op === 'unlink') { record(null); delete b.ts; delete b.tsOver; S.typeStyleUi = null; renderInspector(); return; }
+  if (!st) return;
+  if (op === 'reset') { record(null); linkTypeStyle(b, st); paintBlock(b); renderInspector(); Ink.schedule(); return; }
+  if (op === 'update') {
+    const vals = pickType(b), bid = b.id;
+    mutateTree(t => { const x = t.textStyles.find(y => y.id === st.id); if (x) Object.assign(x, vals); });
+    await animTargets();
+    const ns = typeStyleById(st.id); if (!ns) return;
+    commitTargets(forEachTarget(t => {
+      if (t.kind !== 'text' || t.item.ts !== st.id || (t.item.tsOver && t.item.id !== bid)) return false;
+      linkTypeStyle(t.item, ns); return true;
+    }, true), TYPE_FIELDS);
+    toast(`Estilo «${st.name}» actualizado`);
+    return;
+  }
+  if (op === 'delete') {
+    await animTargets();
+    const changed = forEachTarget(t => { if (t.kind !== 'text' || t.item.ts !== st.id) return false; delete t.item.ts; delete t.item.tsOver; return true; }, true);
+    mutateTree(t => { t.textStyles = t.textStyles.filter(y => y.id !== st.id); });
+    S.typeStyleUi = null; commitTargets(changed, TYPE_FIELDS);
+    toast(`Estilo «${st.name}» eliminado. Cada texto conserva su tipografía.`);
+  }
+}
+function commitTypeStyleName(value) {
+  const ui = S.typeStyleUi, name = String(value || '').trim().slice(0, 60);
+  if (!ui || !name) { S.typeStyleUi = null; renderInspector(); return; }
+  if (ui.mode === 'rename') { mutateTree(t => { const x = t.textStyles.find(y => y.id === ui.id); if (x) x.name = name; }); S.typeStyleUi = null; renderInspector(); return; }
+  const b = activeBlock(); if (!b) return;
+  const st = { id: uid('ts'), name, ...pickType(b) };
+  mutateTree(t => { t.textStyles.push(st); });
+  record(null); b.ts = st.id; delete b.tsOver;
+  S.typeStyleUi = null; renderInspector();
+  toast(`Estilo «${name}» guardado`);
+}
+
+/* ---------- Palette editor: a popover from the "+" of the text color ---------- */
+function palettePopHTML() {
+  const ui = S.palUi || {};
+  const rows = palColors().map(p => ui.del === p.id
+    ? `<div class="pal-q"><p>¿Eliminar «${esc(p.name)}» de la paleta? Los textos con este color vuelven a automático.</p><div class="pop-actions"><button type="button" class="btn plain sm" data-action="pal-cancel">Cancelar</button><button type="button" class="btn danger sm" data-action="pal-del-ok" data-id="${esc(p.id)}">Eliminar</button></div></div>`
+    : `<div class="pal-row"><label class="pal-dot" style="--c:${esc(p.hex)}" title="Cambiar el color"><input type="color" data-pal-hex="${esc(p.id)}" value="${esc(p.hex)}" aria-label="Color de ${esc(p.name)}"></label><input class="pal-name" type="text" data-pal-name="${esc(p.id)}" value="${esc(p.name)}" maxlength="40" autocomplete="off" spellcheck="false" aria-label="Nombre del color"><span class="pal-hex">${p.hex.toUpperCase()}</span><button type="button" class="icon-btn" data-action="pal-del" data-id="${esc(p.id)}" aria-label="Eliminar ${esc(p.name)} de la paleta" title="Eliminar">${icon('x')}</button></div>`).join('');
+  const hex = ui.hex || BRAND;
+  return `<div class="pal" role="group" aria-label="Paleta de colores"><p class="pal-h">Paleta</p>${rows || '<p class="pal-empty">La paleta está vacía.</p>'}
+    <div class="pal-row pal-new"><label class="pal-dot" style="--c:${esc(hex)}" title="Elegir el color"><input type="color" id="pal-new-hex" value="${esc(hex)}" aria-label="Color nuevo"></label><input class="pal-name" type="text" id="pal-new-name" maxlength="40" autocomplete="off" spellcheck="false" placeholder="Nombre del color" aria-label="Nombre del color nuevo"><button type="button" class="btn solid sm" data-action="pal-add">Añadir</button></div></div>`;
+}
+function openPalPop(trigger) {
+  if (palPopOpen() && S.pop.trigger === trigger) { closePop(); return; }
+  S.palUi = { hex: (S.palUi && S.palUi.hex) || BRAND };
+  openPop(trigger, palettePopHTML(), { sticky: true, data: { kind: 'palette' } });
+  if (matchMedia('(pointer: fine)').matches) { const i = $('#pal-new-name'); i && i.focus({ preventScroll: true }); }
+}
+/* The inspector re-renders often: keep the popover attached to the current "+" button, or close it when it is gone */
+function anchorPalPop() {
+  if (!palPopOpen()) return;
+  const tr = $('#insp [data-action="pal-open"]');
+  if (!tr) { closePop(true); return; }
+  if (tr !== S.pop.trigger) { S.pop.trigger = tr; tr.setAttribute('aria-expanded', 'true'); placePop(tr); }
+}
+function renderPalPop() {
+  if (!palPopOpen()) return;
+  const m = $('#pop'), a = document.activeElement;
+  const keep = a && m.contains(a) && a.tagName === 'INPUT' ? { sel: a.id ? '#' + a.id : a.dataset.palName ? `[data-pal-name="${CSS.escape(a.dataset.palName)}"]` : null, v: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
+  m.innerHTML = palettePopHTML();
+  anchorPalPop(); placePop(S.pop.trigger);
+  const n = keep && keep.sel && $(keep.sel, m);
+  if (n) { if (n.type === 'text') n.value = keep.v; n.focus({ preventScroll: true }); try { n.setSelectionRange(keep.s, keep.e); } catch {} }
+}
+function palAdd() {
+  const ni = $('#pal-new-name'), hi = $('#pal-new-hex');
+  const hex = String(hi ? hi.value : '').toLowerCase(); if (!hexOk(hex)) return;
+  const p = { id: uid('pc'), name: String(ni ? ni.value : '').trim().slice(0, 40) || `Color ${palColors().length + 1}`, hex };
+  if (ni) ni.value = '';
+  mutateTree(t => { t.palette.push(p); });
+  if (activeBlock()) onField('tcolor', p.id); /* added from a text: the text takes it */
+  renderPalPop();
+  toast(`«${p.name}» añadido a la paleta`);
+}
+function palEdit(id, field, v) {
+  if (field === 'hex' && !hexOk(String(v))) return;
+  const name = String(v).trim().slice(0, 40);
+  if (field === 'name' && !name) { renderPalPop(); return; }
+  mutateTree(t => { const x = t.palette.find(y => y.id === id); if (x) { if (field === 'hex') x.hex = String(v).toLowerCase(); else x.name = name; } });
+  renderPalPop();
+}
+function palDelete(id) {
+  const p = palById(id); if (!p) return;
+  S.palUi = { ...S.palUi, del: null };
+  mutateTree(t => { t.palette = t.palette.filter(y => y.id !== id); });
+  renderPalPop();
+  toast(`«${p.name}» eliminado de la paleta`);
 }
 /* ---------- Animation styles: saved, named animations shared by the whole catalog ---------- */
 /* A module or text block linked to a style takes the style's values; its own values are a copy kept up to date, so
@@ -2694,8 +3057,9 @@ async function animTargets() {
   const fresh = cats().flatMap(c => c.subs.map(s => s.id)).filter(id => !S.subsc.has(id));
   await Promise.all(fresh.map(async id => { try { const snap = await B.db.doc('pages/' + id).get(); const d = snap.exists ? snap.data() : null; S.pages.set(id, d && Array.isArray(d.rows) ? d.rows.map(r => normRow(clone(r))) : []); } catch {} }));
 }
-/* Returns, per section, the ids of the modules and text blocks fn changed (the block being edited is saved on confirm). */
-function forEachTarget(fn) {
+/* Returns, per section, the ids of the modules and text blocks fn changed (the block being edited is saved on confirm).
+   withStored also visits the stored copy of the block being edited, so the change holds if that edit is cancelled. */
+function forEachTarget(fn, withStored = false) {
   const changed = new Map();
   const mark = (subId, id) => { if (!subId) return; let ids = changed.get(subId); if (!ids) changed.set(subId, ids = new Set()); ids.add(id); };
   const visit = (row, subId) => allSlots(row).forEach(s => {
@@ -2703,21 +3067,23 @@ function forEachTarget(fn) {
     if (fn({ kind: 'mod', item: s, type: s.type })) mark(subId, s.id);
     if (s.type === 'text') (s.blocks || []).forEach(b => { if (fn({ kind: 'text', item: b, type: textRole(b) })) mark(subId, b.id); });
   });
-  S.pages.forEach((rows, subId) => rows.forEach(r => { if (!(S.edit && S.edit.rowId === r.id)) visit(r, subId); }));
+  S.pages.forEach((rows, subId) => rows.forEach(r => { if (withStored || !(S.edit && S.edit.rowId === r.id)) visit(r, subId); }));
   if (S.edit) visit(S.edit.draft, null);
   return changed;
 }
-/* Saves the new animations through the normal save path: only the anim of each changed item is written over the
-   stored page, so a concurrent edit by someone else to anything else in that page is kept. */
-function commitTargets(changed) {
+/* Saves catalog-wide changes through the normal save path: only the given fields of each changed item (its anim, or
+   the typography of a text block…) are written over the stored page, so a concurrent edit by someone else to anything
+   else in that page is kept. */
+function commitTargets(changed, fields = ['anim']) {
+  const pick = (x) => Object.fromEntries(fields.map(f => [f, x[f] === undefined ? undefined : clone(x[f])]));
   changed.forEach((ids, subId) => {
-    const anims = new Map();
+    const vals = new Map();
     (S.pages.get(subId) || []).forEach(r => allSlots(r).forEach(s => {
       if (!s) return;
-      if (ids.has(s.id)) anims.set(s.id, s.anim);
-      (s.blocks || []).forEach(b => { if (ids.has(b.id)) anims.set(b.id, b.anim); });
+      if (ids.has(s.id)) vals.set(s.id, pick(s));
+      (s.blocks || []).forEach(b => { if (ids.has(b.id)) vals.set(b.id, pick(b)); });
     }));
-    const put = (x) => { if (!x || !anims.has(x.id)) return; const a = anims.get(x.id); if (a === undefined) delete x.anim; else x.anim = clone(a); };
+    const put = (x) => { if (!x || !vals.has(x.id)) return; const v = vals.get(x.id); fields.forEach(f => { if (v[f] === undefined) delete x[f]; else x[f] = clone(v[f]); }); };
     const rows = commitPage(subId, rows => {
       rows.forEach(r => [...((r && r.slots) || []), ...(r && r.overlay && r.overlay.slot ? [r.overlay.slot] : [])].forEach(s => { put(s); if (s && Array.isArray(s.blocks)) s.blocks.forEach(put); }));
       return rows;
@@ -2856,7 +3222,7 @@ function easeCtl(k, v) {
   return h;
 }
 function inspAnimView(row, slot) {
-  if (!S.pagesAll) { S.pagesAll = 'loading'; animTargets().then(() => { S.pagesAll = true; if (S.edit && S.inspView === 'anim') renderInspector(); }); }
+  allPagesSoon();
   const typed = allSlots(row).filter(s => s.type);
   const note = RM ? 'Tu equipo tiene activado “reducir movimiento”, así que aquí no se reproducen las animaciones.'
     : !Motion.g ? 'No se pudo cargar GSAP: las animaciones no se van a ver.' : '';
@@ -2985,25 +3351,42 @@ function onField(k, v) {
       else if (k === 'upper') b.upper = v === 'true' || v === true;
       else if (k === 'weight') { const F = FONTS[b.font]; b.weight = clamp(v, F.min, F.max); }
       else b[k] = v;
-      const node = blockEl(b.id);
-      if (node) { applyBlockStyle(node, b); node.dataset.placeholder = placeholderFor(b); }
+      paintBlock(b);
       if (k === 'font' || k === 'align' || k === 'upper') setPressed(k, k === 'upper' ? String(b.upper) : b[k]);
+      /* A linked text that no longer matches its style is "modified"; matching it again clears that */
+      if (b.ts && k !== 'align') { const was = !!b.tsOver; if (sameType(b, typeStyleById(b.ts))) delete b.tsOver; else b.tsOver = true; if (was !== !!b.tsOver) paintTypeStyle(); }
       break;
     }
-    case 'bg': {
-      if (!slot || slot.type !== 'text') return;
-      slot.bg = v === 'color' ? { kind: 'color', color: (slot.bg && slot.bg.color) || BRAND } : { kind: v };
-      const n = slotEl(slot.id); n && paintTextSlot(n, slot, isOverlaySlot(slot));
-      const lab = $('#insp .sw-color'); if (lab) { lab.classList.toggle('is-set', v === 'color'); lab.setAttribute('aria-pressed', String(v === 'color')); }
-      setPressed('bg', v);
+    case 'typestyle': {
+      const b = activeBlock(); if (!b) return;
+      const st = v ? typeStyleById(v) : null;
+      if (st) linkTypeStyle(b, st); else { delete b.ts; delete b.tsOver; }
+      S.typeStyleUi = null; paintBlock(b); renderInspector();
       break;
     }
-    case 'bgcolor': {
+    case 'tcolor': {
+      const b = activeBlock(); if (!b) return;
+      if (v === 'auto' || !palById(v)) delete b.color; else b.color = v;
+      paintBlock(b); setPressed('tcolor', b.color || 'auto');
+      break;
+    }
+    case 'bg': case 'bgcolor': case 'bgpal': {
       if (!slot || slot.type !== 'text') return;
-      slot.bg = { kind: 'color', color: v };
+      if (k === 'bgpal') { const p = palById(v); if (!p) return; slot.bg = { kind: 'color', color: p.hex }; }
+      else if (k === 'bgcolor') slot.bg = { kind: 'color', color: v };
+      else slot.bg = v === 'color' ? { kind: 'color', color: (slot.bg && slot.bg.color) || BRAND } : { kind: v };
       const n = slotEl(slot.id); n && paintTextSlot(n, slot, isOverlaySlot(slot));
-      const lab = $('#insp .sw-color'); if (lab) { lab.classList.add('is-set'); lab.style.setProperty('--c', v); lab.setAttribute('aria-pressed', 'true'); }
-      setPressed('bg', 'color');
+      paintBgSwatches(slot);
+      break;
+    }
+    case 'pt': case 'pr': case 'pb': case 'pl': {
+      if (!slot || !PAD_TYPES.includes(slot.type)) return;
+      const sides = padLinked(slot) ? PAD_SIDES : [k[1]];
+      const p = { ...(slot.pad || {}) }; sides.forEach(x => { p[x] = v; });
+      const pad = normPad(p); if (pad) slot.pad = pad; else delete slot.pad;
+      applyPad(slot);
+      if (sides.length > 1) PAD_SIDES.forEach(x => { if ('p' + x !== k) setFieldValue('p' + x, v ?? ''); });
+      const r = $('#insp [data-action="pad-reset"]'); if (r) r.disabled = !slot.pad;
       break;
     }
     case 'valign': case 'ink': {
@@ -3025,13 +3408,16 @@ function onField(k, v) {
       const o = $('#dim-out'); if (o) o.textContent = v + '%';
       break;
     }
-    case 'fscolor': case 'hex': {
+    case 'fscolor': case 'hex': case 'fspal': {
       if (!media || media.type !== 'color') return;
-      const c = (k === 'hex' ? '#' + String(v).replace('#', '') : v).toLowerCase(); if (!hexOk(c)) return;
+      const pc = k === 'fspal' ? palById(v) : null; if (k === 'fspal' && !pc) return;
+      const c = (pc ? pc.hex : k === 'hex' ? '#' + String(v).replace('#', '') : v).toLowerCase(); if (!hexOk(c)) return;
       media.color = c;
       const m = $('#stage .row.is-editing .fs-media'); if (m) { m.style.setProperty('--fs-color', c); m.dataset.color = c; }
       const lab = $('#insp .hex .sw-color'); if (lab) lab.style.setProperty('--c', c);
-      if (k === 'fscolor') setFieldValue('hex', c.replace('#', '').toUpperCase()); else { const ci = $('#insp [data-f="fscolor"]'); if (ci) ci.value = c; }
+      if (k !== 'hex') setFieldValue('hex', c.replace('#', '').toUpperCase());
+      if (k !== 'fscolor') { const ci = $('#insp [data-f="fscolor"]'); if (ci) ci.value = c; }
+      { const hit = palByHex(c); setPressed('fspal', hit ? hit.id : ''); }
       updateFoot(); break;
     }
     case 'scrim': {
@@ -3091,10 +3477,17 @@ function parseField(k, raw) {
   if (k === 'weight') { const b = activeBlock(); if (b) { const R = FONTS[b.font]; v = clamp(v, R.min, R.max); } }
   return F.dec ? +v.toFixed(F.dec) : Math.round(v);
 }
+/* Where stepping or scrubbing starts when a field is empty (or 0 for the height, which means automatic): the value
+   the block shows right now for the height and the spacing, the minimum otherwise */
+function fieldBase(k) {
+  if (k === 'h') return Math.round((editRowEl() ? editRowEl().getBoundingClientRect().height : 480) / uScale());
+  if (isPadKey(k)) return padNow(k);
+  return FIELD[k].min;
+}
 function stepField(input, dir, big) {
   const k = input.dataset.f; const F = FIELD[k]; if (!F) return;
   const cur = parseField(k, input.value);
-  const base = cur == null || cur === 0 ? (k === 'h' ? Math.round((editRowEl() ? editRowEl().getBoundingClientRect().height : 480) / uScale()) : F.min) : cur;
+  const base = cur == null || (k === 'h' && cur === 0) ? fieldBase(k) : cur;
   const v = parseField(k, base + dir * F.step * (big ? 10 : 1));
   if (v == null) return;
   input.value = fmt(k, v); onField(k, v);
@@ -3861,6 +4254,7 @@ function openPop(trigger, content, { sticky = false, data = null } = {}) {
   S.pop = { trigger, sticky, data };
   if (trigger.hasAttribute('aria-expanded')) trigger.setAttribute('aria-expanded', 'true');
   m.innerHTML = content;
+  m.setAttribute('role', data && data.kind === 'palette' ? 'dialog' : 'menu');
   m.hidden = false; m.classList.remove('is-closing');
   placePop(trigger);
   const f = $('.mi[aria-checked="true"]', m) || $('.mi', m); f && f.focus({ preventScroll: true });
@@ -3918,9 +4312,11 @@ function toast(msg) {
 }
 
 /* ================= Events ================= */
+/* Buttons that open (and close again) their own popover: an outside click does not close it first */
+const POP_TRIGGERS = ['item-menu', 'dd', 'pal-open'];
 document.addEventListener('click', (ev) => {
   const a = ev.target.closest('[data-action]');
-  if (S.pop && !ev.target.closest('#pop') && !(a && (a.dataset.action === 'item-menu' || a.dataset.action === 'dd'))) closePop();
+  if (S.pop && !ev.target.closest('#pop') && !(a && POP_TRIGGERS.includes(a.dataset.action))) closePop();
   if (!a || a.disabled) return;
   const act = a.dataset.action, id = a.dataset.id, slotId = a.dataset.slot;
   switch (act) {
@@ -3976,7 +4372,33 @@ document.addEventListener('click', (ev) => {
     case 'style-unlink': styleOp('unlink', a.dataset.kind); break;
     case 'style-apply': styleOp('apply', a.dataset.kind); break;
     case 'style-delete': styleOp('delete', a.dataset.kind); break;
-    case 'insp-view': S.inspView = a.dataset.v === 'anim' ? 'anim' : 'design'; ls.set('insp', S.inspView); renderInspector(); break;
+    case 'insp-view': S.inspView = inspViewOf(a.dataset.v).v; ls.set('insp', S.inspView); renderInspector(); break;
+    case 'type-style-new': S.typeStyleUi = { mode: 'new' }; renderInspector(); { const i = $('#type-style-name'); i && i.focus(); } break;
+    case 'type-style-ask': {
+      const b = activeBlock(); S.typeStyleUi = { mode: a.dataset.mode, id: b && b.ts }; renderInspector();
+      if (a.dataset.mode === 'rename') { const i = $('#type-style-name'); if (i) { i.focus(); i.select(); } }
+      break;
+    }
+    case 'type-style-cancel': S.typeStyleUi = null; renderInspector(); break;
+    case 'type-style-name-ok': commitTypeStyleName(($('#type-style-name') || {}).value); break;
+    case 'type-style-update': typeStyleOp('update'); break;
+    case 'type-style-reset': typeStyleOp('reset'); break;
+    case 'type-style-unlink': typeStyleOp('unlink'); break;
+    case 'type-style-delete': typeStyleOp('delete'); break;
+    case 'pal-open': ev.stopPropagation(); openPalPop(a); break;
+    case 'pal-add': palAdd(); break;
+    case 'pal-del': S.palUi = { ...S.palUi, del: id }; renderPalPop(); { const b = $('#pop [data-action="pal-cancel"]'); b && b.focus({ preventScroll: true }); } break;
+    case 'pal-cancel': S.palUi = { ...S.palUi, del: null }; renderPalPop(); break;
+    case 'pal-del-ok': palDelete(id); break;
+    case 'pad-link': {
+      const s = activeSlot(); if (!S.edit || !s || !PAD_TYPES.includes(s.type)) break;
+      const on = !padLinked(s);
+      S.edit.padLink[s.id] = on;
+      const p = s.pad || {}, first = PAD_SIDES.map(k => p[k]).find(isNum);
+      if (on && s.pad && !PAD_SIDES.every(k => p[k] === p.t)) { record(null); s.pad = normPad({ t: first, r: first, b: first, l: first }); applyPad(s); Ink.schedule(); }
+      renderInspector(); break;
+    }
+    case 'pad-reset': { const s = activeSlot(); if (!s || !s.pad) break; record(null); delete s.pad; applyPad(s); renderInspector(); Ink.schedule(); break; }
     case 'anim-block': {
       const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
       e.blocks[s.id] = a.dataset.block;
@@ -4017,7 +4439,6 @@ document.addEventListener('click', (ev) => {
     case 'tab': setActiveSlot(slotId); break;
     case 'ov-add': { const e = S.edit; if (!e) break; record(null); const s = fillType({ id: uid('m') }, 'text', 'overlay'); e.draft.overlay = { pos: 'bl', width: 'half', slot: s }; e.slot = s.id; e.blocks[s.id] = s.blocks[0].id; S.focusKey = 'b:' + s.blocks[0].id; S.animSlot = s.id; bump(); break; }
     case 'ov-remove': { const e = S.edit; if (!e) break; record(null); e.draft.overlay = null; e.slot = e.draft.slots[0].id; bump(); break; }
-    case 'fs-brand': onField('fscolor', BRAND); { const ci = $('#insp [data-f="fscolor"]'); if (ci) ci.value = BRAND; } break;
     case 'add-block': {
       const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
       syncTextFromDom(); record(null);
@@ -4082,7 +4503,7 @@ function scrubDown(ev) {
   const input = $(`#f-${k.dataset.scrub}`); const F = FIELD[k.dataset.scrub]; if (!input || !F) return;
   ev.preventDefault();
   let start = parseField(k.dataset.scrub, input.value);
-  if (start == null || start === 0) start = k.dataset.scrub === 'h' ? Math.round((editRowEl() ? editRowEl().getBoundingClientRect().height : 480) / uScale()) : F.min;
+  if (start == null || (k.dataset.scrub === 'h' && start === 0)) start = fieldBase(k.dataset.scrub);
   scrub = { k: k.dataset.scrub, x0: ev.clientX, start, input, id: ev.pointerId };
   try { k.setPointerCapture(ev.pointerId); } catch {}
   document.body.style.cursor = 'ew-resize';
@@ -4099,6 +4520,7 @@ function scrubUp(ev) { if (!scrub || ev.pointerId !== scrub.id) return; scrub = 
 function onBlockFocus(el) {
   const e = S.edit; const s = e && findSlot(e.draft, el.dataset.slot); if (!s) return;
   const changed = e.blocks[s.id] !== el.dataset.block || e.slot !== s.id;
+  if (changed) S.typeStyleUi = null;
   e.blocks[s.id] = el.dataset.block;
   const box = el.closest('.slot');
   $$('.tb.is-active', box).forEach(x => x.classList.remove('is-active')); el.classList.add('is-active');
@@ -4131,7 +4553,10 @@ document.addEventListener('input', (ev) => {
   }
   if (el.id === 'menu-color') { const c = el.value; S.tree.menu.bg = { kind: 'color', color: c }; $('#menu-bg').style.background = c; $('#menu').style.setProperty('--ov-solid', c); const i = el.parentElement.querySelector('i'); if (i) i.style.background = c; Ink.run(); return; }
   if (el.id === 'menu-dim') { const v = +el.value; const d = $('#menu-bg .fs-dim'); if (d) d.style.opacity = v / 100; S.tree.menu.bg.dim = v; Ink.run(); clearTimeout(el._t); el._t = setTimeout(() => commit('catalog/tree', t => { if (t && t.menu && t.menu.bg && t.menu.bg.kind === 'image') t.menu.bg.dim = v; return t; }), 400); return; }
+  if (el.id === 'pal-new-hex') { S.palUi = { ...S.palUi, hex: el.value }; el.parentElement.style.setProperty('--c', el.value); return; }
+  if (el.dataset && el.dataset.palHex) { el.parentElement.style.setProperty('--c', el.value); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
+  if (isPadKey(k) && !el.value.trim()) { onField(k, null); return; } /* an empty side goes back to automatic */
   if (k === 'bgcolor' || k === 'fscolor') { onField(k, el.value); return; }
   if (k === 'dim') { onField('dim', +el.value); return; }
   if (k === 'hex') { onField('hex', el.value); return; }
@@ -4143,9 +4568,11 @@ document.addEventListener('change', (ev) => {
   if (el.id === 'menu-bg-file') { const f = el.files && el.files[0]; el.value = ''; if (f) uploadMenuBg(f); return; }
   if (el.id === 'menu-color') { const c = el.value; mutateTree(t => { t.menu.bg = { kind: 'color', color: c }; }); return; }
   if (el.dataset.upload) { const files = el.files; handleFiles(el.dataset.upload, files).finally(() => { try { el.value = ''; } catch {} }); return; }
+  if (el.dataset.palHex) { palEdit(el.dataset.palHex, 'hex', el.value); return; }
+  if (el.dataset.palName) { palEdit(el.dataset.palName, 'name', el.value); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
   if (k === 'ratio') { onField('ratio', el.value); return; }
-  if (['menter', 'mscroll', 'tenter', 'tscroll', 'torder', 'measefam', 'teasefam', 'mstyle', 'tstyle'].includes(k)) { onField(k, el.value); return; }
+  if (['menter', 'mscroll', 'tenter', 'tscroll', 'torder', 'measefam', 'teasefam', 'mstyle', 'tstyle', 'typestyle'].includes(k)) { onField(k, el.value); return; }
   if (FIELD[k]) { const v = parseField(k, el.value); el.value = v == null || v === 0 ? (k === 'h' ? '' : el.value) : fmt(k, v); }
 });
 document.addEventListener('paste', (ev) => {
@@ -4163,6 +4590,12 @@ document.addEventListener('keydown', (ev) => {
     else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); S.styleUi = null; renderInspector(); }
     return;
   }
+  if (t && t.id === 'type-style-name') {
+    if (ev.key === 'Enter') { ev.preventDefault(); commitTypeStyleName(t.value); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); S.typeStyleUi = null; renderInspector(); }
+    return;
+  }
+  if (t && (t.id === 'pal-new-name' || (t.dataset && t.dataset.palName)) && ev.key === 'Enter') { ev.preventDefault(); if (t.id === 'pal-new-name') palAdd(); else t.blur(); return; }
   if (t && t.id === 'inline-input') {
     if (ev.key === 'Enter') { ev.preventDefault(); commitInline(t.value); }
     else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); cancelInline(); }
@@ -4273,7 +4706,7 @@ async function importExport(fileList) {
   onTree();
   toast(`Listo: se importaron ${what}.`);
 }
-document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.closest('#pop') && !ev.target.closest('[data-action="item-menu"], [data-action="dd"]')) closePop(); }, true);
+document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.closest('#pop') && !ev.target.closest(POP_TRIGGERS.map(x => `[data-action="${x}"]`).join(', '))) closePop(); }, true);
 
 /* ================= Smooth scroll ================= */
 function initLenis() {
