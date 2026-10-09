@@ -4,12 +4,15 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap">
 <script>
 (function () {
-  var h = document.documentElement, s = null;
+  var h = document.documentElement, s = null, back = '';
   try { s = localStorage.getItem('bc.scheme'); } catch (e) {}
-  var host = h.getAttribute('data-theme');
-  var dark = s ? s === 'dark' : host ? host === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-  h.setAttribute('data-scheme', dark ? 'dark' : 'light');
+  try { back = sessionStorage.getItem('bc.authHash') || ''; } catch (e) {}
+  /* Light unless the visitor picked a theme with the switch: neither the OS nor the host page decide it. */
+  h.setAttribute('data-scheme', s === 'dark' ? 'dark' : 'light');
   h.setAttribute('data-mode', 'viewer');
+  /* Home is the opening screen, unless the link points at a section (or a sign-in is coming back to one).
+     Set before the first paint so the page never flashes the other view. */
+  h.setAttribute('data-view', location.hash.length < 2 && back.length < 2 ? 'home' : 'cat');
 })();
 </script>
 <style>
@@ -51,8 +54,11 @@
   --ease-out:cubic-bezier(.23,1,.32,1);
   --ease-in-out:cubic-bezier(.77,0,.175,1);
   --ease-drawer:cubic-bezier(.32,.72,0,1);
+  /* Placeholder tiles of the Home globe, before any media is uploaded */
+  --ph-0:#F2F3F6; --ph-1:#FFFFFF; --ph-2:#E4EAF8; --ph-3:#C9D5F2; --ph-4:#002FA7; --ph-5:#1D47C4;
 }
 :root[data-scheme="dark"]{
+  --ph-0:#17181C; --ph-1:#202126; --ph-2:#121A33; --ph-3:#1B2A5A; --ph-4:#002FA7; --ph-5:#2450D6;
   --bg:#000000; --ink:#FFFFFF; --muted:rgba(255,255,255,.5); --surface:#111214; --surface-2:#1D1E22;
   --line:rgba(255,255,255,.1); --line-strong:rgba(255,255,255,.24); --focus:#7C95FF; --danger:#FF7A66; --ok:#3DD68C; --warn:#F5C04A;
   --panel:#141518; --field:#1F2025; --field-hover:#292A30; --seg-on:#34353C;
@@ -111,10 +117,9 @@ html.ov-open.no-lenis{overflow:hidden}
 .logo img{display:block;max-height:30px;max-width:150px;width:auto;height:auto;object-fit:contain;transition:filter 240ms ease}
 [data-ink="light"] .logo[data-mono] img{filter:brightness(0) invert(1)}
 [data-ink="dark"] .logo[data-mono] img{filter:brightness(0)}
-.logo-empty{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,currentColor 30%,transparent);font-size:12.5px;font-weight:600;opacity:.7;transition:opacity 160ms ease,transform 140ms var(--ease-out)}
-.logo-empty:hover{opacity:1}
-.logo-empty:active{transform:scale(.97)}
-.logo-empty svg.i{width:15px;height:15px}
+/* Without an uploaded logo the brand name stands in, so the way back Home is always there */
+.logo-word{padding:0 2px;font-family:var(--display);font-weight:900;font-size:30px;line-height:1;letter-spacing:-.01em;text-transform:uppercase;color:inherit}
+.logo-word + .logo-edit{right:-30px;top:-6px} /* beside the word, not over its last letter (always shown on touch) */
 .logo-edit{position:absolute;top:-4px;right:-12px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--chip);color:var(--on-chip);box-shadow:var(--shadow-soft);opacity:0;transform:scale(.9);transition:opacity 160ms ease,transform 200ms var(--ease-out)}
 .logo-edit svg.i{width:13px;height:13px;stroke-width:2}
 .logo-wrap:hover .logo-edit,.logo-edit:focus-visible{opacity:1;transform:none}
@@ -122,6 +127,7 @@ html.ov-open.no-lenis{overflow:hidden}
 
 .rail-nav{display:flex;flex-direction:column;gap:16px;min-height:0;overflow-y:auto;scrollbar-width:none;padding-bottom:24px;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent)}
 .rail-nav::-webkit-scrollbar{display:none}
+html.pm-on .rail-nav{padding-bottom:96px} /* the view switch sits at the bottom of the rail column */
 .rail-title{margin:0;font-family:var(--display);font-weight:900;font-size:clamp(34px,3.2vw,54px);line-height:.92;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance;overflow-wrap:anywhere}
 .subs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .sub-item{display:flex;align-items:center;gap:4px;min-width:0}
@@ -638,6 +644,88 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .qi button:hover{opacity:1}
 .qi p{margin:0;font-size:14px;color:var(--muted)}
 
+/* ---------- Home: the opening view, a globe of the gallery media ---------- */
+/* Home is a view of the page: the top bar stays, the section list, the stage and the page chrome step aside. */
+.home{display:none;position:fixed;inset:0;z-index:1;overflow:hidden;background:var(--bg);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+html[data-view="home"] .home{display:block}
+html[data-view="home"] #rail-nav,html[data-view="home"] #stage,html[data-view="home"] .status,html[data-view="home"] .page-mode,html[data-view="home"] .insp,html[data-view="home"] .types{display:none!important}
+html[data-view="home"]{overscroll-behavior:none}
+/* The globe: tiles on latitude rings, tangent to the sphere, inside one preserve-3d node that the JS loop turns */
+/* The wrap is a square around the sphere outline (--gm): it holds the camera (perspective, centered) and a round mask
+   that fades the tiles into the page toward the outline, so the ball reads round even where the rings leave gaps */
+.globe-wrap{position:absolute;left:calc(var(--gx) - var(--gm) / 2);top:calc(var(--gy) - var(--gm) / 2);width:var(--gm);height:var(--gm);perspective:var(--gp,1600px);
+  -webkit-mask-image:radial-gradient(closest-side,#000 58%,rgba(0,0,0,.62) 76%,rgba(0,0,0,.22) 86%,rgba(0,0,0,.05) 91%,transparent 94%);mask-image:radial-gradient(closest-side,#000 58%,rgba(0,0,0,.62) 76%,rgba(0,0,0,.22) 86%,rgba(0,0,0,.05) 91%,transparent 94%)}
+.globe{position:absolute;left:50%;top:50%;transform-style:preserve-3d;will-change:transform}
+.gt{--w:calc(var(--R) * var(--tw));--h:calc(var(--R) * var(--th));position:absolute;left:calc(var(--w) / -2);top:calc(var(--h) / -2);width:var(--w);height:var(--h);container-type:size;
+  border-radius:calc(var(--R) * .03 + 2px);overflow:hidden;background:var(--ph-0);backface-visibility:hidden;-webkit-backface-visibility:hidden;cursor:pointer;
+  transform:rotateY(var(--lon)) rotateX(var(--lat)) translateZ(var(--R));transition:transform 520ms var(--ease-out),box-shadow 420ms ease}
+.gt img,.gt canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;opacity:0;transition:opacity 600ms ease}
+.gt img.is-loaded,.gt canvas.is-on{opacity:1}
+:is(.gt,.hlb-frame)[data-ph="0"]{background:var(--ph-0)}
+:is(.gt,.hlb-frame)[data-ph="1"]{background:var(--ph-1);box-shadow:inset 0 0 0 1px var(--line)}
+:is(.gt,.hlb-frame)[data-ph="2"]{background:var(--ph-2)}
+:is(.gt,.hlb-frame)[data-ph="3"]{background:var(--ph-3)}
+:is(.gt,.hlb-frame)[data-ph="4"]{background:var(--ph-4);color:#FFFFFF}
+:is(.gt,.hlb-frame)[data-ph="5"]{background:linear-gradient(150deg,var(--ph-5),var(--ph-4) 70%);color:#FFFFFF}
+/* Hover lifts the tile off the sphere (the turn slows down meanwhile). Its shadow is a flat element behind the globe that
+   follows the tile on screen: shadows painted inside the 3D scene get clipped by the browser. */
+.gt.is-hover{transform:rotateY(var(--lon)) rotateX(var(--lat)) translateZ(calc(var(--R) * 1.1)) scale(1.08);transition-duration:360ms}
+.globe-shadow{position:absolute;left:0;top:0;width:0;height:0;border-radius:calc(var(--gr) * .03 + 4px);background:rgba(0,16,64,.06);box-shadow:0 14px 30px rgba(0,16,64,.2),0 4px 10px rgba(0,16,64,.1);opacity:0;pointer-events:none;transition:opacity 240ms ease}
+.globe-shadow.is-on{opacity:1;transition-duration:420ms}
+:root[data-scheme="dark"] .globe-shadow{background:rgba(0,0,0,.3);box-shadow:0 14px 30px rgba(0,0,0,.6),0 4px 10px rgba(0,0,0,.4)}
+.gt.is-out{visibility:hidden}
+.gt-b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font);font-style:normal;font-weight:800;font-size:40cqh;line-height:1;letter-spacing:-.04em;padding-bottom:4cqh;pointer-events:none}
+html.globe-grabbing,html.globe-grabbing *{cursor:grabbing!important}
+.home-vids{position:fixed;left:0;top:0;width:2px;height:2px;overflow:hidden;opacity:.01;pointer-events:none;z-index:-1}
+.home-vids video{width:2px;height:2px}
+/* Admin: the gallery button bottom left, and the gallery panel in the left column (it leaves the globe in view) */
+.home-tools{position:absolute;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:2;display:flex;align-items:center;gap:14px;touch-action:auto}
+.hbtn{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--material);color:var(--ink);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:inset 0 0 0 .5px var(--material-edge),var(--shadow-float);font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;transition:transform 140ms var(--ease-out),background-color 200ms ease,color 200ms ease}
+.hbtn:active{transform:scale(.97)}
+.hbtn[aria-expanded="true"]{background:var(--ink);color:var(--bg)}
+.hbtn svg.i{width:17px;height:17px}
+.hbtn .spinner{width:16px;height:16px;border-width:2px;border-color:color-mix(in srgb,currentColor 25%,transparent);border-top-color:currentColor}
+.hbtn-n{min-width:20px;height:20px;padding:0 6px;margin-right:-4px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,currentColor 12%,transparent);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.home-hint{margin:0;font-size:13px;font-weight:500;color:var(--muted);animation:fadeIn 400ms ease both}
+.hgal{position:fixed;z-index:55;left:20px;top:calc(84px + env(safe-area-inset-top,0px));width:clamp(272px,calc(25vw - 40px),360px);max-height:calc(100dvh - 168px - env(safe-area-inset-top,0px));display:flex;flex-direction:column;border-radius:18px;background:var(--panel);color:var(--ink);box-shadow:var(--shadow-panel);font-size:12.5px;overflow:hidden;animation:inspIn 320ms var(--ease-out) both;transition:box-shadow 200ms ease}
+.hgal[hidden]{display:none}
+.hgal.is-over{box-shadow:inset 0 0 0 2px var(--focus),var(--shadow-panel)}
+.hgal-head{display:flex;align-items:center;gap:10px;padding:12px 10px 10px 12px}
+.hgal-title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.hgal-title strong{font-size:13.5px;font-weight:650;letter-spacing:-.01em}
+.hgal-title small{font-size:11.5px;color:var(--muted)}
+.hgal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 14px 14px;overflow-y:auto;align-content:start;scrollbar-width:thin}
+.hg-th{position:relative;aspect-ratio:1;border-radius:12px;overflow:clip;background:var(--surface-2);cursor:grab;touch-action:none;outline:none;transition:transform 220ms var(--ease-out),box-shadow 200ms ease;animation:pickIn 300ms var(--ease-out) both}
+.hg-th img,.hg-th video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.hg-th:focus-visible{box-shadow:0 0 0 2px var(--focus)}
+.hg-th.is-lifted{z-index:5;cursor:grabbing;transition:box-shadow 200ms ease;box-shadow:var(--shadow-float)}
+.hg-th:hover .thumb-x,.hg-th:focus-within .thumb-x{opacity:1;transform:none}
+.hg-th.is-pending{display:grid;place-items:center;cursor:progress}
+.hg-kind{position:absolute;left:6px;top:6px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--chip);color:var(--on-chip)}
+.hg-kind svg.i{width:11px;height:11px;stroke-width:2.2}
+.hg-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:transparent;box-shadow:inset 0 0 0 1.5px var(--line-strong);color:var(--muted);cursor:pointer;font-size:11.5px;font-weight:600;transition:color 160ms ease,box-shadow 160ms ease,transform 140ms var(--ease-out)}
+.hg-add:hover{color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.hg-add:active{transform:scale(.97)}
+.hg-add:focus-within{box-shadow:inset 0 0 0 2px var(--focus)}
+.hg-add.is-big{grid-column:1 / -1;aspect-ratio:auto;height:120px;font-size:12.5px}
+.hgal-foot{margin:0;padding:10px 16px 14px;border-top:1px solid var(--line);font-size:11.5px;line-height:1.45;color:var(--muted)}
+/* The tile that was clicked grows into a centered view over a light veil */
+.hlb{position:fixed;inset:0;z-index:70;outline:none}
+.hlb[hidden]{display:none}
+.hlb-bg{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 76%,transparent);-webkit-backdrop-filter:blur(22px) saturate(150%);backdrop-filter:blur(22px) saturate(150%)}
+.hlb-frame{position:fixed;overflow:hidden;border-radius:18px;background:var(--ph-0);container-type:size;box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 24px 60px rgba(0,16,64,.16),0 8px 20px rgba(0,0,0,.06)}
+.hlb-frame > img,.hlb-frame > video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.hlb-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6cqh;padding:8cqh;text-align:center}
+.hlb-ph .gt-b{position:static;font-size:30cqh;padding:0}
+.hlb-ph p{margin:0;max-width:30ch;font-size:clamp(13px,4.6cqh,17px);font-weight:500;line-height:1.4;opacity:.62}
+.hlb-x{position:absolute;top:calc(20px + env(safe-area-inset-top,0px));right:20px;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--bg);box-shadow:var(--shadow-float);transition:transform 140ms var(--ease-out)}
+.hlb-x:active{transform:scale(.94)}
+.hlb-x svg.i{width:20px;height:20px;stroke-width:1.9}
+/* Editors switch viewer / admin from any section page: bottom left, colored by what is under it */
+.page-mode{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;--ov-solid:var(--brand);animation:fadeIn 240ms var(--ease-out) both}
+.page-mode[hidden]{display:none}
+.page-mode .seg-solid button[aria-pressed="true"]{color:#FFFFFF}
+
 /* ---------- Popover, status, toasts ---------- */
 .pop{position:fixed;z-index:120;min-width:200px;max-width:280px;max-height:60vh;overflow-y:auto;padding:6px;border-radius:14px;background:var(--material);color:var(--ink);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 0 0 .5px var(--material-edge),var(--shadow-float);transform-origin:var(--origin,top right);animation:popIn 170ms var(--ease-out) both;font-size:13.5px;text-shadow:none}
 .pop.is-closing{animation:popOut 120ms ease-out both}
@@ -691,7 +779,7 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
   @keyframes inspIn{from{opacity:0}to{opacity:1}}
   @keyframes popIn{from{opacity:0}to{opacity:1}}
   @keyframes toastIn{from{opacity:0}to{opacity:1}}
-  .pill-ind,.thumb{transition-duration:0ms!important}
+  .pill-ind,.thumb,.hg-th,.gt,.gt img,.gt canvas{transition-duration:0ms!important}
   .skel,.status i{animation:none!important}
 }
 
@@ -719,6 +807,11 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
   .ov-bottom{position:static;margin-top:16px;flex-wrap:wrap}
   .ov-list > :last-child{max-width:100%}
   .status{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  .page-mode,.home-tools{left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  html.pm-on .rail-nav{padding-bottom:12px} /* the nav flows above the page here: no room to keep for the switch */
+  .hgal{left:8px;right:8px;top:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px));width:auto;max-height:56dvh;animation-name:sheetIn}
+  .hgal-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .hlb-x{top:calc(12px + env(safe-area-inset-top,0px));right:16px;width:44px;height:44px}
 }
 @keyframes sheetIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 </style>
@@ -735,6 +828,14 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 </header>
 
 <main class="stage" id="stage"></main>
+
+<main class="home" id="home" aria-label="Inicio" data-home-drop>
+  <h1 class="sr-only">Belo · Catálogo de marca</h1>
+  <div class="globe-shadow" id="globe-shadow" aria-hidden="true"></div>
+  <div class="globe-wrap" id="globe-wrap" aria-hidden="true"><div class="globe" id="globe"></div></div>
+  <div class="home-tools admin-only" id="home-tools"></div>
+  <div class="home-vids" id="home-vids" aria-hidden="true"></div>
+</main>
 
 <div class="ov ov-menu" id="menu" role="dialog" aria-modal="true" aria-label="Menú" aria-hidden="true">
   <div class="ov-bg" id="menu-bg"></div>
@@ -766,6 +867,9 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 <aside class="insp" id="insp" aria-label="Propiedades del bloque" hidden></aside>
 <div class="types" id="types" role="toolbar" aria-label="Tipo de módulo"></div>
 <div class="status admin-only" id="status" role="status"></div>
+<div class="page-mode" id="page-mode" hidden></div>
+<aside class="hgal admin-only" id="home-gal" aria-label="Galería de la Home" data-home-drop hidden></aside>
+<div class="hlb" id="home-lb" role="dialog" aria-modal="true" aria-label="Vista ampliada" tabindex="-1" hidden></div>
 <div class="pop" id="pop" role="menu" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="logo-input" class="sr-only" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
@@ -1058,6 +1162,17 @@ function normTree(t) {
   t.logo = t.logo || null;
   t.animStyles = (Array.isArray(t.animStyles) ? t.animStyles : []).filter(x => x && x.id && (x.kind === 'mod' || x.kind === 'text'))
     .map(x => ({ id: String(x.id), name: String(x.name || 'Estilo').slice(0, 60), kind: x.kind, of: String(x.of || ''), anim: ownVals(normAnim(x.anim || {}, x.kind)) }));
+  /* Home gallery: the uploaded images and videos of the globe, in the order the editors set (each asset once) */
+  const home = t.home && typeof t.home === 'object' && !Array.isArray(t.home) ? t.home : {};
+  const seenMedia = new Set();
+  t.home = { ...home, media: (Array.isArray(home.media) ? home.media : []).filter(m => {
+    if (!m || typeof m.id !== 'string' || !m.id || seenMedia.has(m.id)) return false;
+    seenMedia.add(m.id); return true;
+  }).map(m => {
+    const o = { id: m.id, kind: m.kind === 'video' ? 'video' : 'image' };
+    if (isNum(m.w) && m.w > 0 && isNum(m.h) && m.h > 0) { o.w = m.w; o.h = m.h; }
+    return o;
+  }) };
   return t;
 }
 
@@ -1098,7 +1213,8 @@ const S = {
   edit: null, adder: null, inline: null, focusInline: false,
   pop: null, confirmDelete: null, uploading: new Map(), justAdded: new Set(),
   overlay: null, inspView: ls.get('insp') === 'anim' ? 'anim' : 'design', easeEd: null, splitView: false, pvSpeed: 1, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
-  started: false, user: null, peers: [], importing: false, landing: false
+  started: false, user: null, peers: [], importing: false,
+  view: ROOT.dataset.view === 'home' ? 'home' : 'cat' /* 'home' (the opening globe) or 'cat' (a category page); set by the head script */
 };
 const B = { db: null, assets: null, user: null };
 let lenis = null;
@@ -1374,6 +1490,7 @@ function mutateTree(fn) {
   syncSubscriptions();
   renderLogos(); renderRail(); renderStage();
   if (S.overlay === 'menu') renderMenu();
+  renderHome();
 }
 
 /* ================= Theme ================= */
@@ -1385,15 +1502,7 @@ function setScheme(next, persist = true) {
   if (!RM && document.startViewTransition && persist) { try { document.startViewTransition(apply); return; } catch {} }
   apply();
 }
-new MutationObserver(() => {
-  if (ls.get('scheme')) return;
-  const h = ROOT.getAttribute('data-theme');
-  if (h === 'dark' || h === 'light') setScheme(h, false);
-}).observe(ROOT, { attributes: true, attributeFilter: ['data-theme'] });
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-  if (ls.get('scheme') || ROOT.getAttribute('data-theme')) return;
-  setScheme(e.matches ? 'dark' : 'light', false);
-});
+/* The page starts light (head script) and only the theme switch changes it: the OS and host themes are not followed. */
 
 /* ================= Boot ================= */
 async function boot() {
@@ -1405,9 +1514,7 @@ async function boot() {
   renderAll();
   initLenis();
   Motion.init();
-  /* The menu is the opening screen, unless the link points at a section (or a sign-in is coming back to one). */
-  let back = ''; try { back = sessionStorage.getItem('bc.authHash') || ''; } catch {}
-  if (location.hash.length < 2 && back.length < 2) openOverlay('menu', { instant: true, landing: true });
+  Globe.size();
   const c = window.claude;
   if (!c || typeof c.use !== 'function') return SUPA && SUPA.url && SUPA.key ? startSupabase(SUPA) : startLocal();
   const safe = (p) => Promise.resolve(p).catch(() => null);
@@ -1487,7 +1594,7 @@ async function setUser(session, why) {
   if (u && u.id !== prev && why === 'signin') toast(can ? `Hola, ${firstName(S.user.name)}. Ya puedes editar el catálogo.` : `La cuenta ${u.email} no tiene permiso de edición.`);
   if (!u && prev) toast('Cerraste sesión.');
   syncPresence();
-  renderStatus();
+  renderStatus(); renderPageMode();
   if (S.overlay === 'menu') renderMenuBottom();
 }
 async function signIn() {
@@ -1519,7 +1626,6 @@ const PEER_COLORS = ['#002FA7', '#E5484D', '#12A594', '#F76B15', '#8E4EC6', '#D6
 const peerColor = (id) => { let h = 0; for (const c of String(id || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PEER_COLORS[h % PEER_COLORS.length]; };
 function renderPeers() { updateRailState(); refreshRowTools(); }
 function onTree() {
-  const intro = S.overlay === 'menu' && S.landing && !$('#menu-list .ov-item');
   renderLogos();
   { const sig = JSON.stringify(animStyles()); if (sig !== Motion.stSig) { const first = Motion.stSig == null; Motion.stSig = sig; if (!first) Motion.resetAll(); } }
   if (!currentCat()) {
@@ -1532,7 +1638,7 @@ function onTree() {
     syncSubscriptions(); renderRail(); renderStage();
   }
   if (S.overlay === 'menu') renderMenu();
-  if (intro && !RM) introMenu($('#menu'), 40, '.ov-item, .ov-add'); /* the categories arrive after the opening screen is up */
+  renderHome();
 }
 
 /* ================= Mode ================= */
@@ -1555,15 +1661,17 @@ function applyMode(m, animate = true) {
 }
 
 /* ================= Rendering: chrome ================= */
-function renderAll() { renderLogos(); renderRail(); renderStage(); renderInspector(); renderStatus(); }
+function renderAll() { renderLogos(); renderRail(); renderStage(); renderInspector(); renderStatus(); renderHome(); renderPageMode(); }
 
 function logoHTML(editable) {
-  const logo = S.tree && S.tree.logo;
+  if (!S.tree) return ''; /* not known yet: no wordmark flashing before an uploaded logo */
+  const logo = S.tree.logo;
+  const edit = (label) => editable ? `<button type="button" class="logo-edit admin-only" data-action="logo" aria-label="${label}" title="${label}">${icon('edit')}</button>` : '';
   if (logo && logo.id) {
-    return `<button type="button" class="logo" data-action="home" aria-label="Inicio"${logo.mono !== false ? ' data-mono' : ''}><img src="${esc(assetUrl(logo.id))}" alt="Logo de la marca"${logo.w ? ` width="${logo.w}" height="${logo.h}"` : ''}></button>`
-      + (editable ? `<button type="button" class="logo-edit admin-only" data-action="logo" aria-label="Cambiar logo">${icon('edit')}</button>` : '');
+    return `<button type="button" class="logo" data-action="home" aria-label="Inicio"${logo.mono !== false ? ' data-mono' : ''}><img src="${esc(assetUrl(logo.id))}" alt="Logo de la marca"${logo.w ? ` width="${logo.w}" height="${logo.h}"` : ''}></button>` + edit('Cambiar logo');
   }
-  return editable ? `<button type="button" class="logo-empty admin-only" data-action="logo">${icon('upload')}<span>Subir logo</span></button>` : '';
+  /* No logo uploaded: the brand name in the display font, so everyone always has the way back Home */
+  return `<button type="button" class="logo logo-word" data-action="home" aria-label="Inicio">belo</button>` + edit('Subir logo');
 }
 function renderLogos() {
   const rl = $('#rail-logo'); const html = logoHTML(true);
@@ -1714,7 +1822,8 @@ function openCategory(catId, { to = null, row = null, instant = false } = {}) {
   if (to && cat) whenLoaded(cat).then(() => requestAnimationFrame(() => scrollToSub(to, { row, instant: instant || changed })));
   setHash(S.active);
 }
-function setHash(id) { try { history.replaceState(null, '', id ? '#' + id : location.pathname + location.search); } catch {} }
+/* Home has no hash: a category opened behind it (at load, or a deleted current one) must not write one. */
+function setHash(id) { if (S.view === 'home') return; try { history.replaceState(null, '', id ? '#' + id : location.pathname + location.search); } catch {} }
 
 const displayRows = (subId) => {
   const rows = S.pages.get(subId) || [];
@@ -1731,6 +1840,7 @@ function renderStage() {
   const stage = $('#stage');
   syncPresence();
   ROOT.classList.toggle('is-editing', !!(S.edit && S.mode === 'admin'));
+  renderPageMode();
   if (!S.tree) { stage.dataset.cat = ''; stage.innerHTML = `<div class="skel skel-block col"></div>`; return; }
   const cat = currentCat();
   if (!cat || !cat.subs.length) {
@@ -3357,7 +3467,8 @@ const Ink = {
         const row = el.closest('.row'); const m = row && $('.fs-media', row);
         set(el, m ? mediaInk(m, r) : null); return;
       }
-      if (!rows) rows = $$('#stage .row').map(n => ({ n, r: n.getBoundingClientRect() })).filter(o => o.r.bottom > 0 && o.r.top < innerHeight);
+      /* On Home the stage is hidden: the top bar sits on the page background (theme ink) */
+      if (!rows) rows = S.view === 'home' ? [] : $$('#stage .row').map(n => ({ n, r: n.getBoundingClientRect() })).filter(o => o.r.bottom > 0 && o.r.top < innerHeight);
       const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       const o = rows.find(o => hit(o.r, cx, cy));
       const sf = o ? surfaceAt(o.n, cx, cy) : null;
@@ -3484,7 +3595,7 @@ const Motion = {
   sync() {
     if (!this.ready) return;
     this.live.forEach((ctx, el) => { if (!el.isConnected || el.classList.contains('is-editing')) { ctx.revert(); this.live.delete(el); } });
-    if (!this.on()) return;
+    if (!this.on() || S.view === 'home') return; /* built when Home gives way to the page (leaveHome) */
     $$('#stage .row').forEach(el => {
       if (this.live.has(el) || el.classList.contains('is-editing')) return;
       const row = (S.pages.get(el.dataset.sub) || []).find(r => r.id === el.dataset.id);
@@ -3558,7 +3669,7 @@ const Motion = {
 let spyQ = 0;
 function spySchedule() { if (spyQ) return; spyQ = requestAnimationFrame(() => { spyQ = 0; updateSpy(); }); }
 function updateSpy() {
-  if (performance.now() < S.spyLock || S.overlay) return;
+  if (performance.now() < S.spyLock || S.overlay || S.view === 'home') return;
   const cat = currentCat(); if (!cat || !cat.subs.length) return;
   const line = innerHeight * .34;
   const vis = cat.subs.map(s => document.getElementById('s-' + s.id)).filter(el => el && el.getClientRects().length);
@@ -3601,10 +3712,574 @@ function onScroll() {
   if (S.pop && !S.pop.sticky) closePop();
 }
 addEventListener('scroll', onScroll, { passive: true });
-addEventListener('resize', () => { closePop(true); Ink.schedule(); measureNav(); markStartsFull(); });
+addEventListener('resize', () => { closePop(true); Ink.schedule(); measureNav(); markStartsFull(); Globe.size(); });
 function measureNav() { if (!MOBILE.matches) return; ROOT.style.setProperty('--nav-h', $('#rail').offsetHeight + 'px'); }
 if ('ResizeObserver' in window) new ResizeObserver(() => { measureNav(); Ink.schedule(); }).observe($('#rail-nav'));
-MOBILE.addEventListener('change', () => { measureNav(); renderInspector(); Ink.schedule(); });
+MOBILE.addEventListener('change', () => { measureNav(); renderInspector(); Ink.schedule(); Globe.size(); });
+
+/* ================= Home ================= */
+/* The opening view: a globe made of the gallery media (tree.home.media) that turns slowly in CSS 3D. Home is a view
+   state (S.view, html[data-view]), not an overlay: the top bar stays, the section list and the stage are hidden and
+   the URL has no hash. The browser back button moves between Home and the category pages. */
+const homeMedia = () => (S.tree && S.tree.home && S.tree.home.media) || [];
+const HOME_ACCEPT = IMG_TYPES.concat(VID_TYPES).join(',');
+const homeUploads = () => [...S.uploading].reduce((n, [k, v]) => n + (k.startsWith('home:') ? v.count || 1 : 0), 0);
+const rectCss = (r) => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+
+function showHome({ push = true } = {}) {
+  if (S.edit) return; /* a block is open: the top bar is disabled while editing anyway */
+  closePop(true);
+  if (S.overlay) closeOverlay(true);
+  if (S.view === 'home') { Globe.nudge(); return; }
+  S.view = 'home'; ROOT.dataset.view = 'home';
+  if (push) { try { history.pushState(null, '', location.pathname + location.search); } catch {} }
+  scrollTop();
+  const built = Globe.built;
+  renderHome(); renderPageMode();
+  if (built) Globe.enter();
+  Ink.run();
+}
+function leaveHome({ push = true } = {}) {
+  if (S.view !== 'home') return;
+  Lightbox.close(true); Gallery.close();
+  S.view = 'cat'; ROOT.dataset.view = 'cat';
+  if (lenis) lenis.resize(); /* the page just got its height back: scrolls to a section right after must not be clamped */
+  Globe.stop();
+  if (push) { try { history.pushState(null, '', location.pathname + location.search + (S.active ? '#' + S.active : '')); } catch {} }
+  measureNav(); markStartsFull();
+  Motion.resetAll(); /* the enter animations wait until the page shows */
+  renderPageMode();
+  Ink.schedule(); spySchedule();
+}
+addEventListener('popstate', () => {
+  if (S.edit) return; /* the open block keeps the page; the next spy update rewrites the hash */
+  Lightbox.close(true); closePop(true);
+  if (S.overlay) closeOverlay(true);
+  const h = decodeURIComponent((location.hash || '').slice(1));
+  if (!h) { showHome({ push: false }); return; }
+  const c = catOf(h);
+  leaveHome({ push: false });
+  if (!c) return;
+  if (c.id === S.cat) scrollToSub(h, { instant: true }); else openCategory(c.id, { to: h });
+});
+
+function renderHome() {
+  const tools = $('#home-tools'); if (!tools) return;
+  if (Gallery.isOpen && (S.mode !== 'admin' || S.view !== 'home')) { Gallery.close(); return; } /* close() renders again */
+  const media = homeMedia(), up = homeUploads(), open = Gallery.isOpen;
+  const html = !S.tree ? '' : `<button type="button" class="hbtn" data-action="home-gal" aria-expanded="${open}" aria-controls="home-gal">${up ? '<span class="spinner" aria-hidden="true"></span>' : icon('image')}<span>${up ? `Subiendo ${up}…` : 'Galería'}</span>${media.length && !up ? `<span class="hbtn-n">${media.length}</span>` : ''}</button>`
+    + (!media.length && !open && !up ? '<p class="home-hint">Añade imágenes o videos a la galería</p>' : '');
+  if (tools.dataset.html !== html) { tools.innerHTML = html; tools.dataset.html = html; }
+  if (S.tree && S.view === 'home') Globe.setMedia(media); /* built on the first visit only: links to a section skip it */
+  Gallery.render();
+}
+
+/* ---------- Globe ---------- */
+/* Placeholder looks (data-ph 0-5, colors in the --ph-* tokens) and how often each one shows: mostly quiet tints, some
+   brand blue. The blue ones carry a small "b". */
+const PH_W = [3, 2.4, 2.4, 1.2, .55, .45];
+const PH_B = [false, false, false, false, true, false];
+const GLOBE_CAM = 4.4;   /* camera distance in radii: lower = deeper perspective, more foreshortening at the outline */
+const GLOBE_FADE = .3;   /* how far in from the outline (in facing units) a tile takes to reach full opacity */
+const Globe = {
+  geo: null, tiles: [], nb: [], sig: null, built: false, g: null,
+  angle: -18, tilt: -12, tiltOff: 0, vel: 0, boost: 0, base: -7, /* deg/s; negative turns the front to the left */
+  R: 300, P: 1320, edge: 1 / GLOBE_CAM, raf: 0, last: 0, running: false, held: false, covered: false, coverT: 0,
+  mx: 0, my: 0, inside: false, moved: false, hitAt: 0, hover: null, pd: null, drag: null, dragEnd: 0, lastPaint: 0, vids: new Map(),
+  /* 10 latitude rings 16° apart (±8° to ±72°). Each ring holds as many tiles as its circumference allows: 20 at the
+     equator, 6 near the poles, 140 in all. Every other ring is offset by half a tile, like bricks. Sizes are in units
+     of the radius, so the sphere scales with one CSS variable (--R). */
+  geometry() {
+    if (this.geo) return this.geo;
+    const RINGS = 11, STEP = 15, EQ = 20, GAP = .05, rad = Math.PI / 180, out = [];
+    for (let i = 0; i < RINGS; i++) {
+      const lat = (i - (RINGS - 1) / 2) * STEP, c = Math.cos(lat * rad);
+      const n = Math.max(5, Math.round(EQ * c));
+      const h = STEP * rad - GAP, w = Math.min(2 * Math.PI * c / n - GAP, h * 1.3);
+      const off = (i % 2) * 180 / n;
+      for (let j = 0; j < n; j++) {
+        const lon = off + j * 360 / n;
+        /* sines and cosines kept per tile: facing() runs for every tile on every frame */
+        out.push({ lat, lon, w, h, sl: Math.sin(lat * rad), cl: Math.cos(lat * rad), sn: Math.sin(lon * rad), cn: Math.cos(lon * rad) });
+      }
+    }
+    return (this.geo = out);
+  },
+  /* How much a tile faces the viewer (1 = straight at it, < 0 = far side) for a turn A and a tilt T (degrees). With the
+     camera at GLOBE_CAM radii, the ones below 1 / GLOBE_CAM are past the outline (their back faces the camera). */
+  facing(t, A = this.angle, T = this.tilt + this.tiltOff) {
+    const r = Math.PI / 180, sA = Math.sin(A * r), cA = Math.cos(A * r);
+    return -t.sl * Math.sin(T * r) + t.cl * (t.cn * cA - t.sn * sA) * Math.cos(T * r);
+  },
+  build() {
+    this.g = $('#globe');
+    const geo = this.geometry(), r = Math.PI / 180;
+    this.g.innerHTML = geo.map((t, i) => `<div class="gt" data-action="home-tile" data-i="${i}" style="--lon:${t.lon.toFixed(3)}deg;--lat:${t.lat}deg;--tw:${t.w.toFixed(4)};--th:${t.h.toFixed(4)}"></div>`).join('');
+    this.tiles = $$('.gt', this.g).map((el, i) => ({ ...geo[i], el, key: '', item: null, o: -1 }));
+    /* Neighbours: tiles closer than ~1.5 rings on the sphere, as [index, weight]. The two beside a tile on its own ring
+       weigh most: the same item next to itself there is what the eye catches first. */
+    const u = geo.map(t => [t.cl * t.sn, t.sl, t.cl * t.cn]);
+    const lim = Math.cos(25 * r);
+    this.nb = u.map((a, i) => u.flatMap((b, j) => j !== i && a[0] * b[0] + a[1] * b[1] + a[2] * b[2] > lim ? [[j, geo[j].lat === geo[i].lat ? 10 : 1]] : []));
+    this.built = true;
+  },
+  /* Spreads n items over the tiles: kept off their neighbours as far as the count allows (never beside themselves on
+     a ring once there are 3 items), balanced (w weighs how often each one shows), and placed from the tile that faces
+     the viewer outwards, so the first item of the gallery is the one in front. Placeholders get a stable
+     pseudo-random nudge so their pattern doesn't look striped. */
+  assign(n, w, jitter) {
+    const T = this.tiles, out = new Array(T.length).fill(-1), used = new Array(n).fill(0);
+    const order = T.map((t, i) => [i, this.facing(t)]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+    for (const i of order) {
+      const near = new Array(n).fill(0);
+      for (const [j, wt] of this.nb[i]) if (out[j] >= 0) near[out[j]] += wt;
+      let best = 0, bs = Infinity;
+      for (let k = 0; k < n; k++) {
+        const sc = near[k] * 100 + (used[k] + 1) / (w ? w[k] : 1) + (jitter ? ((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1 * 1.2 : 0);
+        if (sc < bs - 1e-9) { bs = sc; best = k; }
+      }
+      out[i] = best; used[best]++;
+    }
+    return out;
+  },
+  setMedia(media) {
+    if (!this.built) this.build();
+    const sig = media.map(m => m.kind + ':' + m.id).join('|');
+    if (sig === this.sig) { this.kick(); return; }
+    const first = this.sig == null; this.sig = sig;
+    const idx = media.length ? this.assign(media.length) : this.assign(PH_W.length, PH_W, true);
+    this.tiles.forEach((t, i) => this.fill(t, media.length ? media[idx[i]] : { ph: idx[i] }));
+    this.syncVideos(media);
+    this.size(); this.apply();
+    if (first) this.intro(); else this.kick();
+  },
+  fill(t, item) {
+    t.item = item;
+    const key = item.ph != null ? 'ph' + item.ph : item.kind + ':' + item.id;
+    if (t.key === key) return;
+    t.key = key; t.cv = null; t.cx = null; t.vt = -1;
+    const el = t.el; el.textContent = '';
+    if (item.ph != null) { el.dataset.ph = item.ph; if (PH_B[item.ph]) el.innerHTML = '<i class="gt-b" aria-hidden="true">b</i>'; return; }
+    delete el.dataset.ph;
+    if (item.kind === 'video') { const c = document.createElement('canvas'); c.width = c.height = 2; el.append(c); t.cv = c; return; }
+    const img = new Image(); img.alt = ''; img.decoding = 'async'; img.draggable = false;
+    img.addEventListener('load', () => img.classList.add('is-loaded'), { once: true });
+    img.src = assetUrl(item.id); el.append(img);
+  },
+  /* One hidden, muted, looping <video> per video of the gallery; its frames are painted into the tiles' canvases */
+  syncVideos(media) {
+    const want = new Set(media.filter(m => m.kind === 'video').map(m => m.id));
+    this.vids.forEach((v, id) => { if (!want.has(id)) { v.pause(); v.removeAttribute('src'); v.load(); v.remove(); this.vids.delete(id); } });
+    want.forEach(id => {
+      if (this.vids.has(id)) return;
+      const v = document.createElement('video');
+      v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
+      v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+      v.addEventListener('loadeddata', () => this.paint(performance.now(), true));
+      v.src = assetUrl(id);
+      $('#home-vids').append(v); this.vids.set(id, v);
+      if (this.running && !RM) v.play().catch(() => {});
+    });
+  },
+  playVideos(on) { this.vids.forEach(v => { if (on && !RM) v.play().catch(() => {}); else v.pause(); }); },
+  /* Video tiles are redrawn at ~24 fps, and only the ones that face the viewer */
+  paint(now, force = false) {
+    if (!this.vids.size || (!force && now - this.lastPaint < 40)) return;
+    this.lastPaint = now;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    for (const t of this.tiles) {
+      if (!t.cv || this.facing(t) < this.edge) continue;
+      const v = this.vids.get(t.item.id);
+      if (!v || v.readyState < 2 || !v.videoWidth || (t.vt === v.currentTime && t.cv.width > 2)) continue;
+      const W = Math.round(t.w * this.R * dpr * 1.25), H = Math.round(t.h * this.R * dpr * 1.25);
+      if (t.cv.width !== W || t.cv.height !== H) { t.cv.width = W; t.cv.height = H; t.cx = null; }
+      const cx = t.cx || (t.cx = t.cv.getContext('2d'));
+      const s = Math.max(W / v.videoWidth, H / v.videoHeight), sw = W / s, sh = H / s;
+      try { cx.drawImage(v, (v.videoWidth - sw) / 2, (v.videoHeight - sh) / 2, sw, sh, 0, 0, W, H); } catch { continue; }
+      t.vt = v.currentTime;
+      if (!t.cv.classList.contains('is-on')) t.cv.classList.add('is-on');
+    }
+  },
+  /* Depth: tiles fade into the page toward the outline of the sphere, the way the far side of a lit ball falls off.
+     Opacity moves in 1/24 steps and is written only when a tile changes step, so a slow turn touches a few tiles per
+     frame instead of all of them. */
+  shade() {
+    if (!this.built) return;
+    const r = Math.PI / 180, A = this.angle * r, T = (this.tilt + this.tiltOff) * r;
+    const sA = Math.sin(A), cA = Math.cos(A), sT = Math.sin(T), cT = Math.cos(T), e = this.edge;
+    for (const t of this.tiles) {
+      const f = -t.sl * sT + t.cl * (t.cn * cA - t.sn * sA) * cT;
+      let o = 0;
+      if (f > e) { const k = Math.min(1, (f - e) / GLOBE_FADE); o = Math.round(k * (2 - k) * 20) / 20; }
+      if (o !== t.o) { t.o = o; t.el.style.opacity = o; }
+    }
+  },
+  /* Diameter about min(80vh, 80vw), centered in the space under the top bar; the outer rim fades out (mask), so the
+     ball reads a little smaller than that. On phones it spans the width. */
+  size() {
+    const home = $('#home'); if (!home) return;
+    const W = innerWidth, H = innerHeight, mob = MOBILE.matches;
+    const top = ($('.rail-top').getBoundingClientRect().bottom || 64) + (mob ? 8 : 20);
+    const avail = Math.max(200, H - top - (mob ? 16 : 20));
+    const D = Math.max(180, mob ? Math.min(W * 1.02, avail * .9) : Math.min(H * .82, W * .8, avail * .98));
+    this.R = D / 2; this.P = this.R * GLOBE_CAM; this.edge = this.R / this.P;
+    const st = home.style;
+    st.setProperty('--gx', W / 2 + 'px'); st.setProperty('--gy', top + avail / 2 + 'px');
+    const sil = this.R * this.P / Math.sqrt(this.P * this.P - this.R * this.R); /* the outline of the sphere, as projected */
+    st.setProperty('--gr', this.R + 'px'); st.setProperty('--gp', this.P + 'px'); st.setProperty('--gm', Math.ceil(sil * 2.16) + 'px');
+    $('#globe').style.setProperty('--R', this.R + 'px');
+    if (this.built) { this.shade(); this.paint(performance.now(), true); }
+  },
+  apply() {
+    if (this.g) this.g.style.transform = `rotateX(${(this.tilt + this.tiltOff).toFixed(3)}deg) rotateY(${this.angle.toFixed(3)}deg)`;
+    this.shade();
+  },
+  start() {
+    if (this.running || !this.built || S.view !== 'home' || document.hidden || this.held || this.covered) return;
+    this.running = true; this.last = 0;
+    this.playVideos(true);
+    this.raf = requestAnimationFrame(this.tick);
+  },
+  stop() { this.running = false; cancelAnimationFrame(this.raf); this.raf = 0; this.playVideos(false); this.setHover(null); },
+  /* Reduced motion: the loop only runs while the globe is being dragged */
+  kick() { if (!RM || this.drag) this.start(); else this.apply(); },
+  hold(on) { this.held = on; if (on) this.stop(); else { this.vel = 0; this.kick(); } }, /* frozen under the lightbox */
+  /* An overlay (menu, search) covers the whole page: the globe stops once the overlay has finished coming in */
+  cover(on) {
+    clearTimeout(this.coverT);
+    if (!on) { if (this.covered) { this.covered = false; this.kick(); } return; }
+    this.coverT = setTimeout(() => { this.covered = true; this.stop(); }, RM ? 0 : 700);
+  },
+  frame(now) {
+    this.raf = 0;
+    if (!this.running) return;
+    const dt = this.last ? Math.min(.05, (now - this.last) / 1000) : 0; this.last = now;
+    if (!this.drag && !RM) {
+      /* constant movement: a hovered tile slows the turn a lot but never stops it; flicks and the wheel add speed
+         that eases back to the slow spin */
+      const target = this.hover ? this.base * .12 : this.base;
+      this.vel += (target - this.vel) * (1 - Math.exp(-dt / (this.hover ? .28 : 1.1)));
+      this.boost *= Math.exp(-dt / .7);
+      this.angle = (this.angle + (this.vel + Math.sign(this.base) * this.boost) * dt) % 360;
+      this.tiltOff *= Math.exp(-dt / .5);
+    }
+    this.apply();
+    /* hover follows the tile under a still pointer as the globe turns: hit-tested right after a pointer move, and
+       about 8 times a second otherwise (hit testing 140 tiles in 3D every frame is not free) */
+    if (this.moved || now - this.hitAt > 120) this.hitTest(now);
+    this.shadow(); this.paint(now);
+    if (RM && !this.drag) { this.running = false; return; }
+    this.raf = requestAnimationFrame(this.tick);
+  },
+  hitTest(now = performance.now()) {
+    this.moved = false; this.hitAt = now;
+    if (!this.inside || this.drag || Lightbox.on || S.view !== 'home' || S.overlay) { this.setHover(null); return; }
+    const el = document.elementFromPoint(this.mx, this.my);
+    this.setHover(el && el.closest ? el.closest('#globe .gt') : null);
+  },
+  setHover(el) {
+    if (this.hover === el) return;
+    if (this.hover) this.hover.classList.remove('is-hover');
+    this.hover = el || null;
+    if (el) el.classList.add('is-hover');
+    $('#globe-shadow').classList.toggle('is-on', !!el);
+    this.shadow();
+  },
+  /* the hovered tile's shadow follows it on screen, a little lower (the tile is lifted toward the viewer) */
+  shadow() {
+    const el = this.hover; if (!el) return;
+    const r = el.getBoundingClientRect(), st = $('#globe-shadow').style, k = .9;
+    st.width = r.width * k + 'px'; st.height = r.height * k + 'px';
+    st.transform = `translate(${(r.left + r.width * (1 - k) / 2).toFixed(1)}px,${(r.top + r.height * ((1 - k) / 2 + .06)).toFixed(1)}px)`;
+  },
+  track(e) {
+    if (e.pointerType !== 'mouse') return;
+    this.mx = e.clientX; this.my = e.clientY; this.inside = S.view === 'home'; this.moved = true;
+    if (this.inside && !this.running) this.hitTest();
+  },
+  /* Drag to spin (with inertia) and to tilt a little; a drag never counts as a click on a tile */
+  down(e) {
+    if (S.view !== 'home' || Lightbox.on || e.button !== 0 || !e.isPrimary) return;
+    const t = e.target;
+    if (!t.closest || !t.closest('#home') || t.closest('.home-tools')) return;
+    this.pd = { id: e.pointerId, x0: e.clientX, y0: e.clientY, a0: this.angle, t0: this.tiltOff, active: false, hist: [], mouse: e.pointerType === 'mouse' };
+  },
+  move(e) {
+    const d = this.pd; if (!d || e.pointerId !== d.id) return;
+    const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+    if (!d.active) {
+      if (Math.hypot(dx, dy) < (d.mouse ? 4 : 8)) return;
+      d.active = true; this.drag = d;
+      try { $('#home').setPointerCapture(e.pointerId); } catch {}
+      ROOT.classList.add('globe-grabbing'); this.setHover(null); this.vel = 0; this.boost = 0;
+      this.kick();
+    }
+    const k = 180 / (Math.PI * this.R); /* degrees per pixel: the surface under the pointer follows it */
+    this.angle = d.a0 + dx * k;
+    this.tiltOff = clamp(d.t0 - dy * k * .45, -24, 18);
+    const now = performance.now();
+    d.hist.push({ x: e.clientX, t: now });
+    while (d.hist.length > 2 && now - d.hist[0].t > 120) d.hist.shift();
+  },
+  up(e) {
+    const d = this.pd; if (!d || e.pointerId !== d.id) return;
+    this.pd = null; if (!d.active) return;
+    this.drag = null; this.dragEnd = performance.now();
+    ROOT.classList.remove('globe-grabbing');
+    const a = d.hist[0], b = d.hist[d.hist.length - 1], k = 180 / (Math.PI * this.R);
+    const v = a && b && b.t - a.t > 10 && performance.now() - b.t < 80 ? (b.x - a.x) / ((b.t - a.t) / 1000) * k : 0;
+    this.vel = RM ? 0 : clamp(v, -360, 360);
+    this.moved = true;
+    this.kick();
+  },
+  wheel(e) {
+    if (RM || S.view !== 'home' || Lightbox.on || S.overlay || !this.built || (e.target.closest && e.target.closest('#home-gal'))) return;
+    this.boost = Math.min(80, this.boost + Math.min(60, Math.abs(e.deltaY) + Math.abs(e.deltaX)) * .35);
+    this.kick();
+  },
+  /* First appearance: the globe grows in with a quick turn that settles into the slow spin */
+  intro() {
+    this.kick();
+    if (RM || S.view !== 'home') return;
+    this.boost = 70;
+    $('#globe-wrap').animate([{ opacity: 0, transform: 'scale(.86)' }, { opacity: 1, transform: 'none' }], { duration: 1400, easing: 'cubic-bezier(.16,1,.3,1)' });
+  },
+  enter() {
+    this.size(); this.apply(); this.kick();
+    if (RM) return;
+    this.boost = 45;
+    $('#home').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360, easing: 'ease-out' });
+    $('#globe-wrap').animate([{ transform: 'scale(.94)' }, { transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.16,1,.3,1)' });
+  },
+  nudge() { if (!RM && this.built) { this.boost = Math.min(110, this.boost + 70); this.kick(); } }
+};
+Globe.tick = (t) => Globe.frame(t);
+addEventListener('wheel', (e) => Globe.wheel(e), { passive: true });
+document.addEventListener('pointerout', (e) => { if (!e.relatedTarget && e.pointerType === 'mouse') { Globe.inside = false; Globe.setHover(null); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) Globe.stop(); else Globe.kick(); });
+
+/* ---------- Lightbox ---------- */
+/* A tile grows from where it is on the globe into a centered view (max ~72vw × 72vh, its own proportions) over a
+   light veil, and shrinks back into the same tile. The globe holds still meanwhile. */
+const Lightbox = {
+  on: false, t: null, ret: null, timer: 0, fin: null,
+  open(tileEl) {
+    if (this.on) return;
+    if (this.fin) this.fin(); /* a close still animating: land it first */
+    const t = Globe.tiles[+tileEl.dataset.i]; if (!t || !t.item) return;
+    const item = t.item, lb = $('#home-lb');
+    const from = tileEl.getBoundingClientRect();
+    this.on = true; this.t = t; this.ret = document.activeElement;
+    Globe.setHover(null); Globe.hold(true);
+    const ph = item.ph != null;
+    const ar = item.w && item.h ? item.w / item.h : ph ? 1 : t.w / t.h;
+    /* a placeholder opens as a smaller card that says what goes there */
+    const mob = MOBILE.matches, maxW = innerWidth * (mob ? .92 : ph ? .42 : .72), maxH = innerHeight * (mob ? .7 : ph ? .56 : .72);
+    let w = maxW, h = w / ar; if (h > maxH) { h = maxH; w = h * ar; }
+    const to = { left: (innerWidth - w) / 2, top: (innerHeight - h) / 2, width: w, height: h };
+    const url = item.id ? esc(assetUrl(item.id)) : '';
+    const body = ph ? `<div class="hlb-ph"><i class="gt-b" aria-hidden="true">b</i><p>${S.mode === 'admin' ? 'Este espacio es para las imágenes y videos de la marca. Añádelos desde «Galería».' : 'Pronto, imágenes y videos de la marca en este espacio.'}</p></div>`
+      : item.kind === 'video' ? `<video src="${url}" muted loop playsinline controls${RM ? '' : ' autoplay'}></video>` : `<img src="${url}" alt="">`;
+    lb.innerHTML = `<div class="hlb-bg" data-action="home-lb-close"></div><div class="hlb-frame"${ph ? ` data-ph="${item.ph}"` : ''}>${body}</div><button type="button" class="hlb-x" data-action="home-lb-close" aria-label="Cerrar">${icon('x')}</button>`;
+    lb.hidden = false;
+    const fr = $('.hlb-frame', lb);
+    Object.assign(fr.style, rectCss(to));
+    tileEl.classList.add('is-out');
+    if (!RM) {
+      const r0 = parseFloat(getComputedStyle(tileEl).borderTopLeftRadius) || 8;
+      fr.animate([{ ...rectCss(from), borderRadius: r0 + 'px' }, { ...rectCss(to), borderRadius: '18px' }], { duration: 640, easing: 'cubic-bezier(.32,.72,0,1)' });
+      $('.hlb-bg', lb).animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' });
+      $('.hlb-x', lb).animate([{ opacity: 0, transform: 'scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 320, delay: 200, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' });
+    }
+    /* the dialog takes the focus (Tab reaches the close button and the video controls); focusing the button itself
+       would draw its focus ring after a mouse click */
+    requestAnimationFrame(() => { if (this.on) lb.focus({ preventScroll: true }); });
+  },
+  close(instant = false) {
+    if (!this.on) return;
+    const lb = $('#home-lb'), fr = $('.hlb-frame', lb), t = this.t, v = $('video', lb);
+    this.on = false; this.t = null;
+    if (v) v.pause();
+    const fin = this.fin = () => {
+      if (this.fin !== fin) return;
+      this.fin = null; clearTimeout(this.timer);
+      lb.hidden = true; lb.innerHTML = '';
+      if (t) t.el.classList.remove('is-out');
+      Globe.hold(false);
+    };
+    if (instant || RM || !fr || !t) fin();
+    else {
+      const cur = fr.getBoundingClientRect(), to = t.el.getBoundingClientRect();
+      const r0 = parseFloat(getComputedStyle(t.el).borderTopLeftRadius) || 8;
+      fr.getAnimations().forEach(a => a.cancel());
+      fr.animate([{ ...rectCss(cur), borderRadius: '18px' }, { ...rectCss(to), borderRadius: r0 + 'px' }], { duration: 480, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' }).finished.then(fin, fin);
+      $('.hlb-bg', lb).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, easing: 'ease-out', fill: 'forwards' });
+      $('.hlb-x', lb).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out', fill: 'forwards' });
+      this.timer = setTimeout(fin, 820);
+    }
+    const r = this.ret; this.ret = null;
+    if (r && r.isConnected && r !== document.body && !instant) r.focus({ preventScroll: true });
+  }
+};
+
+/* ---------- Gallery (admin) ---------- */
+/* A panel in the left column lists the media of the globe: add (pick or drop files), remove, drag to reorder. Changes
+   save right away; while the panel is open they can be undone, and the files removed are deleted when it closes. */
+const Gallery = {
+  isOpen: false, hist: [], removed: new Map(),
+  toggle() { if (this.isOpen) this.close(); else this.open(); },
+  open() {
+    if (this.isOpen || S.mode !== 'admin' || S.view !== 'home' || !S.tree) return;
+    this.isOpen = true; this.hist = []; this.removed = new Map();
+    renderHome();
+  },
+  close() {
+    if (!this.isOpen) return;
+    this.isOpen = false;
+    const have = new Set(homeMedia().map(m => m.id));
+    const gone = [...this.removed.keys()].filter(id => !have.has(id));
+    this.removed = new Map(); this.hist = [];
+    if (gone.length) dropAssets(gone);
+    renderHome();
+  },
+  render() {
+    const el = $('#home-gal'); if (!el) return;
+    if (!this.isOpen) { if (!el.hidden || el.innerHTML) { el.hidden = true; el.innerHTML = ''; delete el.dataset.html; } return; }
+    if (gdrag && gdrag.active) return; /* drawn again when the drag lands */
+    const media = homeMedia(), up = homeUploads();
+    const nImg = media.filter(m => m.kind === 'image').length, nVid = media.length - nImg;
+    const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const sum = media.length ? [nImg ? count(nImg, 'imagen', 'imágenes') : '', nVid ? count(nVid, 'video', 'videos') : ''].filter(Boolean).join(' · ') : 'Todavía no hay nada';
+    const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    const thumbs = media.map((m, i) => {
+      const url = esc(assetUrl(m.id)), what = m.kind === 'video' ? 'Video' : 'Imagen';
+      return `<div class="hg-th" role="listitem" data-index="${i}" data-id="${esc(m.id)}" tabindex="0" aria-label="${what} ${i + 1} de ${media.length}. Arrastra o usa Alt y las flechas para reordenar">`
+        + (m.kind === 'video' ? `<video src="${url}#t=0.1" muted playsinline preload="metadata"></video><span class="hg-kind" aria-hidden="true">${icon('video')}</span>` : `<img src="${url}" alt="" decoding="async">`)
+        + `<span class="thumb-n" aria-hidden="true">${i + 1}</span><button type="button" class="thumb-x" data-action="home-remove" data-id="${esc(m.id)}" aria-label="Quitar ${what.toLowerCase()} ${i + 1}">${icon('x')}</button></div>`;
+    }).join('') + Array.from({ length: up }, () => '<div class="hg-th is-pending" aria-hidden="true"><span class="spinner"></span></div>').join('');
+    const empty = !media.length && !up;
+    const add = `<label class="hg-th hg-add${empty ? ' is-big' : ''}" title="Añadir imágenes o videos">${icon('plus')}<span>${empty ? 'Añadir imágenes o videos' : 'Añadir'}</span><input type="file" id="home-file" class="sr-only" multiple accept="${HOME_ACCEPT}"></label>`;
+    const html = `<div class="hgal-head"><button type="button" class="insp-back" data-action="home-undo" aria-label="Volver atrás" title="Volver atrás (${mac ? '⌘' : 'Ctrl'} + Z)"${this.hist.length ? '' : ' disabled'}>${icon('left')}</button><div class="hgal-title"><strong>Galería de la Home</strong><small>${sum}</small></div><button type="button" class="icon-btn" data-action="home-gal" aria-label="Cerrar galería">${icon('x')}</button></div>`
+      + `<div class="hgal-grid" role="list" data-lenis-prevent>${thumbs}${add}</div>`
+      + `<p class="hgal-foot">${media.length ? 'Arrastra para ordenar: la primera queda al frente del globo.' : 'PNG, JPG, WebP, GIF, SVG, MP4 o WebM. Se reparten por todo el globo y se repiten hasta cubrirlo.'} También puedes soltar archivos aquí.</p>`;
+    if (el.dataset.html !== html) {
+      const sc = $('.hgal-grid', el), top = sc ? sc.scrollTop : 0;
+      el.innerHTML = html; el.dataset.html = html;
+      const sc2 = $('.hgal-grid', el); if (sc2) sc2.scrollTop = top;
+    }
+    el.hidden = false;
+  }
+};
+/* Pure, id-based changes of tree.home.media (they are replayed if someone else saved the tree first) */
+const homeMoveOp = (id, to) => (t) => { const a = t.home.media, i = a.findIndex(m => m.id === id); if (i < 0) return; const [m] = a.splice(i, 1); a.splice(clamp(to, 0, a.length), 0, m); };
+function homeRemove(id) {
+  const media = homeMedia(), i = media.findIndex(m => m.id === id); if (i < 0) return;
+  const item = clone(media[i]);
+  if (Gallery.isOpen) { Gallery.hist.push({ kind: 'remove', item, index: i }); Gallery.removed.set(id, item); }
+  mutateTree(t => { t.home.media = t.home.media.filter(m => m.id !== id); });
+  if (!Gallery.isOpen) dropAssets([id]);
+  /* keep the keyboard in the grid */
+  const n = $(`#home-gal .hg-th[data-index="${Math.min(i, homeMedia().length - 1)}"]`) || $('#home-file');
+  if (n) n.focus({ preventScroll: true });
+}
+function homeMove(id, to) {
+  const from = homeMedia().findIndex(m => m.id === id); if (from < 0 || from === to) return;
+  if (Gallery.isOpen) Gallery.hist.push({ kind: 'move', id, from, to });
+  mutateTree(homeMoveOp(id, to));
+}
+function homeUndo() {
+  const h = Gallery.hist.pop(); if (!h) return;
+  if (h.kind === 'remove') {
+    Gallery.removed.delete(h.item.id);
+    mutateTree(t => { if (!t.home.media.some(m => m.id === h.item.id)) t.home.media.splice(Math.min(h.index, t.home.media.length), 0, clone(h.item)); });
+  } else if (h.kind === 'move') mutateTree(homeMoveOp(h.id, h.from));
+  else if (h.kind === 'add') {
+    homeMedia().filter(m => h.ids.includes(m.id)).forEach(m => Gallery.removed.set(m.id, clone(m)));
+    mutateTree(t => { t.home.media = t.home.media.filter(m => !h.ids.includes(m.id)); });
+  }
+}
+/* Same checks as every other upload (accept + uploadOne); images and videos in one go, added in the order picked */
+async function uploadHome(fileList) {
+  if (S.mode !== 'admin' || !S.tree) return;
+  const ok = [...fileList].map(f => { const kind = VID_TYPES.includes(fileType(f)) ? 'video' : 'image'; const t = accept(f, kind); return t ? { f, t, kind } : null; }).filter(Boolean);
+  if (!ok.length) return;
+  Gallery.open();
+  const key = 'home:' + uid('u');
+  S.uploading.set(key, { label: ok.length === 1 ? ok[0].f.name : `${ok.length} archivos`, count: ok.length });
+  renderStatus(); renderHome();
+  const got = (await Promise.all(ok.map(async x => { const r = await uploadOne(x.f, x.t); return r && { id: r.id, kind: x.kind, w: r.w, h: r.h }; }))).filter(Boolean);
+  S.uploading.delete(key);
+  renderStatus();
+  if (!got.length) { renderHome(); return; }
+  const items = got.map(g => (g.w && g.h ? { id: g.id, kind: g.kind, w: g.w, h: g.h } : { id: g.id, kind: g.kind }));
+  if (Gallery.isOpen) Gallery.hist.push({ kind: 'add', ids: items.map(m => m.id) });
+  mutateTree(t => { const have = new Set(t.home.media.map(m => m.id)); items.forEach(m => { if (!have.has(m.id)) t.home.media.push(clone(m)); }); });
+}
+function homeDropZone(ev) {
+  if (S.view !== 'home' || S.mode !== 'admin' || !S.tree || S.edit || !ev.dataTransfer || ![...ev.dataTransfer.types].includes('Files')) return null;
+  return (ev.target.closest && ev.target.closest('[data-home-drop]')) || null;
+}
+
+/* Gallery reorder: the thumbnail drag of the carousel editor, in two dimensions */
+let gdrag = null;
+function galDown(e) {
+  const th = e.target.closest && e.target.closest('#home-gal .hg-th[data-index]');
+  if (!th || e.button !== 0 || e.target.closest('button')) return;
+  const items = $$('#home-gal .hg-th[data-index]');
+  gdrag = { th, items, rects: items.map(n => n.getBoundingClientRect()), from: +th.dataset.index, to: +th.dataset.index, x0: e.clientX, y0: e.clientY, id: e.pointerId, active: false };
+}
+function galMove(e) {
+  const d = gdrag; if (!d || e.pointerId !== d.id) return;
+  const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+  if (!d.active) { if (Math.hypot(dx, dy) < 4) return; d.active = true; try { d.th.setPointerCapture(e.pointerId); } catch {} d.th.classList.add('is-lifted'); }
+  d.th.style.transform = `translate(${dx}px,${dy}px) scale(1.06)`;
+  let best = d.from, bd = Infinity;
+  d.rects.forEach((r, k) => { const q = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)); if (q < bd) { bd = q; best = k; } });
+  d.to = best;
+  d.items.forEach((n, k) => {
+    if (n === d.th) return;
+    let j = k;
+    if (d.to > d.from && k > d.from && k <= d.to) j = k - 1;
+    if (d.to < d.from && k < d.from && k >= d.to) j = k + 1;
+    n.style.transform = j === k ? '' : `translate(${d.rects[j].left - d.rects[k].left}px,${d.rects[j].top - d.rects[k].top}px)`;
+  });
+}
+function galUp(e) {
+  const d = gdrag; if (!d || e.pointerId !== d.id) return;
+  gdrag = null; if (!d.active) return;
+  const a = d.rects[d.from], b = d.rects[d.to];
+  d.th.style.transition = 'transform 200ms cubic-bezier(.23,1,.32,1)';
+  d.th.style.transform = `translate(${b.left - a.left}px,${b.top - a.top}px)`;
+  setTimeout(() => {
+    const el = $('#home-gal'); if (el) delete el.dataset.html; /* clears the drag offsets even when nothing moved */
+    if (d.to !== d.from) homeMove(d.th.dataset.id, d.to); else Gallery.render();
+  }, RM ? 0 : 200);
+}
+
+/* ---------- Viewer / admin switch on the section pages ---------- */
+/* The same eye / pencil switch as the menu (bottom right there), bottom left on the pages, for whoever can edit. ctx is
+   its data-adapt context: the menu colors it over the menu background, the page over the content under it. */
+const segHTML = (cls, label, v, btns, ctx) => `<div class="seg ${cls}" data-adapt="${ctx}" data-v="${v}" role="group" aria-label="${label}"><span class="seg-ind" aria-hidden="true"></span>${btns}</div>`;
+const segBtn = (attrs, on, label, ic) => `<button type="button" ${attrs} aria-pressed="${on}" aria-label="${label}" title="${label}">${icon(ic)}</button>`;
+function modeSegHTML(ctx) {
+  if (!S.canEdit) return '';
+  return segHTML('seg-solid', 'Vista', S.mode === 'admin' ? 1 : 0, segBtn('data-action="mode" data-mode="viewer"', S.mode === 'viewer', 'Viewer', 'eye') + segBtn('data-action="mode" data-mode="admin"', S.mode === 'admin', 'Admin', 'edit'), ctx);
+}
+/* Shown on category pages only: not on Home, not under an overlay, and not while a block is edited (the inspector
+   uses that corner). It is updated in place so the indicator slides. */
+function renderPageMode() {
+  const host = $('#page-mode'); if (!host) return;
+  const on = !!(S.canEdit && S.started && S.view === 'cat' && !S.overlay && !(S.edit && S.mode === 'admin'));
+  ROOT.classList.toggle('pm-on', on);
+  if (!on) { if (!host.hidden) host.hidden = true; return; }
+  const seg = $('.seg', host);
+  if (!seg) host.innerHTML = modeSegHTML('page');
+  else {
+    seg.dataset.v = S.mode === 'admin' ? '1' : '0';
+    $$('button[data-mode]', seg).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+  }
+  if (host.hidden) { host.hidden = false; Ink.run(); }
+}
 
 /* ================= Overlays: menu + search ================= */
 function renderMenu() {
@@ -3642,10 +4317,8 @@ function renderMenuBottom() {
   const box = $('#menu-bottom'); if (!box) return;
   const bg = (S.tree && S.tree.menu && S.tree.menu.bg) || { kind: 'color', color: BRAND };
   const dark = ROOT.dataset.scheme === 'dark';
-  const seg = (cls, label, v, btns) => `<div class="seg ${cls}" data-adapt="menu" data-v="${v}" role="group" aria-label="${label}"><span class="seg-ind" aria-hidden="true"></span>${btns}</div>`;
-  const segBtn = (attrs, on, label, ic) => `<button type="button" ${attrs} aria-pressed="${on}" aria-label="${label}" title="${label}">${icon(ic)}</button>`;
-  const modeSeg = S.canEdit ? seg('seg-solid', 'Vista', S.mode === 'admin' ? 1 : 0, segBtn('data-action="mode" data-mode="viewer"', S.mode === 'viewer', 'Viewer', 'eye') + segBtn('data-action="mode" data-mode="admin"', S.mode === 'admin', 'Admin', 'edit')) : '';
-  const themeSeg = seg('seg-ghost', 'Tema', dark ? 1 : 0, segBtn('data-action="scheme" data-scheme="light"', !dark, 'Tema claro', 'sun') + segBtn('data-action="scheme" data-scheme="dark"', dark, 'Tema oscuro', 'moon'));
+  const modeSeg = modeSegHTML('menu');
+  const themeSeg = segHTML('seg-ghost', 'Tema', dark ? 1 : 0, segBtn('data-action="scheme" data-scheme="light"', !dark, 'Tema claro', 'sun') + segBtn('data-action="scheme" data-scheme="dark"', dark, 'Tema oscuro', 'moon'), 'menu');
   const isBrand = bg.kind === 'color' && bg.color.toLowerCase() === BRAND;
   const bgCtl = `<div class="ovbg admin-only" data-adapt="menu" role="group" aria-label="Fondo del menú">
     <button type="button" class="ovsw" data-action="menu-bg" data-kind="brand" aria-pressed="${isBrand}" title="Azul de marca" aria-label="Azul de marca"><i style="background:${BRAND}"></i></button>
@@ -3691,7 +4364,7 @@ function introMenu(ov, delay = 110, sel = '.ov-top, .ov-item, .ov-add, .ov-botto
   clearTimeout(ovTimer);
   ovTimer = setTimeout(() => { if (S.overlay === 'menu') settle(ov); }, delay + els.length * 40 + 520 + 250);
 }
-function openOverlay(kind, { instant = false, landing = false } = {}) {
+function openOverlay(kind, { instant = false } = {}) {
   if (S.overlay === kind) return;
   if (S.overlay) closeOverlay(true);
   closePop(true);
@@ -3716,16 +4389,14 @@ function openOverlay(kind, { instant = false, landing = false } = {}) {
       ovTimer = setTimeout(() => { if (S.overlay === kind) settle(ov); }, 550);
     }
   }
-  S.landing = landing;
-  if (landing) { if (!RM) introMenu(ov, 60, '.ov-top, .ov-bottom'); return; } /* the opening screen: no focus ring on load */
+  renderPageMode(); Globe.cover(true);
   requestAnimationFrame(() => { if (kind === 'search') $('#search-input').focus(); else { const f = $('.ov-cat[aria-current]', ov) || $('.ov-cat', ov) || $('#menu-close'); f && f.focus({ preventScroll: true }); } });
 }
 function closeOverlay(instant = false) {
   const kind = S.overlay; if (!kind) return;
   const ov = $('#' + kind);
-  const wasLanding = S.landing;
-  S.overlay = null; S.landing = false;
-  if (wasLanding) Motion.resetAll(); /* the enter animations ran behind the opening menu: play them again as the page shows */
+  S.overlay = null;
+  renderPageMode(); Globe.cover(false);
   if (S.inline && (S.inline.kind === 'cat' || S.inline.kind === 'rename-cat')) S.inline = null;
   clearTimeout(ovTimer);
   const fin = () => { if (S.overlay === kind) return; clearTimeout(ovTimer); ov.classList.remove('is-open'); ov.setAttribute('aria-hidden', 'true'); ov.getAnimations({ subtree: true }).forEach(a => a.cancel()); };
@@ -3792,6 +4463,7 @@ function renderSearch(q) {
 function goResult(cat, sub, row) {
   closeOverlay(true);
   if (!cat) return;
+  leaveHome();
   if (cat === S.cat) { if (sub) scrollToSub(sub, { row: row || null }); }
   else openCategory(cat, { to: sub || null, row: row || null });
 }
@@ -3810,6 +4482,7 @@ function commitInline(value) {
     const id = uid('c');
     mutateTree(t => t.categories.push({ id, name, subs: [] }));
     closeOverlay(true);
+    leaveHome();
     openCategory(id);
     if (S.mode === 'admin') beginInline({ kind: 'sub', catId: id });
   } else if (p.kind === 'sub') {
@@ -3924,13 +4597,18 @@ document.addEventListener('click', (ev) => {
   if (!a || a.disabled) return;
   const act = a.dataset.action, id = a.dataset.id, slotId = a.dataset.slot;
   switch (act) {
-    case 'home': break; /* La Home del catálogo llegará más adelante */
+    case 'home': showHome(); break;
+    case 'home-tile': if (performance.now() - Globe.dragEnd > 250) Lightbox.open(a); break;
+    case 'home-lb-close': Lightbox.close(); break;
+    case 'home-gal': Gallery.toggle(); break;
+    case 'home-remove': homeRemove(a.dataset.id); break;
+    case 'home-undo': homeUndo(); break;
     case 'logo': if (S.mode === 'admin') $('#logo-input').click(); break;
     case 'menu-open': openOverlay('menu'); break;
     case 'menu-close': closeOverlay(); break;
     case 'search-open': openOverlay('search'); break;
     case 'search-close': closeOverlay(); break;
-    case 'menu-cat': { const same0 = id === S.cat; closeOverlay(); if (!same0) openCategory(id); else scrollTop(); break; }
+    case 'menu-cat': { const same0 = id === S.cat; closeOverlay(); leaveHome(); if (!same0) openCategory(id); else scrollTop(); break; }
     case 'mode': applyMode(a.dataset.mode); ls.set('mode', a.dataset.mode); break;
     case 'scheme': setScheme(a.dataset.scheme); break;
     case 'signin': signIn(); break;
@@ -4068,11 +4746,11 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('pointerdown', (ev) => {
   const s = ev.target.closest && ev.target.closest('#stage .row.is-editing [data-slot]');
   if (s && !ev.target.closest('.spl, .thumbs')) setActiveSlot(s.dataset.slot);
-  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev);
+  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev); Globe.down(ev); galDown(ev);
 });
-document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); });
-document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); });
-document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); });
+document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); Globe.track(ev); Globe.move(ev); galMove(ev); });
+document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); Globe.up(ev); galUp(ev); });
+document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); Globe.up(ev); galUp(ev); });
 document.addEventListener('dblclick', (ev) => { if (ev.target.closest('[data-rz]') && S.edit) onField('hmode', 'auto'); });
 
 /* Scrub numeric fields by dragging their icon */
@@ -4141,6 +4819,7 @@ document.addEventListener('change', (ev) => {
   const el = ev.target;
   if (el.id === 'logo-input') { const f = el.files && el.files[0]; el.value = ''; if (f) uploadLogo(f); return; }
   if (el.id === 'menu-bg-file') { const f = el.files && el.files[0]; el.value = ''; if (f) uploadMenuBg(f); return; }
+  if (el.id === 'home-file') { const f = [...(el.files || [])]; el.value = ''; if (f.length) uploadHome(f); return; }
   if (el.id === 'menu-color') { const c = el.value; mutateTree(t => { t.menu.bg = { kind: 'color', color: c }; }); return; }
   if (el.dataset.upload) { const files = el.files; handleFiles(el.dataset.upload, files).finally(() => { try { el.value = ''; } catch {} }); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
@@ -4173,6 +4852,7 @@ document.addEventListener('keydown', (ev) => {
     if (ev.key.toLowerCase() === 'y' || ev.shiftKey) redo(); else undo();
     return;
   }
+  if (Gallery.isOpen && !typing && (ev.metaKey || ev.ctrlKey) && !ev.altKey && !ev.shiftKey && (ev.key === 'z' || ev.key === 'Z')) { ev.preventDefault(); homeUndo(); return; }
   if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter' && S.edit && S.mode === 'admin') { ev.preventDefault(); if (t && t.blur && t.closest && t.closest('#insp')) t.blur(); confirmEdit(); return; }
   if (t && t.dataset && t.dataset.f && FIELD[t.dataset.f] && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) { ev.preventDefault(); stepField(t, ev.key === 'ArrowUp' ? 1 : -1, ev.shiftKey); return; }
   if (t && t.dataset && t.dataset.f && ev.key === 'Enter') { t.blur(); return; }
@@ -4185,15 +4865,29 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape') {
     if (Motion.pv) { Motion.stopPreview(); return; }
     if (S.pop) { const tr = S.pop.trigger; closePop(); tr && tr.focus && tr.focus(); return; }
+    if (Lightbox.on) { Lightbox.close(); return; }
     if (S.overlay) { closeOverlay(true); return; }
+    if (Gallery.isOpen) { Gallery.close(); const b = $('#home-tools [data-action="home-gal"]'); b && b.focus({ preventScroll: true }); return; }
     if (S.adder) { setAdder(null); return; }
     if (S.confirmDelete) { S.confirmDelete = null; refreshRowTools(); return; }
   }
-  if (ev.key === 'Tab' && S.overlay) {
-    const f = focusables($('#' + S.overlay)); if (!f.length) return;
+  if (ev.key === 'Tab' && (S.overlay || Lightbox.on)) {
+    const f = focusables(Lightbox.on ? $('#home-lb') : $('#' + S.overlay)); if (!f.length) return;
     const i = f.indexOf(document.activeElement);
     if (ev.shiftKey && (i <= 0)) { ev.preventDefault(); f[f.length - 1].focus(); }
     else if (!ev.shiftKey && i === f.length - 1) { ev.preventDefault(); f[0].focus(); }
+  }
+  const gth = t && t.closest && t.closest('#home-gal .hg-th[data-index]');
+  if (gth && !typing) {
+    const i = +gth.dataset.index, id = gth.dataset.id;
+    if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); homeRemove(id); return; }
+    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -(MOBILE.matches ? 4 : 3), ArrowDown: MOBILE.matches ? 4 : 3 }[ev.key];
+    if (ev.altKey && step) {
+      ev.preventDefault();
+      homeMove(id, clamp(i + step, 0, homeMedia().length - 1));
+      const nt = $$('#home-gal .hg-th[data-index]').find(n => n.dataset.id === id); nt && nt.focus();
+      return;
+    }
   }
   const th = t && t.closest && t.closest('.thumb[data-index]');
   if (th && ev.altKey && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight')) {
@@ -4215,7 +4909,15 @@ document.addEventListener('focusout', (ev) => {
 /* Drag and drop of files */
 let overEl = null;
 const canImport = () => S.backend === 'supabase' && S.canEdit && S.mode === 'admin' && !S.edit && !S.importing;
+let galOverT = 0;
 document.addEventListener('dragover', (ev) => {
+  if (homeDropZone(ev)) {
+    ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy';
+    Gallery.open(); /* the gallery opens as the visible place to drop */
+    const g = $('#home-gal'); g && g.classList.add('is-over');
+    clearTimeout(galOverT); galOverT = setTimeout(() => { const g2 = $('#home-gal'); g2 && g2.classList.remove('is-over'); }, 160);
+    return;
+  }
   const z = ev.target.closest && ev.target.closest('[data-drop]');
   if (!z && canImport() && ev.dataTransfer && [...ev.dataTransfer.types].includes('Files')) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; return; }
   if (!z || !S.edit || !ev.dataTransfer || ![...ev.dataTransfer.types].includes('Files')) return;
@@ -4227,6 +4929,7 @@ document.addEventListener('drop', (ev) => {
   const z = ev.target.closest && ev.target.closest('[data-drop]');
   if (overEl) { overEl.classList.remove('is-over'); overEl = null; }
   if (!z && canImport() && ev.dataTransfer && [...ev.dataTransfer.files].some(f => /\.json$/i.test(f.name))) { ev.preventDefault(); importExport(ev.dataTransfer.files); return; }
+  if (homeDropZone(ev)) { ev.preventDefault(); const g = $('#home-gal'); g && g.classList.remove('is-over'); uploadHome(ev.dataTransfer.files); return; }
   if (!z || !S.edit) return;
   ev.preventDefault();
   handleFiles(z.dataset.drop, ev.dataTransfer.files);
