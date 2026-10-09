@@ -18,9 +18,13 @@ const log = (...a) => console.log(...a);
   await page.route(/cdn\.jsdelivr\.net\/npm\/gsap@[^/]+\/dist\/(gsap|ScrollTrigger|SplitText)\.min\.js/, r => r.fulfill({ path: FIX + r.request().url().split('/').pop(), contentType: 'text/javascript' }));
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto(BASE);
+  // Home is the opening screen: go to the category through the menu
+  await page.waitForSelector('#home #globe .gt');
+  await page.click('#btn-menu'); await page.waitForTimeout(700);
+  await page.click('.ov-cat[data-id="c_ourbrand"]');
   await page.waitForSelector('#s-s_sepuede .row');
+  await page.mouse.move(0, 0); // where the pointer starts on a fresh page (not over the section list, which keeps the wheel)
   await page.waitForTimeout(400);
-  await page.keyboard.press('Escape'); await page.waitForTimeout(300); // close the opening menu
   const snap = async (name, opts = {}) => { await page.screenshot({ path: T + name + '.png', ...opts }); };
   // Lenis keeps easing the page after programmatic scrolls; wait for it so clicks land where the element is.
   const scrollIdle = () => page.waitForFunction(() => !document.documentElement.classList.contains('lenis-scrolling'), null, { timeout: 5000 }).catch(() => {});
