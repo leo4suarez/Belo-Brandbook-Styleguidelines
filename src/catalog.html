@@ -654,7 +654,7 @@ html[data-view="home"]{overscroll-behavior:none}
 /* The wrap is a square around the sphere outline (--gm): it holds the camera (perspective, centered) and a round mask
    that fades the tiles into the page toward the outline, so the ball reads round even where the rings leave gaps */
 .globe-wrap{position:absolute;left:calc(var(--gx) - var(--gm) / 2);top:calc(var(--gy) - var(--gm) / 2);width:var(--gm);height:var(--gm);perspective:var(--gp,1600px);
-  -webkit-mask-image:radial-gradient(closest-side,#000 58%,rgba(0,0,0,.62) 76%,rgba(0,0,0,.22) 86%,rgba(0,0,0,.05) 91%,transparent 94%);mask-image:radial-gradient(closest-side,#000 58%,rgba(0,0,0,.62) 76%,rgba(0,0,0,.22) 86%,rgba(0,0,0,.05) 91%,transparent 94%)}
+  -webkit-mask-image:radial-gradient(closest-side,#000 78%,rgba(0,0,0,.6) 88%,rgba(0,0,0,.15) 94%,transparent 98%);mask-image:radial-gradient(closest-side,#000 78%,rgba(0,0,0,.6) 88%,rgba(0,0,0,.15) 94%,transparent 98%)}
 .globe{position:absolute;left:50%;top:50%;transform-style:preserve-3d;will-change:transform}
 .gt{--w:calc(var(--R) * var(--tw));--h:calc(var(--R) * var(--th));position:absolute;left:calc(var(--w) / -2);top:calc(var(--h) / -2);width:var(--w);height:var(--h);container-type:size;
   border-radius:calc(var(--R) * .03 + 2px);overflow:hidden;background:var(--ph-0);backface-visibility:hidden;-webkit-backface-visibility:hidden;cursor:pointer;
@@ -779,7 +779,7 @@ html.globe-grabbing,html.globe-grabbing *{cursor:grabbing!important}
   @keyframes inspIn{from{opacity:0}to{opacity:1}}
   @keyframes popIn{from{opacity:0}to{opacity:1}}
   @keyframes toastIn{from{opacity:0}to{opacity:1}}
-  .pill-ind,.thumb,.hg-th,.gt,.gt img,.gt canvas{transition-duration:0ms!important}
+  .pill-ind,.thumb,.hg-th,.gt,.gt img,.gt canvas,.globe-shadow{transition-duration:0ms!important}
   .skel,.status i{animation:none!important}
 }
 
@@ -3712,7 +3712,7 @@ function onScroll() {
   if (S.pop && !S.pop.sticky) closePop();
 }
 addEventListener('scroll', onScroll, { passive: true });
-addEventListener('resize', () => { closePop(true); Ink.schedule(); measureNav(); markStartsFull(); Globe.size(); });
+addEventListener('resize', () => { closePop(true); Ink.schedule(); measureNav(); markStartsFull(); Globe.size(); Lightbox.fit(); });
 function measureNav() { if (!MOBILE.matches) return; ROOT.style.setProperty('--nav-h', $('#rail').offsetHeight + 'px'); }
 if ('ResizeObserver' in window) new ResizeObserver(() => { measureNav(); Ink.schedule(); }).observe($('#rail-nav'));
 MOBILE.addEventListener('change', () => { measureNav(); renderInspector(); Ink.schedule(); Globe.size(); });
@@ -3780,14 +3780,15 @@ function renderHome() {
 const PH_W = [3, 2.4, 2.4, 1.2, .55, .45];
 const PH_B = [false, false, false, false, true, false];
 const GLOBE_CAM = 4.4;   /* camera distance in radii: lower = deeper perspective, more foreshortening at the outline */
-const GLOBE_FADE = .3;   /* how far in from the outline (in facing units) a tile takes to reach full opacity */
+const GLOBE_FADE = .2;   /* how far in from the outline (in facing units) a tile takes to reach full opacity: short, so
+                            the foreshortened tiles at the outline still draw the round silhouette */
 const Globe = {
   geo: null, tiles: [], nb: [], sig: null, built: false, g: null,
   angle: -18, tilt: -12, tiltOff: 0, vel: 0, boost: 0, base: -7, /* deg/s; negative turns the front to the left */
   R: 300, P: 1320, edge: 1 / GLOBE_CAM, raf: 0, last: 0, running: false, held: false, covered: false, coverT: 0,
   mx: 0, my: 0, inside: false, moved: false, hitAt: 0, hover: null, pd: null, drag: null, dragEnd: 0, lastPaint: 0, vids: new Map(),
-  /* 10 latitude rings 16° apart (±8° to ±72°). Each ring holds as many tiles as its circumference allows: 20 at the
-     equator, 6 near the poles, 140 in all. Every other ring is offset by half a tile, like bricks. Sizes are in units
+  /* 11 latitude rings 15° apart (0° to ±75°). Each ring holds as many tiles as its circumference allows: 20 at the
+     equator, 5 near the poles, 150 in all. Every other ring is offset by half a tile, like bricks. Sizes are in units
      of the radius, so the sphere scales with one CSS variable (--R). */
   geometry() {
     if (this.geo) return this.geo;
@@ -3901,7 +3902,7 @@ const Globe = {
     }
   },
   /* Depth: tiles fade into the page toward the outline of the sphere, the way the far side of a lit ball falls off.
-     Opacity moves in 1/24 steps and is written only when a tile changes step, so a slow turn touches a few tiles per
+     Opacity moves in 1/20 steps and is written only when a tile changes step, so a slow turn touches a few tiles per
      frame instead of all of them. */
   shade() {
     if (!this.built) return;
@@ -3914,14 +3915,14 @@ const Globe = {
       if (o !== t.o) { t.o = o; t.el.style.opacity = o; }
     }
   },
-  /* Diameter about min(80vh, 80vw), centered in the space under the top bar; the outer rim fades out (mask), so the
+  /* Diameter about min(82vh, 80vw), centered in the space under the top bar; the outer rim fades out (mask), so the
      ball reads a little smaller than that. On phones it spans the width. */
   size() {
     const home = $('#home'); if (!home) return;
     const W = innerWidth, H = innerHeight, mob = MOBILE.matches;
     const top = ($('.rail-top').getBoundingClientRect().bottom || 64) + (mob ? 8 : 20);
     const avail = Math.max(200, H - top - (mob ? 16 : 20));
-    const D = Math.max(180, mob ? Math.min(W * 1.02, avail * .9) : Math.min(H * .82, W * .8, avail * .98));
+    const D = Math.max(180, mob ? Math.min(W * 1.02, avail * .9) : Math.min(H * .82, W * .8, avail * .94));
     this.R = D / 2; this.P = this.R * GLOBE_CAM; this.edge = this.R / this.P;
     const st = home.style;
     st.setProperty('--gx', W / 2 + 'px'); st.setProperty('--gy', top + avail / 2 + 'px');
@@ -4062,7 +4063,15 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) Globe
 /* A tile grows from where it is on the globe into a centered view (max ~72vw × 72vh, its own proportions) over a
    light veil, and shrinks back into the same tile. The globe holds still meanwhile. */
 const Lightbox = {
-  on: false, t: null, ret: null, timer: 0, fin: null,
+  on: false, t: null, ret: null, timer: 0, fin: null, ar: 1, ph: false,
+  /* Centered box with the item's proportions; a placeholder opens as a smaller card that says what goes there */
+  target() {
+    const mob = MOBILE.matches, ph = this.ph, ar = this.ar;
+    const maxW = innerWidth * (mob ? .92 : ph ? .42 : .72), maxH = innerHeight * (mob ? .7 : ph ? .56 : .72);
+    let w = maxW, h = w / ar; if (h > maxH) { h = maxH; w = h * ar; }
+    return { left: (innerWidth - w) / 2, top: (innerHeight - h) / 2, width: w, height: h };
+  },
+  fit() { const fr = this.on && $('#home-lb .hlb-frame'); if (fr) Object.assign(fr.style, rectCss(this.target())); },
   open(tileEl) {
     if (this.on) return;
     if (this.fin) this.fin(); /* a close still animating: land it first */
@@ -4071,12 +4080,9 @@ const Lightbox = {
     const from = tileEl.getBoundingClientRect();
     this.on = true; this.t = t; this.ret = document.activeElement;
     Globe.setHover(null); Globe.hold(true);
-    const ph = item.ph != null;
-    const ar = item.w && item.h ? item.w / item.h : ph ? 1 : t.w / t.h;
-    /* a placeholder opens as a smaller card that says what goes there */
-    const mob = MOBILE.matches, maxW = innerWidth * (mob ? .92 : ph ? .42 : .72), maxH = innerHeight * (mob ? .7 : ph ? .56 : .72);
-    let w = maxW, h = w / ar; if (h > maxH) { h = maxH; w = h * ar; }
-    const to = { left: (innerWidth - w) / 2, top: (innerHeight - h) / 2, width: w, height: h };
+    const ph = this.ph = item.ph != null;
+    this.ar = item.w && item.h ? item.w / item.h : ph ? 1 : t.w / t.h;
+    const to = this.target();
     const url = item.id ? esc(assetUrl(item.id)) : '';
     const body = ph ? `<div class="hlb-ph"><i class="gt-b" aria-hidden="true">b</i><p>${S.mode === 'admin' ? 'Este espacio es para las imágenes y videos de la marca. Añádelos desde «Galería».' : 'Pronto, imágenes y videos de la marca en este espacio.'}</p></div>`
       : item.kind === 'video' ? `<video src="${url}" muted loop playsinline controls${RM ? '' : ' autoplay'}></video>` : `<img src="${url}" alt="">`;
@@ -4217,6 +4223,9 @@ async function uploadHome(fileList) {
 }
 function homeDropZone(ev) {
   if (S.view !== 'home' || S.mode !== 'admin' || !S.tree || S.edit || !ev.dataTransfer || ![...ev.dataTransfer.types].includes('Files')) return null;
+  /* a catalog export (.json) dropped anywhere is still an import, not gallery media */
+  const items = [...(ev.dataTransfer.items || [])];
+  if (items.length && items.every(i => i.type === 'application/json')) return null;
   return (ev.target.closest && ev.target.closest('[data-home-drop]')) || null;
 }
 

@@ -198,6 +198,10 @@ const thumbIds = (p) => p.evaluate(() => [...document.querySelectorAll('#home-ga
   await page.dispatchEvent('#home', 'drop', { dataTransfer: dt });
   check(await until(async () => (await thumbIds(page)).length === 4), 'dropped files are added to the gallery');
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  // a catalog export (.json) is an import, not gallery media: dragging it over Home leaves the gallery closed
+  const dj = await page.evaluateHandle(() => { const d = new DataTransfer(); d.items.add(new File(['{}'], 'catalogo.json', { type: 'application/json' })); return d; });
+  await page.dispatchEvent('#home', 'dragover', { dataTransfer: dj });
+  check(await page.evaluate(() => document.querySelector('#home-gal').hidden), 'dragging a catalog export over Home does not open the gallery');
 
   // ---------- 3. Leaving Home, the logo, the back button, and the viewer/admin switch on the pages ----------
   await enterCategory(page);
