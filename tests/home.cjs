@@ -39,6 +39,15 @@ const frontTile = (p, sel = '.gt') => p.evaluate((sel) => {
   const c = [...document.querySelectorAll('#globe ' + sel)].filter(t => +getComputedStyle(t).opacity === 1).map(t => { const r = t.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, i: t.dataset.i, d: Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy) }; }).sort((a, b) => a.d - b.d)[0];
   return c || null;
 }, sel);
+// Fully drawn tiles away from the middle: the two outermost on each side of the equator band (the left side is turning
+// away from the viewer, the right side coming in), plus a spread of others, each as a point to aim at
+const sideTiles = (p) => p.evaluate(() => {
+  const w = document.querySelector('#globe-wrap').getBoundingClientRect(), cx = w.left + w.width / 2, cy = w.top + w.height / 2;
+  const all = [...document.querySelectorAll('#globe .gt')].filter(t => +t.style.opacity === 1).map(t => { const r = t.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, i: t.dataset.i }; });
+  const band = all.filter(t => Math.abs(t.y - cy) < w.height * .2).sort((a, b) => a.x - b.x);
+  const spread = all.filter((t, k) => k % 7 === 3);
+  return [band[0], band[1], band[band.length - 1], band[band.length - 2], ...spread].filter(Boolean).map(t => ({ ...t, dx: Math.round(t.x - cx) }));
+});
 const lb = (p) => p.evaluate(() => {
   const h = document.querySelector('#home-lb'), f = h.querySelector('.hlb-frame');
   const r = f ? f.getBoundingClientRect() : null;
@@ -85,8 +94,8 @@ const thumbIds = (p) => p.evaluate(() => [...document.querySelectorAll('#home-ga
   // Hover: the tile lifts and the turn slows down a lot, without stopping
   let ft = await frontTile(page);
   await page.mouse.move(ft.x, ft.y); await page.waitForTimeout(900);
-  const hov = await page.evaluate(() => { const h = document.querySelector('#globe .gt.is-hover'); return h ? { i: h.dataset.i, tf: getComputedStyle(h).transform, shadow: document.querySelector('#globe-shadow').classList.contains('is-on'), cursor: getComputedStyle(h).cursor } : null; });
-  check(!!hov && hov.shadow && hov.cursor === 'pointer', 'hovering a tile lifts it (shadow on, pointer cursor)');
+  const hov = await page.evaluate(() => { const h = document.querySelector('#globe .gt.is-hover'); return h ? { i: h.dataset.i, tf: getComputedStyle(h).transform, shadow: document.querySelector('#globe-shadow').classList.contains('is-on'), cursor: getComputedStyle(document.querySelector('#home')).cursor } : null; });
+  check(!!hov && hov.i === ft.i && hov.shadow && hov.cursor === 'pointer', 'hovering a tile lifts it (shadow on, pointer cursor)');
   const h0 = await turn(page); await page.waitForTimeout(1000); const h1 = await turn(page);
   const slow = dAngle(h0, h1);
   check(slow > 0.05 && slow < free * .35, `the turn slows down while a tile is hovered but keeps moving (${slow.toFixed(2)}°/s vs ${free.toFixed(1)}°/s)`);
@@ -113,6 +122,28 @@ const thumbIds = (p) => p.evaluate(() => [...document.querySelectorAll('#home-ga
   await page.mouse.click(40, 450); await page.waitForTimeout(800);
   check(!(await lb(page)).open, 'clicking the backdrop closes the lightbox');
 
+  // Every drawn tile answers the pointer while the globe turns, not only the ones in the middle: hover lifts the tile
+  // aimed at, and a click opens that same tile (also on the side turning away)
+  {
+    let hovOk = 0, clickOk = 0, n = 0, clicks = 0; const miss = [];
+    const aims = await sideTiles(page);
+    for (const [k, t0] of aims.entries()) {
+      await page.mouse.move(1490, 880); await page.waitForTimeout(60);
+      const t = await page.evaluate((i) => { const el = document.querySelector(`#globe .gt[data-i="${i}"]`), r = el.getBoundingClientRect(); return +el.style.opacity === 1 ? { i, x: r.left + r.width / 2, y: r.top + r.height / 2, dx: Math.round(r.left + r.width / 2 - 756) } : null; }, t0.i);
+      if (!t) continue;
+      n++;
+      await page.mouse.move(t.x, t.y); await page.waitForTimeout(80);
+      if (await page.evaluate(() => (document.querySelector('#globe .gt.is-hover') || {}).dataset?.i) === t.i) hovOk++; else miss.push(t.i + '@' + t.dx);
+      if (k < 4 || k % 3 === 0) {
+        clicks++;
+        await page.mouse.down(); await page.mouse.up(); await page.waitForTimeout(150);
+        if ((await lb(page)).open && await page.evaluate((i) => !!document.querySelector(`#globe .gt.is-out[data-i="${i}"]`), t.i)) clickOk++; else miss.push('click ' + t.i + '@' + t.dx);
+        await page.keyboard.press('Escape'); await page.waitForTimeout(700);
+      }
+    }
+    check(n >= 8 && hovOk === n && clickOk === clicks, `tiles away from the middle hover and open too (${hovOk}/${n} hovered, ${clickOk}/${clicks} opened${miss.length ? '; missed ' + miss.join(' ') : ''})`);
+  }
+
   // Drag spins the globe and is not a click
   const g0 = await turn(page);
   await page.mouse.move(600, 470); await page.mouse.down();
@@ -126,7 +157,7 @@ const thumbIds = (p) => p.evaluate(() => [...document.querySelectorAll('#home-ga
   await page.click('#home-tools [data-action="home-gal"]');
   await page.waitForSelector('#home-gal:not([hidden]) #home-file', { state: 'attached' });
   await page.setInputFiles('#home-file', ['img1.jpg', 'img2.jpg', 'img3.jpg', 'clip.webm'].map(f => FIX + f));
-  check(await until(() => page.evaluate(() => /Subiendo/.test(document.querySelector('#home-tools .hbtn').textContent)), 1500), 'the Galería button shows the upload in progress');
+  check(await until(() => page.evaluate(() => /Subiendo/.test(document.querySelector('#home-tools .hbtn').textContent) && document.querySelector('#home-gal .hgal-title small').textContent === 'Subiendo 4 archivos…'), 1500), 'the Galería button and the panel show the upload in progress');
   check(await until(async () => (await thumbIds(page)).length === 4), 'the four files are in the gallery');
   await page.waitForTimeout(600);
   const filled = await page.evaluate(() => {
@@ -197,11 +228,25 @@ const thumbIds = (p) => p.evaluate(() => [...document.querySelectorAll('#home-ga
   check(await page.evaluate(() => !document.querySelector('#home-gal').hidden), 'dragging files over Home opens the gallery as the place to drop them');
   await page.dispatchEvent('#home', 'drop', { dataTransfer: dt });
   check(await until(async () => (await thumbIds(page)).length === 4), 'dropped files are added to the gallery');
+  // a removal not yet freed (panel open) is freed when the tab is left, and can't be undone after that
+  const gone2 = (await thumbIds(page))[0];
+  const gone2Url = await page.evaluate((id) => document.querySelector(`#home-gal .hg-th[data-id="${id}"] img, #home-gal .hg-th[data-id="${id}"] video`).getAttribute('src').split('#')[0], gone2);
+  await page.locator(`#home-gal .hg-th[data-id="${gone2}"]`).focus();
+  await page.keyboard.press('Delete'); await page.waitForTimeout(300);
+  check(await loads(gone2Url), 'a removed file is kept while the panel is open');
+  page.revoked.add(gone2Url);
+  await page.evaluate(() => dispatchEvent(new Event('pagehide')));
+  check(await until(async () => !(await loads(gone2Url))), 'leaving the page with the panel open deletes the removed file');
+  await page.keyboard.press('Control+z'); await page.waitForTimeout(300);
+  check(!(await thumbIds(page)).includes(gone2), 'and Ctrl+Z no longer brings it back (it undoes the drop before it instead)');
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   // a catalog export (.json) is an import, not gallery media: dragging it over Home leaves the gallery closed
   const dj = await page.evaluateHandle(() => { const d = new DataTransfer(); d.items.add(new File(['{}'], 'catalogo.json', { type: 'application/json' })); return d; });
   await page.dispatchEvent('#home', 'dragover', { dataTransfer: dj });
   check(await page.evaluate(() => document.querySelector('#home-gal').hidden), 'dragging a catalog export over Home does not open the gallery');
+  const db = await page.evaluateHandle(() => { const d = new DataTransfer(); d.items.add(new File(['{}'], 'catalogo.json', { type: 'application/json' })); d.items.add(new File([new Uint8Array(8)], 'asset-1.jpg', { type: 'image/jpeg' })); return d; });
+  await page.dispatchEvent('#home', 'dragover', { dataTransfer: db });
+  check(await page.evaluate(() => document.querySelector('#home-gal').hidden), 'nor does an export bundle (the .json with its image files)');
 
   // ---------- 3. Leaving Home, the logo, the back button, and the viewer/admin switch on the pages ----------
   await enterCategory(page);
