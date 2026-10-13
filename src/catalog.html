@@ -312,6 +312,75 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .fs-overlay[data-w="half"] > .slot{width:calc(50% - 10px)}
 .fs-media.dropzone,.fs-media.slot-picker{position:absolute;inset:0;aspect-ratio:auto}
 
+/* Image framing (slot.frame): the box keeps its size (proportion or block height); the image is enlarged by --fz and
+   placed by its focal point --fx/--fy with object-position. Never with transform: the motion presets own it. */
+#stage .slot.is-framed > img{position:absolute;inset:auto;left:calc((1 - var(--fz,1)) * var(--fx,50) * 1%);top:calc((1 - var(--fz,1)) * var(--fy,50) * 1%);width:calc(var(--fz,1) * 100%);height:calc(var(--fz,1) * 100%);max-width:none;object-fit:cover;object-position:calc(var(--fx,50) * 1%) calc(var(--fy,50) * 1%)}
+#stage .slot.is-framed[data-fit="contain"] > img{object-fit:contain}
+.row.is-editing .slot.is-framing{outline:2px solid var(--focus);outline-offset:0;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.row.is-editing .slot.is-framing.is-panning{cursor:grabbing}
+.row.is-editing .fs-media.is-framing{outline-offset:-2px}
+/* Encuadrar: the parts of the image outside the box, ghosted around it (the box itself is cut out of this layer) */
+.frame-ghost{position:fixed;inset:0;z-index:50;pointer-events:none;overflow:hidden}
+.frame-ghost img{position:absolute;left:0;top:0;max-width:none;opacity:.3}
+.frame-bar{position:absolute;left:50%;bottom:16px;z-index:4;translate:-50% 0;display:flex;align-items:center;gap:4px;max-width:calc(100% - 24px);padding:4px 4px 4px 12px;border-radius:999px;background:var(--material);color:var(--ink);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:inset 0 0 0 .5px var(--material-edge),var(--shadow-float);font:600 12.5px/1 var(--font);letter-spacing:0;text-transform:none;white-space:nowrap;cursor:default;animation:fadeIn 200ms ease both}
+.fb-hint{color:var(--muted);margin-right:6px;overflow:hidden;text-overflow:ellipsis}
+.frame-bar .icon-btn{width:30px;height:30px}
+.frame-bar .icon-btn svg.i{width:16px;height:16px}
+.frame-bar input[type="range"]{flex:1 1 96px;width:96px;min-width:48px;accent-color:var(--ink)}
+.frame-bar output{min-width:42px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.frame-bar .btn{height:30px;margin-left:4px}
+.fs-media .frame-bar{bottom:84px} /* above the toasts and the status pill, which share the bottom of the screen */
+@container (max-width:560px){.fb-hint{display:none}}
+
+/* SVG module: a box (proportion or block height, background, inner spacing) and the drawing inside it, sized as a % of
+   the inner area, placed by a 9-point alignment and nudged by an offset. The drawing is an <img>: an uploaded SVG never runs. */
+.slot-svg{margin:0;background:transparent}
+.slot-svg.bg-surface{background:var(--surface)}
+.slot-svg.bg-color{background:var(--slot-bg)}
+.row.has-h .slot-svg,.row.has-h .slot-color{aspect-ratio:auto!important}
+.svg-in{position:absolute;inset:var(--pt,clamp(20px,3.2cqi,40px)) var(--pr,clamp(20px,3.2cqi,40px)) var(--pb,clamp(20px,3.2cqi,40px)) var(--pl,clamp(20px,3.2cqi,40px))}
+.svg-in > img{position:absolute;display:block;width:calc(var(--sw,60) * 1%);height:auto;max-width:none;left:calc(var(--ax,.5) * 100% + var(--sdx,0) * 1%);top:calc(var(--ay,.5) * 100% + var(--sdy,0) * 1%);translate:calc(var(--ax,.5) * -100%) calc(var(--ay,.5) * -100%);-webkit-user-drag:none;opacity:0;transition:opacity 520ms ease}
+.svg-in.is-broken::after{content:"Archivo no disponible";position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:var(--muted)}
+
+/* Color module: a swatch of the brand, with its name and HEX in the ink that contrasts with it */
+.slot-color{background:var(--sc,#002FA7);color:#FFFFFF;transition:background-color 200ms ease}
+.slot-color[data-tone="dark"]{color:#000000}
+.sc-label{position:absolute;left:clamp(16px,3.2cqi,32px);right:clamp(16px,3.2cqi,32px);bottom:clamp(16px,3.2cqi,32px);display:flex;flex-direction:column;gap:3px;line-height:1.15;pointer-events:none}
+.sc-name{font-size:clamp(14px,2.6cqi,26px);font-weight:650;letter-spacing:-.015em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-hex{font-size:clamp(12px,1.7cqi,16px);font-weight:500;letter-spacing:.04em;opacity:.74;font-variant-numeric:tabular-nums}
+
+/* Modules with a click action: a pointer, a soft ring on hover and a chip that says what the click does. Nothing moves
+   the module itself (its transform belongs to the motion presets). */
+.slot[data-act]{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.slot[data-act]:not(.fs-media):not(.is-broken)::after{content:"";position:absolute;inset:0;z-index:2;border-radius:inherit;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,currentColor 18%,transparent);opacity:0;pointer-events:none;transition:opacity 200ms ease}
+.media[data-act]::after,.slot-carousel[data-act]::after,.slot-svg[data-act]::after{color:var(--ink)}
+@media (hover:hover) and (pointer:fine){.slot[data-act]:hover::after{opacity:1}}
+.slot[data-act]:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:var(--radius)}
+.act-chip{position:absolute;right:14px;bottom:14px;z-index:3;display:inline-flex;align-items:center;gap:7px;max-width:calc(100% - 28px);height:34px;padding:0 14px 0 11px;border-radius:999px;background:var(--material);color:var(--ink);-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);box-shadow:inset 0 0 0 .5px var(--material-edge),var(--shadow-soft);font:600 12.5px/1 var(--font);letter-spacing:-.005em;text-transform:none;text-shadow:none;white-space:nowrap;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity 180ms ease,transform 240ms var(--ease-out)}
+.act-chip span{overflow:hidden;text-overflow:ellipsis}
+.act-chip svg.i{width:15px;height:15px;stroke-width:2}
+.slot[data-act]:hover .act-chip,.slot[data-act]:focus-visible .act-chip,.slot[data-act].is-pop .act-chip{opacity:1;transform:none}
+@media (hover:none){.act-chip{opacity:1;transform:none}}
+.slot-video .act-chip{right:100px}
+.fs-media .act-chip{right:20px;bottom:20px}
+.pop .mi-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pop .pal-h{margin:6px 12px 6px}
+
+/* Modal of a module ("Abrir modal"): a centered light dialog over a soft blurred backdrop */
+.amodal{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+.amodal[hidden]{display:none}
+.amodal-bg{position:absolute;inset:0;background:rgba(10,10,12,.36);-webkit-backdrop-filter:blur(10px) saturate(120%);backdrop-filter:blur(10px) saturate(120%)}
+.amodal-panel{position:relative;width:min(680px,100%);max-height:min(86dvh,960px);overflow-y:auto;overscroll-behavior:contain;padding:clamp(24px,4vw,40px);border-radius:28px;background:var(--panel);color:var(--ink);box-shadow:var(--shadow-panel);scrollbar-width:thin;outline:none}
+.amodal-x{position:sticky;top:0;z-index:1;float:right;width:40px;height:40px;margin:calc(clamp(24px,4vw,40px) * -.5) calc(clamp(24px,4vw,40px) * -.5) 8px 16px;border-radius:50%;display:grid;place-items:center;background:var(--field);color:var(--ink);transition:background-color 160ms ease,transform 140ms var(--ease-out)}
+.amodal-x:hover{background:var(--field-hover)}
+.amodal-x:active{transform:scale(.92)}
+.amodal h2{margin:0 0 16px;font-family:var(--display);font-weight:900;text-transform:uppercase;font-size:clamp(30px,4.4vw,52px);line-height:.95;letter-spacing:-.02em;text-wrap:balance;overflow-wrap:anywhere}
+.amodal-body p{margin:0 0 .9em;font-size:16px;line-height:1.55;color:color-mix(in srgb,var(--ink) 78%,transparent);white-space:pre-wrap;overflow-wrap:anywhere}
+.amodal-body p:last-child{margin-bottom:0}
+.amodal-media{clear:both;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:10px;padding-top:22px}
+.amodal-media.is-one{grid-template-columns:minmax(0,1fr)}
+.amodal-media img{display:block;width:100%;height:auto;border-radius:16px;background:var(--surface)}
+
 /* Carousel + step player */
 .slot-carousel{background:var(--surface)}
 .carousel{position:relative;width:100%;aspect-ratio:var(--ar,16/10);overflow:clip;border-radius:inherit;background:var(--surface);user-select:none;-webkit-user-select:none;outline:none}
@@ -572,8 +641,43 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .file-row{display:flex;align-items:center;gap:10px;padding:5px 14px 5px 5px;border-radius:999px;background:var(--field)}
 .file-thumb{width:40px;height:40px;flex:none;border-radius:50%;overflow:clip;display:grid;place-items:center;background:var(--surface-2);color:var(--muted)}
 .file-thumb img{width:100%;height:100%;object-fit:cover}
-.file-meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.file-meta{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .hex{display:flex;gap:6px}
+/* Image framing, SVG placement, switches, click actions and source files */
+.pos-row{display:flex;gap:8px;align-items:stretch}
+.pos-xy{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:6px}
+.insp-switch{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px;padding:0 6px 0 14px;border-radius:999px;background:var(--field);font-size:12.5px;font-weight:600;text-align:left;transition:background-color 160ms ease}
+.insp-switch:hover{background:var(--field-hover)}
+.tog{position:relative;width:38px;height:24px;flex:none;border-radius:999px;background:var(--line-strong);transition:background-color 200ms ease}
+.tog::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform 260ms var(--ease-out)}
+.insp-switch[aria-checked="true"] .tog{background:var(--focus)}
+.insp-switch[aria-checked="true"] .tog::after{transform:translateX(14px)}
+.alist .alist-i{flex:none;width:26px;height:26px;margin-left:-4px;border-radius:9px;display:grid;place-items:center}
+.alist .alist-i svg.i{width:15px;height:15px}
+.alist button[aria-pressed="true"] .alist-i{background:color-mix(in srgb,var(--focus) 12%,transparent);color:var(--focus)}
+.fld.txt input{padding:0 14px}
+.txa{display:block;width:100%;min-height:96px;padding:10px 14px;border:0;border-radius:16px;background:var(--field);font:inherit;font-size:12.5px;line-height:1.5;color:var(--ink);resize:vertical;outline:none;transition:background-color 160ms ease,box-shadow 160ms ease}
+.txa:hover{background:var(--field-hover)}
+.txa:focus{background:var(--field);box-shadow:inset 0 0 0 1.5px var(--focus)}
+.txa::placeholder{color:var(--muted)}
+.files{display:flex;flex-direction:column;gap:4px;border-radius:16px;transition:box-shadow 160ms ease}
+.frow{display:flex;align-items:center;gap:6px;min-height:40px;padding:4px 4px 4px 5px;border-radius:14px;background:var(--field)}
+.fbadge{flex:none;min-width:38px;height:28px;padding:0 6px;border-radius:9px;display:grid;place-items:center;background:var(--panel);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line);font-size:9.5px;font-weight:800;letter-spacing:.05em}
+.fbadge[data-k="vec"]{color:var(--focus)}
+.fbadge[data-k="doc"]{color:var(--danger)}
+.fbadge[data-k="img"]{color:var(--ok)}
+.fname{flex:1;min-width:0;height:30px;padding:0 6px;border:0;border-radius:8px;background:transparent;font-size:12.5px;font-weight:600;color:var(--ink);outline:none;text-overflow:ellipsis}
+.fname:hover{background:var(--field-hover)}
+.fname:focus{background:var(--panel);box-shadow:inset 0 0 0 1.5px var(--focus)}
+.fsize{flex:none;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.frow .icon-btn{width:28px;height:28px}
+.frow .icon-btn svg.i{width:14px;height:14px}
+.frow.is-pending{gap:10px;padding-left:12px;color:var(--muted);font-size:12px}
+.frow.is-pending .spinner{width:16px;height:16px}
+.mthumbs{display:flex;flex-wrap:wrap;gap:6px}
+.mthumbs .thumb{width:62px;height:62px;cursor:default;touch-action:auto}
+.mthumbs .thumb-add{display:grid}
+.insp-sec h4.sub-h{margin-top:6px}
 .insp-foot{display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;border-top:1px solid var(--line)}
 .foot-row{display:flex;gap:8px}
 .foot-hint{margin:0;font-size:11.5px;color:var(--muted)}
@@ -737,6 +841,8 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
   @keyframes popIn{from{opacity:0}to{opacity:1}}
   @keyframes toastIn{from{opacity:0}to{opacity:1}}
   .pill-ind,.thumb{transition-duration:0ms!important}
+  .act-chip{transform:none!important}
+  .tog::after,.slot-color{transition:none}
   .skel,.status i{animation:none!important}
 }
 
@@ -760,6 +866,8 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
   .ac-art{aspect-ratio:160/52}
   .types{left:16px;top:calc(12px + env(safe-area-inset-top,0px))}
   .insp{left:8px;right:8px;top:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px));width:auto;max-height:56dvh;animation-name:sheetIn}
+  /* Encuadrar on a phone: the sheet and the type bar step aside; the bar on the image has the zoom and "Listo" */
+  html.frame-on .insp,html.frame-on .types{visibility:hidden;pointer-events:none}
   .ov-cat,.ov-input{font-size:clamp(36px,13vw,72px)}
   .ov-bottom{position:static;margin-top:16px;flex-wrap:wrap}
   .ov-list > :last-child{max-width:100%}
@@ -812,6 +920,8 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 <div class="types" id="types" role="toolbar" aria-label="Tipo de módulo"></div>
 <div class="status admin-only" id="status" role="status"></div>
 <div class="pop" id="pop" role="menu" hidden></div>
+<div class="amodal" id="amodal" role="dialog" aria-modal="true" aria-labelledby="amodal-t" hidden></div>
+<div class="frame-ghost" id="frame-ghost" aria-hidden="true" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="logo-input" class="sr-only" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
 
@@ -897,7 +1007,20 @@ const ICONS = {
   padR: '<rect x="4" y="4" width="16" height="16" rx="4" opacity=".5"/><path d="M15.5 8.5v7" stroke-width="2.2"/>',
   padB: '<rect x="4" y="4" width="16" height="16" rx="4" opacity=".5"/><path d="M8.5 15.5h7" stroke-width="2.2"/>',
   padL: '<rect x="4" y="4" width="16" height="16" rx="4" opacity=".5"/><path d="M8.5 8.5v7" stroke-width="2.2"/>',
-  link: '<path d="M9.5 14.5l5-5"/><path d="M11 6.6l1.3-1.3a3.9 3.9 0 0 1 5.5 5.5L16.5 12.1"/><path d="M13 17.4l-1.3 1.3a3.9 3.9 0 0 1-5.5-5.5L7.5 11.9"/>'
+  link: '<path d="M9.5 14.5l5-5"/><path d="M11 6.6l1.3-1.3a3.9 3.9 0 0 1 5.5 5.5L16.5 12.1"/><path d="M13 17.4l-1.3 1.3a3.9 3.9 0 0 1-5.5-5.5L7.5 11.9"/>',
+  svg: '<path d="M4.5 17.5C6 10 9 7 12 7s6 3 7.5 10.5"/><rect x="2.8" y="16.5" width="3.4" height="3.4" rx=".8"/><rect x="17.8" y="16.5" width="3.4" height="3.4" rx=".8"/><path d="M4 7h6M14 7h6"/><circle cx="12" cy="7" r="1.7"/>',
+  download: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 20h14"/>',
+  copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2.6"/><path d="M15.5 5.5h-8a2 2 0 0 0-2 2v8"/>',
+  tap: '<path d="M10 10l9.5 3.6-4.1 1.5-1.5 4.1z"/><path d="M5.5 5.5l1.6 1.6M10 3v2.3M3 10h2.3"/>',
+  crop: '<path d="M7 3v13a1 1 0 0 0 1 1h13"/><path d="M3 7h13a1 1 0 0 1 1 1v13"/>',
+  expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5"/>',
+  file: '<path d="M13.5 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8.5z"/><path d="M13.5 3.5v5h5"/>',
+  zoom: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2M11 8.5v5M8.5 11h5"/>',
+  zoomOut: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2M8.5 11h5"/>',
+  arrX: '<path d="M4 12h16M7.5 8.5L4 12l3.5 3.5M16.5 8.5L20 12l-3.5 3.5"/>',
+  arrY: '<path d="M12 4v16M8.5 7.5L12 4l3.5 3.5M8.5 16.5L12 20l3.5-3.5"/>',
+  none: '<circle cx="12" cy="12" r="8"/><path d="M6.6 17.4L17.4 6.6"/>',
+  scaleI: '<rect x="4" y="4" width="16" height="16" rx="3" opacity=".45"/><rect x="8" y="8" width="8" height="8" rx="1.6"/>'
 };
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n].replace(/class="f"/g, 'fill="currentColor" stroke="none"')}</svg>`;
 
@@ -928,7 +1051,13 @@ const FIELD = {
   pt: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
   pr: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
   pb: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
-  pl: { min: 0, max: 400, step: 1, px: 2, dec: 0 }
+  pl: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  fzoom: { min: 100, max: 400, step: 1, px: 2, dec: 0 },
+  fx: { min: 0, max: 100, step: 1, px: 2, dec: 0 },
+  fy: { min: 0, max: 100, step: 1, px: 2, dec: 0 },
+  sscale: { min: 5, max: 100, step: 1, px: 2, dec: 0 },
+  sdx: { min: -50, max: 50, step: 1, px: 3, dec: 0 },
+  sdy: { min: -50, max: 50, step: 1, px: 3, dec: 0 }
 };
 /* Text styles (tree.textStyles): the typography a block takes when it is linked. Color and alignment are not part of
    a style. The seeds have fixed ids, so two people opening a catalog saved before styles existed create the same ones. */
@@ -944,7 +1073,7 @@ const TEXT_STYLE_SEED = [
 const PALETTE_SEED = [{ id: 'pc_azul', name: 'Azul Belo', hex: '#002fa7' }, { id: 'pc_blanco', name: 'Blanco', hex: '#ffffff' }, { id: 'pc_negro', name: 'Negro', hex: '#0a0a0a' }];
 /* Inner spacing of a module (slot.pad): each side in design px, or null for the automatic value of that side */
 const PAD_SIDES = ['t', 'r', 'b', 'l'];
-const PAD_TYPES = ['text']; /* the svg module joins this list */
+const PAD_TYPES = ['text', 'svg'];
 const isPadKey = (k) => /^p[trbl]$/.test(k);
 /* Animation presets. Each module (image, video, color, the box of a text module) and each text block has its own
    animation; nothing is inherited. The block (row) only sets the sequence: the wait between modules and between texts.
@@ -982,8 +1111,8 @@ const SCROLL = {
 const isMediaType = (t) => t === 'image' || t === 'video' || t === 'carousel';
 /* Which presets each target offers: only what has a visible effect on it */
 const ANIM_KEYS = {
-  modEnter: (t) => ['none', 'fade', 'move', 'scale', 'blur', 'wipe', ...(!t || isMediaType(t) ? ['zoom'] : [])],
-  modScroll: (t) => isMediaType(t) ? ['none', 'parallax', 'zoom-out', 'zoom-in', 'fade-out'] : t === 'text' ? ['none', 'parallax', 'fade-out'] : ['none', 'fade-out'],
+  modEnter: (t) => ['none', 'fade', 'move', 'scale', 'blur', 'wipe', ...(!t || isMediaType(t) || t === 'svg' ? ['zoom'] : [])],
+  modScroll: (t) => isMediaType(t) || t === 'svg' ? ['none', 'parallax', 'zoom-out', 'zoom-in', 'fade-out'] : t === 'text' ? ['none', 'parallax', 'fade-out'] : ['none', 'fade-out'],
   txtEnter: () => ['none', 'fade', 'move', 'scale', 'blur', 'split-mask', 'split-move', 'split-fade', 'split-blur', 'split-scale', 'split-rotate'],
   txtScroll: () => ['none', 'split-read']
 };
@@ -1073,15 +1202,21 @@ const TYPES = {
   image: { label: 'Imagen', hint: 'Una imagen fija', icon: 'image' },
   video: { label: 'Video', hint: 'MP4 o WebM', icon: 'video' },
   carousel: { label: 'Carrusel', hint: 'Varias imágenes en secuencia', icon: 'carousel' },
-  color: { label: 'Color', hint: 'Un fondo de color', icon: 'color' }
+  color: { label: 'Color', hint: 'Una muestra de color', fsHint: 'Un fondo de color', icon: 'color' },
+  svg: { label: 'SVG', hint: 'Logo o ilustración vectorial', icon: 'svg' }
 };
 const FS_TYPES = ['image', 'video', 'color'];
-const ROW_TYPES = ['text', 'image', 'video', 'carousel'];
+const ROW_TYPES = ['text', 'image', 'video', 'carousel', 'svg', 'color'];
 const OW_REF = { half: 547, content: 1114, screen: 1472 };
 const IMG_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
 const VID_TYPES = ['video/mp4', 'video/webm'];
-const EXT = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm' };
-const ACCEPT = { image: IMG_TYPES.join(','), video: VID_TYPES.join(','), carousel: IMG_TYPES.join(',') };
+/* Source files a module can offer for download besides its preview (slot.files): images, vectors, documents */
+const SRC_TYPES = [...IMG_TYPES, ...VID_TYPES, 'application/pdf', 'application/zip', 'application/postscript', 'application/illustrator'];
+const EXT = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm', pdf: 'application/pdf', zip: 'application/zip', eps: 'application/postscript', ai: 'application/illustrator' };
+const ACCEPT = { image: IMG_TYPES.join(','), video: VID_TYPES.join(','), carousel: IMG_TYPES.join(','), svg: 'image/svg+xml,.svg', files: [...SRC_TYPES, '.svg', '.pdf', '.zip', '.eps', '.ai'].join(',') };
+const POS9 = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'];
+/* What a click on a module can do, per content type: only what makes sense for it */
+const ACT_KINDS = { text: ['none', 'modal', 'copy', 'download'], image: ['none', 'modal', 'download'], video: ['none', 'modal', 'download'], carousel: ['none', 'modal', 'download'], svg: ['none', 'download', 'modal'], color: ['none', 'copy', 'modal', 'download'] };
 const CE = (() => { const d = document.createElement('div'); try { d.contentEditable = 'plaintext-only'; } catch {} return d.contentEditable === 'plaintext-only' ? 'plaintext-only' : 'true'; })();
 
 const mkBlock = (font, size, weight, lh, ls, extra = {}) => ({ id: uid('b'), text: '', font, size, weight, lh, ls, align: 'left', upper: font === 'phudu', ...extra });
@@ -1107,10 +1242,45 @@ function normTextStyle(x) {
   return { id: String(x.id), name: String(x.name || 'Estilo').slice(0, 60), ...Object.fromEntries(TYPE_KEYS.map(k => [k, b[k]])) };
 }
 const uniqueById = (list) => { const seen = new Set(); return list.filter(x => !seen.has(x.id) && seen.add(x.id)); };
+const numIn = (v, d, lo, hi) => clamp(isNum(v) ? v : d, lo, hi);
+/* Image framing (slot.frame): how the image sits inside its box. x/y is the focal point in %, zoom in % (100–400).
+   The default (cover, centered, 100%) is stored as nothing, so an untouched image renders exactly as before. */
+const FRAME_DEF = { fit: 'cover', x: 50, y: 50, zoom: 100 };
+function normFrame(f) {
+  if (!f || typeof f !== 'object') return undefined;
+  const o = { fit: f.fit === 'contain' ? 'contain' : 'cover', x: Math.round(numIn(f.x, 50, 0, 100) * 10) / 10, y: Math.round(numIn(f.y, 50, 0, 100) * 10) / 10, zoom: Math.round(numIn(f.zoom, 100, 100, 400)) };
+  return same(o, FRAME_DEF) ? undefined : o;
+}
+/* What a click on the module does (slot.action), and the files it offers (slot.files) */
+function normAction(a) {
+  if (!a || typeof a !== 'object' || !['modal', 'download', 'copy'].includes(a.kind)) return undefined;
+  const o = { kind: a.kind };
+  if (typeof a.value === 'string' && a.value) o.value = a.value.slice(0, 2000);
+  if (typeof a.title === 'string' && a.title) o.title = a.title.slice(0, 140);
+  if (typeof a.body === 'string' && a.body) o.body = a.body.slice(0, 6000);
+  const media = (Array.isArray(a.media) ? a.media : []).filter(m => m && typeof m.id === 'string' && m.id).map(m => ({ id: m.id, w: isNum(m.w) ? m.w : 0, h: isNum(m.h) ? m.h : 0 }));
+  if (media.length) o.media = media;
+  return o;
+}
+function normFiles(list) {
+  const out = (Array.isArray(list) ? list : []).filter(f => f && typeof f.id === 'string' && f.id)
+    .map(f => ({ id: f.id, name: String(f.name || 'archivo').slice(0, 200), type: String(f.type || ''), size: isNum(f.size) ? Math.max(0, f.size) : 0 }));
+  return out.length ? uniqueById(out) : undefined;
+}
 function normSlot(s) {
   if (!s) return { id: uid('m'), type: null };
   if (!s.id) s.id = uid('m');
   { const pad = normPad(s.pad); if (pad) s.pad = pad; else delete s.pad; }
+  { const a = normAction(s.action); if (a) s.action = a; else delete s.action; }
+  { const f = normFiles(s.files); if (f) s.files = f; else delete s.files; }
+  if (s.type === 'image') { const f = normFrame(s.frame); if (f) s.frame = f; else delete s.frame; }
+  if (s.type === 'svg') {
+    if (!RATIOS.some(r => r[0] === s.ratio)) s.ratio = '16/9';
+    if (!s.bg || !['none', 'surface', 'color'].includes(s.bg.kind) || (s.bg.kind === 'color' && !hexOk(s.bg.color || ''))) s.bg = { kind: 'surface' };
+    s.scale = Math.round(numIn(s.scale, 60, 5, 100)); s.pos = POS9.includes(s.pos) ? s.pos : 'mc';
+    s.dx = Math.round(numIn(s.dx, 0, -50, 50)); s.dy = Math.round(numIn(s.dy, 0, -50, 50));
+  }
+  if (s.type === 'color' && s.ratio !== undefined && !RATIOS.some(r => r[0] === s.ratio && r[0] !== 'auto')) s.ratio = '1/1';
   if (s.type === 'text') {
     s.blocks = (s.blocks || []).map(normBlock);
     if (!s.blocks.length) s.blocks = [mkBlock('jakarta', 18, 400, 150, 0)];
@@ -1187,7 +1357,7 @@ const S = {
   pages: new Map(), loaded: new Set(), subsc: new Map(),
   edit: null, adder: null, inline: null, focusInline: false,
   pop: null, confirmDelete: null, uploading: new Map(), justAdded: new Set(),
-  overlay: null, inspView: ls.get('insp') || 'design', typeStyleUi: null, palUi: null, easeEd: null, splitView: false, pvSpeed: 1, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
+  overlay: null, inspView: ls.get('insp') || 'design', typeStyleUi: null, palUi: null, frameUi: null, modal: null, easeEd: null, splitView: false, pvSpeed: 1, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
   started: false, user: null, peers: [], importing: false, landing: false
 };
 const B = { db: null, assets: null, user: null };
@@ -1314,7 +1484,7 @@ function supabaseBackend(sb, cfg) {
   };
   const base = cfg.url.replace(/\/+$/, '');
   const publicUrl = (id) => base + '/storage/v1/object/public/assets/' + encodeURIComponent(id);
-  const EXT_OF = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg', 'video/mp4': 'mp4', 'video/webm': 'webm' };
+  const EXT_OF = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg', 'video/mp4': 'mp4', 'video/webm': 'webm', 'application/pdf': 'pdf', 'application/zip': 'zip', 'application/postscript': 'eps', 'application/illustrator': 'ai' };
   const upErr = (e) => {
     const s = Number(e && e.statusCode) || Number(e && e.status) || 0;
     return fail(s === 413 ? 'too_large' : s === 415 ? 'unsupported_type' : s === 429 ? 'rate_limited' : (s === 401 || s === 403) ? 'not_granted' : 'store_unavailable', e);
@@ -1448,8 +1618,14 @@ function commitPage(subId, fn) {
   const v = viewOf(path);
   return v && Array.isArray(v.rows) ? v.rows.map(normRow) : [];
 }
-const assetsOfSlot = (s) => !s ? [] : s.type === 'carousel' ? (s.images || []).map(i => i.id) : (s.asset ? [s.asset] : []);
-const assetsOfRow = (r) => (r.slots || []).flatMap(assetsOfSlot);
+/* Every file a module keeps alive: its preview (image, video, svg, carousel images), the source files it offers for
+   download and the images of its modal. Confirm and cancel free what a block no longer lists here. */
+const assetsOfSlot = (s) => !s ? [] : [
+  ...(s.type === 'carousel' ? (s.images || []).map(i => i.id) : (s.asset ? [s.asset] : [])),
+  ...(Array.isArray(s.files) ? s.files.map(f => f.id) : []),
+  ...(s.action && Array.isArray(s.action.media) ? s.action.media.map(m => m.id) : [])
+].filter(Boolean);
+const assetsOfRow = (r) => !r ? [] : [...(r.slots || []), ...(r.overlay && r.overlay.slot ? [r.overlay.slot] : [])].flatMap(assetsOfSlot);
 function dropAssets(ids) { if (!B.assets) return; ids.forEach(id => { if (id) B.assets.delete(id).catch(() => {}); }); }
 
 /* ================= Tree helpers ================= */
@@ -1838,6 +2014,15 @@ function syncLook() {
   LOOK.sig = sig;
   $$('#stage .tb[data-color]').forEach(n => { const c = palById(n.dataset.color); n.style.color = c ? c.hex : ''; });
 }
+/* Color modules name their swatch after the palette: renaming a color updates their label in place */
+function syncColorNames() {
+  $$('#stage .slot-color .sc-label').forEach(lab => {
+    const p = palByHex(lab.parentElement.dataset.color), n = $('.sc-name', lab);
+    if (p && n) { if (n.textContent !== p.name) n.textContent = p.name; }
+    else if (p) lab.insertAdjacentHTML('afterbegin', `<span class="sc-name">${esc(p.name)}</span>`);
+    else if (n) n.remove();
+  });
+}
 
 function renderStage() {
   const stage = $('#stage');
@@ -1912,6 +2097,7 @@ function renderSection(el, sub) {
   renderAdder(el, sub.id, items.length === 0);
 }
 function afterStage() {
+  paintFrameMode(); syncColorNames();
   refreshRowTools();
   markStartsFull();
   updateRailState();
@@ -2111,11 +2297,15 @@ function buildTextEdit(s, ref, overlay) {
 
 /* ---------- Media views ---------- */
 function buildSlotView(s, ref) {
-  if (s.type === 'text') return buildTextView(s, ref, false);
-  if (s.type === 'image') return buildImage(s);
-  if (s.type === 'video') return buildVideo(s);
-  if (s.type === 'carousel') { const el = document.createElement('div'); el.className = 'slot slot-carousel'; el.dataset.slot = s.id; el.append(buildCarousel(s, false)); return el; }
-  const el = document.createElement('div'); el.className = 'slot'; return el;
+  let el;
+  if (s.type === 'text') el = buildTextView(s, ref, false);
+  else if (s.type === 'image') el = buildImage(s);
+  else if (s.type === 'video') el = buildVideo(s);
+  else if (s.type === 'carousel') { el = document.createElement('div'); el.className = 'slot slot-carousel'; el.dataset.slot = s.id; el.append(buildCarousel(s, false)); }
+  else if (s.type === 'svg') el = buildSvg(s, ref);
+  else if (s.type === 'color') el = buildColor(s);
+  else { el = document.createElement('div'); el.className = 'slot'; return el; }
+  return decorateAct(el, s);
 }
 function mediaFrame(s, tag) {
   const el = document.createElement(tag); el.className = 'slot media'; el.dataset.slot = s.id;
@@ -2150,7 +2340,7 @@ function videoEl(s) {
   return v;
 }
 const videoCtrls = () => `<div class="media-ctrls"><button type="button" class="mc" data-action="vid-play" aria-label="Pausar video">${icon('pause')}</button><button type="button" class="mc" data-action="vid-mute" aria-label="Activar sonido">${icon('mute')}</button></div>`;
-function buildImage(s) { const el = mediaFrame(s, 'figure'); el.append(imgEl(s.asset, s.w, s.h, s.alt || '')); return el; }
+function buildImage(s) { const el = mediaFrame(s, 'figure'); el.append(imgEl(s.asset, s.w, s.h, s.alt || '')); applyFrame(el, s); return el; }
 function buildVideo(s) { const el = mediaFrame(s, 'div'); el.classList.add('slot-video'); el.append(videoEl(s)); el.insertAdjacentHTML('beforeend', videoCtrls()); return el; }
 function watchMedia(m) {
   const done = () => { m.classList.add('is-loaded'); Ink.schedule(); Motion.refresh(); };
@@ -2162,16 +2352,117 @@ const VIO = 'IntersectionObserver' in window ? new IntersectionObserver(entries 
   entries.forEach(en => { const v = en.target; if (en.isIntersecting) { if (!v.dataset.userPaused) v.play().catch(() => {}); } else v.pause(); });
 }, { threshold: .15 }) : null;
 
+/* ---------- Image framing ---------- */
+/* The box keeps its size: without a fixed proportion it takes the image's own (as it had), and the CSS variables place
+   the enlarged image inside it. Used when building and live while editing; no frame = exactly the old rendering. */
+function applyFrame(el, s) {
+  const f = s.type === 'image' ? s.frame : null;
+  el.classList.toggle('is-framed', !!f);
+  if (!f) {
+    ['--fx', '--fy', '--fz'].forEach(p => el.style.removeProperty(p)); delete el.dataset.fit;
+    if (el.dataset.nat) { el.style.aspectRatio = ''; delete el.dataset.nat; }
+    return;
+  }
+  el.style.setProperty('--fx', f.x); el.style.setProperty('--fy', f.y); el.style.setProperty('--fz', f.zoom / 100);
+  el.dataset.fit = f.fit;
+  if (!el.classList.contains('media') || el.classList.contains('is-fixed') || el.dataset.nat) return;
+  const img = $(':scope > img', el);
+  const nat = (w, h) => { if (w && h && el.classList.contains('is-framed')) { el.style.aspectRatio = `${w}/${h}`; el.dataset.nat = '1'; } };
+  if (s.w && s.h) nat(s.w, s.h);
+  else if (img && img.naturalWidth) nat(img.naturalWidth, img.naturalHeight);
+  else if (img) img.addEventListener('load', () => { if (!el.dataset.nat) nat(img.naturalWidth, img.naturalHeight); }, { once: true });
+}
+
+/* ---------- SVG and color modules ---------- */
+const AXY = { l: 0, c: .5, r: 1, t: 0, m: .5, b: 1 };
+/* Box of an SVG module: background, proportion (Original = the drawing's own), inner spacing and placement */
+function paintSvg(el, s) {
+  const kind = (s.bg && s.bg.kind) || 'surface';
+  ['none', 'surface', 'color'].forEach(k => el.classList.toggle('bg-' + k, kind === k));
+  if (kind === 'color') { el.style.setProperty('--slot-bg', s.bg.color); el.dataset.color = s.bg.color; } else { el.style.removeProperty('--slot-bg'); delete el.dataset.color; }
+  el.style.aspectRatio = s.ratio && s.ratio !== 'auto' ? s.ratio : s.w && s.h ? `${s.w}/${s.h}` : '16/9';
+  const pos = POS9.includes(s.pos) ? s.pos : 'mc';
+  el.style.setProperty('--sw', isNum(s.scale) ? s.scale : 60);
+  el.style.setProperty('--ax', AXY[pos[1]]); el.style.setProperty('--ay', AXY[pos[0]]);
+  el.style.setProperty('--sdx', s.dx || 0); el.style.setProperty('--sdy', s.dy || 0);
+  padVars(el, s.pad, '--p', '--k');
+}
+function buildSvg(s, ref) {
+  const el = document.createElement('figure'); el.className = 'slot slot-svg'; el.dataset.slot = s.id; el.style.setProperty('--ref', ref || 1114);
+  paintSvg(el, s);
+  const box = document.createElement('div'); box.className = 'svg-in';
+  if (s.asset) box.append(imgEl(s.asset, s.w, s.h, (s.name || '').replace(/\.svg$/i, '') || 'SVG'));
+  el.append(box);
+  return el;
+}
+/* A color swatch: its name (when it is a palette color) and HEX, in the ink that reads on it */
+function paintColor(el, s) {
+  const c = hexOk(s.color || '') ? s.color.toLowerCase() : BRAND;
+  el.style.setProperty('--sc', c); el.dataset.color = c; el.dataset.tone = contrastKey(c);
+  el.style.aspectRatio = s.ratio && s.ratio !== 'auto' ? s.ratio : '1/1';
+  let lab = $(':scope > .sc-label', el);
+  if (s.label === false) { if (lab) lab.remove(); return; }
+  if (!lab) { lab = document.createElement('div'); lab.className = 'sc-label'; el.prepend(lab); }
+  const p = palByHex(c), html = (p ? `<span class="sc-name">${esc(p.name)}</span>` : '') + `<span class="sc-hex">${c.toUpperCase()}</span>`;
+  if (lab.innerHTML !== html) lab.innerHTML = html;
+}
+function buildColor(s) {
+  const el = document.createElement('div'); el.className = 'slot slot-color'; el.dataset.slot = s.id;
+  paintColor(el, s);
+  return el;
+}
+
+/* ---------- Click actions (viewer and admin when not editing) ---------- */
+const extOf = (name) => { const m = /\.([a-z0-9]{1,5})$/i.exec(String(name || '')); return m ? m[1].toLowerCase() : ''; };
+const EXT_BY_TYPE = Object.fromEntries(Object.entries(EXT).reverse().map(([e, t]) => [t, e]));
+function fmtOf(f) { const e = extOf(f.name) || EXT_BY_TYPE[f.type] || ''; return e === 'jpeg' ? 'JPG' : e ? e.toUpperCase() : 'Archivo'; }
+const fmtKind = (f) => { const e = fmtOf(f); return ['SVG', 'AI', 'EPS'].includes(e) ? 'vec' : e === 'PDF' ? 'doc' : ['PNG', 'JPG', 'GIF', 'WEBP'].includes(e) ? 'img' : ''; };
+const fmtSize = (n) => !n ? '' : n < 1024 ? n + ' B' : n < MB ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / MB).toFixed(n < 10 * MB ? 1 : 0) + ' MB';
+/* What a download offers: the source files when there are any, otherwise the module's own file(s) */
+function ownFiles(s) {
+  const base = TYPES[s.type] ? TYPES[s.type].label.toLowerCase() : 'archivo';
+  const named = (id, name, size, i) => ({ id, name: name || base + (i ? '-' + i : '') + (extOf(id) ? '.' + extOf(id) : ''), type: '', size: size || 0 });
+  if (s.type === 'carousel') return (s.images || []).map((im, i) => named(im.id, im.name, im.size, i + 1));
+  return (s.type === 'image' || s.type === 'video' || s.type === 'svg') && s.asset ? [named(s.asset, s.name, s.size, 0)] : [];
+}
+const dlItems = (s) => (s.files && s.files.length ? s.files : ownFiles(s)).filter(f => f && f.id);
+function copyValue(s) {
+  const a = s.action || {};
+  if (a.value && a.value.trim()) return a.value.trim();
+  if (s.type === 'color') return String(s.color || BRAND).toUpperCase();
+  if (s.type === 'text') return (s.blocks || []).map(b => (b.text || '').trim()).filter(Boolean).join('\n');
+  return '';
+}
+/* The action a module offers right now, or null (no action, or nothing to copy, show or download) */
+function actInfo(s) {
+  const a = s && s.action; if (!a || !(ACT_KINDS[s.type] || []).includes(a.kind)) return null;
+  if (a.kind === 'copy') { const v = copyValue(s); return v ? { kind: 'copy', icon: 'copy', label: v.length <= 24 && !v.includes('\n') ? 'Copiar ' + v : 'Copiar texto', aria: 'Copiar ' + (v.length <= 60 ? v : 'el texto') } : null; }
+  if (a.kind === 'download') {
+    const list = dlItems(s); if (!list.length) return null;
+    return list.length === 1 ? { kind: 'download', icon: 'download', label: fmtOf(list[0]), aria: `Descargar ${list[0].name}` } : { kind: 'download', icon: 'download', label: 'Descargar', aria: `Descargar: ${list.length} archivos` };
+  }
+  if (a.kind === 'modal') return a.title || a.body || (a.media || []).length ? { kind: 'modal', icon: 'expand', label: 'Ver detalle', aria: a.title ? 'Ver detalle: ' + a.title : 'Ver detalle' } : null;
+  return null;
+}
+function decorateAct(el, s) {
+  const a = actInfo(s); if (!a) return el;
+  el.dataset.action = 'slot-act'; el.dataset.act = a.kind;
+  el.setAttribute('role', 'button'); el.tabIndex = 0;
+  if (s.type !== 'text') el.setAttribute('aria-label', a.aria);
+  el.insertAdjacentHTML('beforeend', `<span class="act-chip"${s.type !== 'text' ? ' aria-hidden="true"' : ''}>${icon(a.icon)}<span>${esc(a.label)}</span></span>`);
+  return el;
+}
+
 /* ---------- Full screen ---------- */
 function buildFs(row, editing) {
   const fs = document.createElement('div'); fs.className = 'fs';
   const m = row.slots[0];
-  fs.append(editing ? buildFsMediaEdit(m) : buildFsMedia(m));
+  fs.append(editing ? buildFsMediaEdit(m) : decorateAct(buildFsMedia(m), m));
   const ov = row.overlay;
   if (ov && ov.slot && (editing || (ov.slot.blocks || []).some(b => b.text.trim()))) {
     const o = document.createElement('div'); o.className = 'fs-overlay'; o.dataset.pos = ov.pos; o.dataset.w = ov.width;
     padVars(o, ov.slot.pad, '--ov-p', '--u');
-    o.append(editing ? buildTextEdit(ov.slot, OW_REF[ov.width], true) : buildTextView(ov.slot, OW_REF[ov.width], true));
+    o.append(editing ? buildTextEdit(ov.slot, OW_REF[ov.width], true) : decorateAct(buildTextView(ov.slot, OW_REF[ov.width], true), ov.slot));
     fs.append(o);
   }
   return fs;
@@ -2179,7 +2470,7 @@ function buildFs(row, editing) {
 function buildFsMedia(m) {
   const el = document.createElement('div'); el.className = 'slot fs-media'; el.dataset.slot = m.id; el.dataset.kind = m.type || '';
   if (m.type === 'color') { el.style.setProperty('--fs-color', m.color || BRAND); el.dataset.color = m.color || BRAND; }
-  else if (m.type === 'image' && m.asset) el.append(imgEl(m.asset, m.w, m.h));
+  else if (m.type === 'image' && m.asset) { el.append(imgEl(m.asset, m.w, m.h)); applyFrame(el, m); }
   else if (m.type === 'video' && m.asset) { el.append(videoEl(m)); el.insertAdjacentHTML('beforeend', videoCtrls()); }
   const dim = document.createElement('div'); dim.className = 'fs-dim'; dim.style.opacity = (m.dim || 0) / 100; el.append(dim);
   el.dataset.dim = m.dim || 0;
@@ -2301,6 +2592,7 @@ class Carousel {
   up(e, cancel) {
     const d = this.drag; if (!d || e.pointerId !== d.id) return;
     this.drag = null; this.root.classList.remove('is-dragging');
+    if (d.active) this.dragT = performance.now(); /* the click that ends a drag is not a click on the module */
     if (!d.active) { if (Math.abs(this.x + this.i * this.w) > .5) this.slide(this.i); return; }
     const a = d.hist[0], b = d.hist[d.hist.length - 1];
     const v = cancel ? 0 : ((b.x - a.x) / Math.max(1, b.t - a.t)) * 1000;
@@ -2427,8 +2719,9 @@ function buildSlotEdit(s, row, ref) {
   let el;
   if (!s.type) el = buildPicker(s, ROW_TYPES, false);
   else if (s.type === 'text') return buildTextEdit(s, ref, false);
-  else if (s.type === 'image' || s.type === 'video') el = buildMediaEdit(s);
+  else if (s.type === 'image' || s.type === 'video' || s.type === 'svg') el = buildMediaEdit(s, ref);
   else if (s.type === 'carousel') el = buildCarouselEdit(s);
+  else if (s.type === 'color') el = buildColor(s);
   else el = buildPicker(s, ROW_TYPES, false);
   if (S.animSlot === s.id) el.classList.add('is-swapped');
   return el;
@@ -2436,7 +2729,7 @@ function buildSlotEdit(s, row, ref) {
 function buildPicker(s, types, fs) {
   const el = document.createElement('div'); el.className = 'slot slot-picker' + (fs ? ' fs-media' : ''); el.dataset.slot = s.id;
   el.innerHTML = `<p class="picker-label">${fs ? '¿Qué va de fondo?' : '¿Qué contiene este módulo?'}</p><div class="picker-grid" style="--n:${types.length}">${types.map((k, i) => { const t = TYPES[k];
-    return `<button type="button" class="pick" style="--i:${i}" data-action="pick-type" data-slot="${s.id}" data-type="${k}"><span class="pick-ico">${icon(t.icon)}</span><span><strong>${t.label}</strong><small>${t.hint}</small></span></button>`; }).join('')}</div>`;
+    return `<button type="button" class="pick" style="--i:${i}" data-action="pick-type" data-slot="${s.id}" data-type="${k}"><span class="pick-ico">${icon(t.icon)}</span><span><strong>${t.label}</strong><small>${fs && t.fsHint ? t.fsHint : t.hint}</small></span></button>`; }).join('')}</div>`;
   return el;
 }
 function buildDropzone(s) {
@@ -2446,15 +2739,15 @@ function buildDropzone(s) {
   el.dataset.drop = s.id; el.dataset.slot = s.id;
   if (s.ratio && s.ratio !== 'auto') el.style.setProperty('--dz-ar', s.ratio);
   const t = s.type;
-  const title = t === 'video' ? 'Arrastra un video aquí' : t === 'carousel' ? 'Arrastra una o varias imágenes' : 'Arrastra una imagen aquí';
-  const sub = t === 'video' ? 'o haz clic para elegirlo. MP4 o WebM, hasta 20 MB.' : 'o haz clic para elegir. PNG, JPG, WebP, GIF o SVG, hasta 20 MB.';
+  const title = t === 'video' ? 'Arrastra un video aquí' : t === 'carousel' ? 'Arrastra una o varias imágenes' : t === 'svg' ? 'Arrastra un SVG aquí' : 'Arrastra una imagen aquí';
+  const sub = t === 'video' ? 'o haz clic para elegirlo. MP4 o WebM, hasta 20 MB.' : t === 'svg' ? 'o haz clic para elegirlo. Un archivo .svg de hasta 2 MB.' : 'o haz clic para elegir. PNG, JPG, WebP, GIF o SVG, hasta 20 MB.';
   el.innerHTML = up ? `<span class="spinner" aria-hidden="true"></span><span class="dz-title">Subiendo ${esc(up.label)}…</span>`
     : `<span class="dz-icon">${icon(TYPES[t].icon)}</span><span class="dz-title">${title}</span><span class="dz-sub">${sub}</span><input type="file" class="sr-only" data-upload="${s.id}" accept="${ACCEPT[t]}"${t === 'carousel' ? ' multiple' : ''}>`;
   return el;
 }
-function buildMediaEdit(s) {
+function buildMediaEdit(s, ref) {
   if (!s.asset) return buildDropzone(s);
-  const el = s.type === 'image' ? buildImage(s) : buildVideo(s);
+  const el = s.type === 'image' ? buildImage(s) : s.type === 'svg' ? buildSvg(s, ref) : buildVideo(s);
   el.dataset.drop = s.id;
   if (S.uploading.has(s.id)) el.insertAdjacentHTML('beforeend', `<div class="uploading-veil"><span class="spinner"></span></div>`);
   return el;
@@ -2484,9 +2777,13 @@ function activeBlockOf(s) { const e = S.edit; const id = e && e.blocks && e.bloc
 function activeBlock() { const s = activeSlot(); return s && s.type === 'text' ? activeBlockOf(s) : null; }
 
 function newSlot() { return { id: uid('m'), type: null }; }
+/* ctx: 'full', 'half', 'fs' (a full-screen background) or 'overlay' (the text over it). The click action and the source
+   files belong to the module, not to its content type: they stay when the type changes (if the action fits it). */
 function fillType(s, type, ctx) {
-  const id = s.id, anim = s.anim; Object.keys(s).forEach(k => delete s[k]); s.id = id; s.type = type;
+  const id = s.id, anim = s.anim, carry = { files: s.files, action: s.action };
+  Object.keys(s).forEach(k => delete s[k]); s.id = id; s.type = type;
   if (anim) s.anim = anim;
+  carryExtras(s, carry);
   if (type === 'text') {
     if (ctx === 'overlay') {
       s.blocks = [mkBlock('phudu', 120, 900, 95, -2), mkBlock('jakarta', 20, 500, 140, -.5)];
@@ -2501,9 +2798,15 @@ function fillType(s, type, ctx) {
   }
   if (type === 'image' || type === 'video') { s.asset = null; s.ratio = 'auto'; s.dim = 0; s.scrim = true; }
   if (type === 'carousel') { s.images = []; s.ratio = 'auto'; s.pace = 5; s.autoplay = true; }
-  if (type === 'color') { s.color = BRAND; }
+  if (type === 'color') { s.color = BRAND; if (ctx !== 'fs') { s.ratio = '1/1'; s.label = true; } }
+  if (type === 'svg') { s.asset = null; s.ratio = '16/9'; s.bg = { kind: 'surface' }; s.scale = 60; s.pos = 'mc'; s.dx = 0; s.dy = 0; }
   return s;
 }
+function carryExtras(s, { files, action }) {
+  if (files && files.length) s.files = files; else delete s.files;
+  if (action && (ACT_KINDS[s.type] || []).includes(action.kind)) s.action = action; else delete s.action;
+}
+const fillCtx = (row) => row.layout === 'half' ? 'half' : row.layout === 'fullscreen' ? 'fs' : 'full';
 function bump() {
   const e = S.edit; if (!e) return;
   Motion.idle();
@@ -2514,6 +2817,7 @@ function bump() {
 function setActiveSlot(id) {
   const e = S.edit; if (!e || e.slot === id) return;
   e.slot = id; S.typeStyleUi = null;
+  if (S.frameUi && S.frameUi.slot !== id) { S.frameUi = null; paintFrameMode(); }
   $$('#stage .row.is-editing .is-active-slot').forEach(n => n.classList.remove('is-active-slot'));
   const el = $(`#stage .row.is-editing [data-slot="${id}"]`); el && el.classList.add('is-active-slot');
   renderInspector();
@@ -2576,10 +2880,11 @@ function startNew(subId, layout) {
   if (el) scrollIntoViewSoft(el);
 }
 const slotValid = (s) => !s ? false : s.type === 'text' ? (s.blocks || []).some(b => b.text && b.text.trim())
-  : (s.type === 'image' || s.type === 'video') ? !!s.asset
+  : (s.type === 'image' || s.type === 'video' || s.type === 'svg') ? !!s.asset
   : s.type === 'carousel' ? (s.images || []).length > 0
   : s.type === 'color' ? hexOk(s.color || '') : false;
-const rowUploading = (r) => allSlots(r).some(s => S.uploading.has(s.id));
+/* Uploads that hold the confirmation: the module's own file, its source files, the images of its modal */
+const rowUploading = (r) => allSlots(r).some(s => S.uploading.has(s.id) || S.uploading.has('files:' + s.id) || S.uploading.has('media:' + s.id));
 const rowValid = (r) => r.slots.every(slotValid) && !rowUploading(r);
 function invalidHint(r) {
   if (rowUploading(r)) return 'Esperando que termine la carga…';
@@ -2694,6 +2999,137 @@ function padNow(k) {
   return Math.round(parseFloat(getComputedStyle(box)['padding' + side]) / scale);
 }
 
+/* ---------- Image framing: live updates and the "Encuadrar" mode ---------- */
+function setFrame(s, f) {
+  const n = normFrame(f); if (n) s.frame = n; else delete s.frame;
+  const el = slotEl(s.id); if (el) applyFrame(el, s);
+  syncFrameGhost();
+}
+function paintFrameUi(s) {
+  const f = { ...FRAME_DEF, ...(s.frame || {}) };
+  setPressed('ffit', f.fit); setPressed('fpos', framePos(f));
+  $$('input[data-f="fzoom"]').forEach(i => { if (document.activeElement !== i) i.value = f.zoom; });
+  $$('#fzoom-out, .frame-bar output').forEach(o => { o.textContent = f.zoom + '%'; });
+  setFieldValue('fx', f.x); setFieldValue('fy', f.y);
+  const r = $('#insp [data-action="frame-reset"]'); if (r) r.disabled = !s.frame;
+}
+/* Where the image is drawn, in screen px: the box, and the rectangle of the whole image after fit, zoom and focal point
+   (its left edge is x% of the room between box and image, as object-position puts it) */
+function frameGeom(el, s) {
+  const box = el.getBoundingClientRect(), img = $(':scope > img', el);
+  const nw = (img && img.naturalWidth) || s.w || box.width || 1, nh = (img && img.naturalHeight) || s.h || box.height || 1;
+  const f = { ...FRAME_DEF, ...(s.frame || {}) };
+  const k = (f.fit === 'contain' ? Math.min : Math.max)(box.width / nw, box.height / nh) * f.zoom / 100;
+  const cw = nw * k, ch = nh * k;
+  return { box, f, cw, ch, left: box.left + f.x / 100 * (box.width - cw), top: box.top + f.y / 100 * (box.height - ch) };
+}
+const frameOn = (id) => !!S.frameUi && S.frameUi.slot === id;
+const frameSlot = () => { const e = S.edit, s = e && S.frameUi && findSlot(e.draft, S.frameUi.slot); return s && s.type === 'image' && s.asset ? s : null; };
+function setFrameMode(on) {
+  const s = activeSlot();
+  S.frameUi = on && s && s.type === 'image' && s.asset ? { slot: s.id } : null;
+  paintFrameMode(); renderInspector();
+  const el = S.frameUi && slotEl(S.frameUi.slot); if (el) revealFrame(el);
+}
+/* The box being framed must be in sight: on a phone the panel steps aside while framing, so the box can use the screen */
+function revealFrame(el) {
+  requestAnimationFrame(() => {
+    const r = el.getBoundingClientRect(), top = MOBILE.matches ? 76 : 24, bottom = innerHeight - 24;
+    if (r.top >= top && r.bottom <= bottom) return;
+    const y = Math.max(0, scrollY + r.top - Math.max(top, (innerHeight - r.height) / 2));
+    if (lenis) lenis.scrollTo(y, { duration: .8 }); else window.scrollTo({ top: y, behavior: RM ? 'auto' : 'smooth' });
+  });
+}
+const frameBarHTML = (s) => { const z = (s.frame || FRAME_DEF).zoom; return `<div class="frame-bar" role="toolbar" aria-label="Encuadre de la imagen"><span class="fb-hint">Arrastra para mover</span><button type="button" class="icon-btn" data-action="frame-zoom" data-dir="-1" aria-label="Alejar">${icon('zoomOut')}</button><input type="range" min="100" max="400" step="1" data-f="fzoom" value="${z}" aria-label="Escala de la imagen"><button type="button" class="icon-btn" data-action="frame-zoom" data-dir="1" aria-label="Acercar">${icon('zoom')}</button><output>${z}%</output><button type="button" class="btn solid sm" data-action="frame-mode">Listo</button></div>`; };
+/* The block being edited is rebuilt often: the framing state lives in S.frameUi and is painted back on every render */
+function paintFrameMode() {
+  if (S.frameUi && (!frameSlot() || S.inspView !== 'design' || S.mode !== 'admin')) S.frameUi = null;
+  $$('#stage .slot.is-framing').forEach(n => { if (!S.frameUi || n.dataset.slot !== S.frameUi.slot) { n.classList.remove('is-framing', 'is-panning'); const b = $(':scope > .frame-bar', n); b && b.remove(); } });
+  const el = S.frameUi && slotEl(S.frameUi.slot);
+  if (el && !el.classList.contains('is-framing')) { el.classList.add('is-framing'); el.insertAdjacentHTML('beforeend', frameBarHTML(frameSlot())); }
+  ROOT.classList.toggle('frame-on', !!el);
+  syncFrameGhost();
+}
+function syncFrameGhost() {
+  const g = $('#frame-ghost'), s = frameSlot(), el = s && slotEl(s.id);
+  if (!el) { if (!g.hidden) { g.hidden = true; g.innerHTML = ''; } return; }
+  const G = frameGeom(el, s);
+  let img = $('img', g);
+  if (!img || img.dataset.id !== s.asset) { g.innerHTML = ''; img = new Image(); img.alt = ''; img.decoding = 'async'; img.dataset.id = s.asset; if (XO()) img.crossOrigin = 'anonymous'; img.src = assetUrl(s.asset); g.append(img); }
+  img.style.width = G.cw + 'px'; img.style.height = G.ch + 'px'; img.style.transform = `translate(${G.left}px,${G.top}px)`;
+  const b = G.box, r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, b.width / 2, b.height / 2);
+  const [L, T, R, B] = [b.left, b.top, b.right, b.bottom].map(n => +n.toFixed(1));
+  const hole = `M${L + r} ${T}H${R - r}A${r} ${r} 0 0 1 ${R} ${T + r}V${B - r}A${r} ${r} 0 0 1 ${R - r} ${B}H${L + r}A${r} ${r} 0 0 1 ${L} ${B - r}V${T + r}A${r} ${r} 0 0 1 ${L + r} ${T}Z`;
+  g.style.clipPath = `path(evenodd, "M0 0H${innerWidth}V${innerHeight}H0Z ${hole}")`;
+  g.hidden = false;
+}
+let ghostQ = 0;
+const ghostSoon = () => { if (!S.frameUi || ghostQ) return; ghostQ = requestAnimationFrame(() => { ghostQ = 0; syncFrameGhost(); }); };
+/* Zoom by k around a point of the screen, keeping the part of the image under it in place */
+function frameZoomAt(s, el, z, cx, cy) {
+  const G = frameGeom(el, s), f = G.f, W = G.box.width, H = G.box.height;
+  z = Math.round(clamp(z, 100, 400)); const k = z / f.zoom;
+  const px = cx - G.box.left, py = cy - G.box.top, L = G.left - G.box.left, T = G.top - G.box.top;
+  const cw = G.cw * k, ch = G.ch * k;
+  const x = Math.abs(W - cw) > .5 ? clamp((px - (px - L) * k) / (W - cw) * 100, 0, 100) : f.x;
+  const y = Math.abs(H - ch) > .5 ? clamp((py - (py - T) * k) / (H - ch) * 100, 0, 100) : f.y;
+  setFrame(s, { ...f, zoom: z, x, y }); paintFrameUi(s);
+}
+function framePan(s, el, dx, dy, st) {
+  const G = frameGeom(el, s), W = G.box.width, H = G.box.height;
+  if (Math.abs(W - G.cw) > .5) st.x = clamp(st.x + dx / (W - G.cw) * 100, 0, 100);
+  if (Math.abs(H - G.ch) > .5) st.y = clamp(st.y + dy / (H - G.ch) * 100, 0, 100);
+  setFrame(s, { ...G.f, x: st.x, y: st.y });
+}
+/* Pointer gestures on the box: one pointer pans, two pinch to zoom. One undo step per gesture. */
+let fdrag = null;
+function frameDown(ev) {
+  if (!S.frameUi) return;
+  const el = ev.target.closest && ev.target.closest('#stage .slot.is-framing'); if (!el || ev.target.closest('.frame-bar')) return;
+  const s = frameSlot(); if (!s || s.id !== el.dataset.slot || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
+  ev.preventDefault();
+  if (!fdrag || fdrag.el !== el) { record(null); const f = { ...FRAME_DEF, ...(s.frame || {}) }; fdrag = { el, pts: new Map(), x: f.x, y: f.y, z: f.zoom }; }
+  fdrag.pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  try { el.setPointerCapture(ev.pointerId); } catch {}
+  el.classList.add('is-panning');
+}
+function frameMove(ev) {
+  const d = fdrag; if (!d || !d.pts.has(ev.pointerId)) return;
+  const s = frameSlot(); if (!s) return;
+  const prev = d.pts.get(ev.pointerId), cur = { x: ev.clientX, y: ev.clientY };
+  if (d.pts.size >= 2) {
+    const [a, b] = [...d.pts.entries()].slice(0, 2).map(([id, p]) => id === ev.pointerId ? [p, cur] : [p, p]);
+    const d0 = Math.hypot(a[0].x - b[0].x, a[0].y - b[0].y), d1 = Math.hypot(a[1].x - b[1].x, a[1].y - b[1].y);
+    const mx = (a[1].x + b[1].x) / 2, my = (a[1].y + b[1].y) / 2;
+    if (d0 > 4) { d.z = clamp(d.z * d1 / d0, 100, 400); frameZoomAt(s, d.el, d.z, mx, my); const f = s.frame || FRAME_DEF; d.x = f.x; d.y = f.y; }
+    framePan(s, d.el, (cur.x - prev.x) / 2, (cur.y - prev.y) / 2, d);
+  } else framePan(s, d.el, cur.x - prev.x, cur.y - prev.y, d);
+  d.pts.set(ev.pointerId, cur);
+}
+function frameUp(ev) {
+  const d = fdrag; if (!d || !d.pts.has(ev.pointerId)) return;
+  d.pts.delete(ev.pointerId);
+  if (d.pts.size) return;
+  fdrag = null; d.el.classList.remove('is-panning');
+  const s = frameSlot(); if (s) paintFrameUi(s);
+  Ink.schedule();
+}
+let wheelZ = null;
+function frameWheel(ev) {
+  if (!S.frameUi) return;
+  const el = ev.target.closest && ev.target.closest('#stage .slot.is-framing'); if (!el || ev.target.closest('.frame-bar')) return;
+  const s = frameSlot(); if (!s || s.id !== el.dataset.slot) return;
+  ev.preventDefault();
+  record('frame-zoom');
+  const f = s.frame || FRAME_DEF;
+  if (!wheelZ || Math.round(wheelZ.z) !== f.zoom || wheelZ.id !== s.id) wheelZ = { id: s.id, z: f.zoom };
+  const dy = ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY;
+  wheelZ.z = clamp(wheelZ.z * Math.exp(-dy * (ev.ctrlKey ? .01 : .0022)), 100, 400);
+  frameZoomAt(s, el, wheelZ.z, ev.clientX, ev.clientY);
+  Ink.schedule();
+}
+document.addEventListener('wheel', frameWheel, { passive: false });
+
 /* ================= Inspector ================= */
 /* Numeric fields show their FIELD decimals; any other field (the hex code) is free text */
 const fmt = (k, v) => { if (v === '' || v == null) return ''; if (!FIELD[k]) return String(v); const d = FIELD[k].dec || 0; return d ? String(+(+v).toFixed(d)) : String(Math.round(v)); };
@@ -2714,15 +3150,17 @@ function selc(k, opts, val, label, disabled = false) {
    is pushed to INSP_VIEWS (the "Interacción" view, data-v="act", goes after Animación). */
 const INSP_VIEWS = [
   { v: 'design', label: 'Diseño', icon: 'edit', body: designView },
-  { v: 'anim', label: 'Animación', icon: 'motion', body: (c) => inspAnimView(c.row, c.slot) }
+  { v: 'anim', label: 'Animación', icon: 'motion', body: (c) => inspAnimView(c.row, c.slot) },
+  { v: 'act', label: 'Interacción', icon: 'tap', body: actView }
 ];
 const inspViewOf = (v) => INSP_VIEWS.find(x => x.v === v) || INSP_VIEWS[0];
 const DESIGN_SECTIONS = {
   text: [secTypography, secTextColor, secTextBlocks, secTextModule, secPadding],
-  image: [secMediaFile, secMediaFrame, secFsDim],
-  video: [secMediaFile, secMediaFrame, secFsDim],
-  carousel: [secCarouselImages, secCarouselPlay, secMediaFrame],
-  color: [secFsColor]
+  image: [secMediaFile, secContainer, secImageFrame, secFsDim],
+  video: [secMediaFile, secContainer, secFsDim],
+  carousel: [secCarouselImages, secCarouselPlay, secContainer],
+  color: [secFsColor, secContainer],
+  svg: [secSvgFile, secContainer, secPadding, secSvgPlace, secSvgDownload]
 };
 const ROW_SECTIONS = [secOverlayAdd, secHeight];
 const inspCtx = (row, slot) => ({ row, slot, fs: row.layout === 'fullscreen', half: row.layout === 'half', overlay: !!slot && isOverlaySlot(slot) });
@@ -2867,15 +3305,73 @@ function secPadding(c) {
 }
 /* Media */
 function secMediaFile(c) {
-  const s = c.slot, t = TYPES[s.type];
-  return `<div class="insp-sec"><h4>${t.label}${s.w ? `<span>${s.w} × ${s.h}</span>` : ''}</h4>
-      ${s.asset ? `<div class="file-row"><span class="file-thumb">${s.type === 'image' ? `<img src="${esc(assetUrl(s.asset))}" alt="">` : icon('video')}</span><span class="file-meta">${s.type === 'image' ? 'Imagen cargada' : 'Video cargado'}</span></div>` : ''}
+  const s = c.slot, meta = s.name ? esc(s.name) + (s.size ? ' · ' + fmtSize(s.size) : '') : s.type === 'image' ? 'Imagen cargada' : 'Video cargado';
+  return `<div class="insp-sec"><h4>Archivo${s.w ? `<span>${s.w} × ${s.h}</span>` : ''}</h4>
+      ${s.asset ? `<div class="file-row"><span class="file-thumb">${s.type === 'image' ? `<img src="${esc(assetUrl(s.asset))}" alt="">` : icon('video')}</span><span class="file-meta">${meta}</span></div>` : ''}
       <div class="insp-row"><label class="btn ghost sm grow">${icon('upload')}${s.asset ? 'Reemplazar' : 'Subir archivo'}<input type="file" class="sr-only" data-upload="${s.id}" accept="${ACCEPT[s.type]}"></label></div>
     </div>`;
 }
-function secMediaFrame(c) {
+/* The box of a module (Contenedor) is set apart from what sits inside it: its proportion, or the block height when the
+   block has one; SVG modules add their background, color swatches their label */
+function secContainer(c) {
   if (c.fs) return '';
-  return `<div class="insp-sec"><h4>Encuadre</h4>${selc('ratio', RATIOS, c.slot.ratio || 'auto', 'Proporción', !!c.row.h)}${c.row.h ? '<p class="insp-hint">El alto personalizado define el encuadre.</p>' : ''}</div>`;
+  const s = c.slot, t = s.type, opts = t === 'color' ? RATIOS.filter(r => r[0] !== 'auto') : RATIOS;
+  const val = s.ratio || (t === 'color' ? '1/1' : t === 'svg' ? '16/9' : 'auto');
+  return `<div class="insp-sec"><h4>Contenedor${t === 'image' ? '<span>El tamaño del recuadro</span>' : ''}</h4>
+      <div class="insp-line"><span class="lbl">Proporción</span>${selc('ratio', opts, val, 'Proporción del contenedor', !!c.row.h)}</div>
+      ${c.row.h ? '<p class="insp-hint">El alto personalizado del bloque define el contenedor.</p>' : ''}
+      ${t === 'svg' ? `<div class="insp-line wrap"><span class="lbl">Fondo</span>${bgSwatches(s.bg || { kind: 'surface' })}</div>` : ''}
+      ${t === 'color' ? `<button type="button" class="insp-switch" role="switch" aria-checked="${s.label !== false}" data-action="seg" data-k="clabel" data-v="${s.label === false}"><span>Mostrar nombre y HEX</span><span class="tog" aria-hidden="true"></span></button>` : ''}
+    </div>`;
+}
+/* Image inside its box: fit, scale and focal point, plus the on-canvas "Encuadrar" mode */
+const matrixHTML = (k, cur, label) => `<div class="matrix" role="group" aria-label="${esc(label)}">${POS9.map(p => `<button type="button" data-action="seg" data-k="${k}" data-v="${p}" aria-pressed="${cur === p}" aria-label="${posLabel(p)}"><i></i></button>`).join('')}</div>`;
+const framePos = (f) => POS9.find(p => AXY[p[1]] * 100 === f.x && AXY[p[0]] * 100 === f.y) || '';
+function secImageFrame(c) {
+  const s = c.slot; if (!s.asset) return '';
+  const f = { ...FRAME_DEF, ...(s.frame || {}) }, on = frameOn(s.id);
+  return `<div class="insp-sec"><h4>Imagen<button type="button" class="h4-act" data-action="frame-reset"${s.frame ? '' : ' disabled'}>Restablecer</button></h4>
+      <div class="insp-line"><span class="lbl">Ajuste</span>${segc('ffit', [['cover', 'Cubrir'], ['contain', 'Contener']], f.fit, 'Ajuste de la imagen')}</div>
+      <div class="insp-line"><span class="lbl">Escala</span><div class="rng"><input type="range" min="100" max="400" step="1" data-f="fzoom" value="${f.zoom}" aria-label="Escala de la imagen"><output id="fzoom-out">${f.zoom}%</output></div></div>
+      <div class="insp-line top"><span class="lbl">Posición</span><div class="pos-row">${matrixHTML('fpos', framePos(f), 'Punto focal de la imagen')}<div class="pos-xy">${fld('fx', 'arrX', f.x, '%', { title: 'Posición horizontal' })}${fld('fy', 'arrY', f.y, '%', { title: 'Posición vertical' })}</div></div></div>
+      <button type="button" class="btn ${on ? 'solid' : 'ghost'} sm" data-action="frame-mode" aria-pressed="${on}">${icon(on ? 'check' : 'crop')}${on ? 'Listo' : 'Encuadrar'}</button>
+      <p class="insp-hint">${on ? 'Arrastra la imagen para moverla; acércala con la rueda, pellizcando o con la barra. Esc para terminar.' : 'Mueve y acerca la imagen directamente en el bloque.'}</p>
+    </div>`;
+}
+/* SVG: the file, the box (above), the drawing inside the box and the download */
+function secSvgFile(c) {
+  const s = c.slot;
+  return `<div class="insp-sec"><h4>Archivo${s.w ? `<span>${s.w} × ${s.h}</span>` : ''}</h4>
+      ${s.asset ? `<div class="file-row"><span class="file-thumb"><img src="${esc(assetUrl(s.asset))}" alt="" style="object-fit:contain;padding:7px"></span><span class="file-meta">${esc(s.name || 'Archivo SVG')}${s.size ? ' · ' + fmtSize(s.size) : ''}</span></div>` : ''}
+      <div class="insp-row"><label class="btn ghost sm grow">${icon('upload')}${s.asset ? 'Reemplazar' : 'Subir SVG'}<input type="file" class="sr-only" data-upload="${s.id}" accept="${ACCEPT.svg}"></label></div>
+    </div>`;
+}
+function secSvgPlace(c) {
+  const s = c.slot;
+  return `<div class="insp-sec"><h4>SVG<span>Dentro del contenedor</span></h4>
+      <div class="insp-line"><span class="lbl">Tamaño</span><div class="rng"><input type="range" min="5" max="100" step="1" data-f="sscale" value="${s.scale}" aria-label="Tamaño del SVG, en % del ancho del contenedor"><output id="sscale-out">${s.scale}%</output></div></div>
+      <div class="insp-line top"><span class="lbl">Alineación</span>${matrixHTML('svgpos', s.pos, 'Alineación del SVG')}</div>
+      <div class="insp-line"><span class="lbl">Desplazar</span><div class="grid2">${fld('sdx', 'arrX', s.dx, '%', { title: 'Desplazamiento horizontal' })}${fld('sdy', 'arrY', s.dy, '%', { title: 'Desplazamiento vertical' })}</div></div>
+      <p class="insp-hint">El tamaño es un porcentaje del ancho del contenedor, sin contar el espaciado interno.</p>
+    </div>`;
+}
+function secSvgDownload(c) {
+  const s = c.slot, on = !!(s.action && s.action.kind === 'download');
+  return `<div class="insp-sec"><h4>Descarga</h4>
+      <button type="button" class="insp-switch" role="switch" aria-checked="${on}" data-action="svg-dl"><span>Descargable</span><span class="tog" aria-hidden="true"></span></button>
+      ${on ? `<p class="insp-hint">En modo Viewer el bloque muestra un botón «SVG» y al hacer clic se descarga${s.files && s.files.length ? '' : ' con su nombre original'}.</p><h4 class="sub-h">Archivos para descargar</h4>${filesBlock(s)}` : '<p class="insp-hint">Actívalo para que quien vea el catálogo pueda descargar el SVG.</p>'}
+    </div>`;
+}
+/* Source files of a module: format, name (editable), size and remove; dropping files on the list adds them */
+function filesBlock(s) {
+  const files = s.files || [], up = S.uploading.get('files:' + s.id), own = ownFiles(s);
+  const rows = files.map(f => `<div class="frow"><span class="fbadge" data-k="${fmtKind(f)}">${esc(fmtOf(f))}</span><input class="fname" type="text" data-file-name="${esc(f.id)}" value="${esc(f.name)}" maxlength="200" spellcheck="false" autocomplete="off" aria-label="Nombre de descarga de ${esc(f.name)}"><span class="fsize">${fmtSize(f.size)}</span><button type="button" class="icon-btn" data-action="file-remove" data-id="${esc(f.id)}" aria-label="Quitar ${esc(f.name)}" title="Quitar">${icon('x')}</button></div>`).join('')
+    + (up ? Array.from({ length: up.count || 1 }, () => '<div class="frow is-pending"><span class="spinner" aria-hidden="true"></span>Subiendo…</div>').join('') : '');
+  const hint = files.length > 1 ? 'Al hacer clic se elige cuál descargar.' : files.length ? 'Al hacer clic se descarga directo.'
+    : own.length ? `Sin archivos, se descarga ${own.length > 1 ? 'cada imagen del carrusel' : 'el archivo del módulo'}.` : 'Sube al menos un archivo para que el clic descargue algo.';
+  return `<div class="files" data-drop-files="${s.id}">${rows}
+      <div class="insp-row"><label class="btn ghost sm grow">${icon('plus')}${files.length ? 'Añadir archivos' : 'Subir archivos'}<input type="file" class="sr-only" data-files="${s.id}" accept="${ACCEPT.files}" multiple></label></div></div>
+      <p class="insp-hint">${hint} SVG, PNG, JPG, PDF, ZIP, EPS o AI, hasta 50 MB. También puedes soltarlos aquí.</p>`;
 }
 function secFsDim(c) { return c.fs ? dimSec(c.slot) : ''; }
 const dimSec = (s) => `<div class="insp-sec"><h4>Oscurecer</h4><div class="rng"><input type="range" min="0" max="80" step="5" data-f="dim" value="${s.dim || 0}" aria-label="Oscurecer el fondo"><output id="dim-out">${s.dim || 0}%</output></div></div>
@@ -2894,13 +3390,42 @@ function secCarouselPlay(c) {
 /* Full-screen color: the palette, plus any other color by picker or hex */
 function secFsColor(c) {
   const s = c.slot, hit = palByHex(s.color);
-  return `<div class="insp-sec"><h4>Color de fondo</h4>
+  return `<div class="insp-sec"><h4>${c.fs ? 'Color de fondo' : 'Color'}</h4>
       ${palColors().length ? `<div class="swatches" role="group" aria-label="Paleta">${palColors().map(p => palSwatch('fspal', p, !!hit && hit.id === p.id)).join('')}</div>` : ''}
       <div class="hex">
       <label class="swatch sw-color is-set" style="--c:${esc(s.color)}" title="Otro color"><i></i><input type="color" data-f="fscolor" value="${esc(s.color)}" aria-label="Color de fondo"></label>
       <div class="fld" style="flex:1"><span class="fld-k" style="cursor:default">#</span><input id="f-hex" type="text" data-f="hex" value="${esc((s.color || '').replace('#', '').toUpperCase())}" maxlength="7" aria-label="Código hexadecimal"></div>
     </div></div>`;
 }
+/* ---------- Inspector: interaction view ---------- */
+/* "Al hacer clic": nothing (the default), a modal, a download or copying a value. Each type offers what fits it. */
+const ACT_OPTS = { none: ['Nada', 'none'], modal: ['Abrir modal', 'expand'], download: ['Descargar', 'download'], copy: ['Copiar valor', 'copy'] };
+function actView(c) {
+  const s = c.slot;
+  if (!s || !s.type) return `<div class="insp-sec"><p class="insp-hint">Elige primero qué contiene ${c.fs ? 'el fondo' : 'el módulo'}.</p></div>`;
+  const kinds = ACT_KINDS[s.type] || ['none'], a = s.action || {}, cur = kinds.includes(a.kind) ? a.kind : 'none';
+  const desc = { none: 'Solo se muestra', modal: 'Título, texto e imágenes', download: s.files && s.files.length ? `${s.files.length} ${s.files.length === 1 ? 'archivo' : 'archivos'}` : ownFiles(s).length ? 'El archivo del módulo' : 'Sube los archivos', copy: (copyValue(s) || 'Un texto').split('\n')[0].slice(0, 26) };
+  let h = `<div class="insp-sec"><h4>Al hacer clic<span>${esc(slotLabel(c.row, s))}</span></h4>
+      <div class="alist" role="radiogroup" aria-label="Al hacer clic">${kinds.map(k => `<button type="button" role="radio" data-action="seg" data-k="act" data-v="${k}" aria-pressed="${k === cur}" aria-checked="${k === cur}"><span class="alist-i">${icon(ACT_OPTS[k][1])}</span><span class="alist-t">${ACT_OPTS[k][0]}</span><span class="alist-v">${esc(desc[k])}</span></button>`).join('')}</div>
+      <p class="insp-hint">${cur === 'none' ? 'Opcional: el módulo puede abrir más información, descargar archivos o copiar un valor.' : 'En el catálogo, el módulo muestra una etiqueta con la acción y responde al clic, a Enter y a Espacio.'}</p></div>`;
+  if (cur === 'copy') {
+    const def = s.type === 'color' ? String(s.color || BRAND).toUpperCase() : 'el texto del módulo';
+    h += `<div class="insp-sec"><h4>Valor a copiar</h4>
+      <div class="fld txt"><input id="f-actvalue" type="text" data-f="actvalue" value="${esc(a.value || '')}" placeholder="${esc(s.type === 'color' ? def : 'Texto del módulo')}" maxlength="2000" autocomplete="off" spellcheck="false" aria-label="Valor a copiar"></div>
+      <p class="insp-hint">Vacío copia ${esc(def)}. Al copiar aparece «${esc(s.type === 'color' ? def : 'Texto')} copiado».</p></div>`;
+  }
+  if (cur === 'modal') {
+    const media = a.media || [], up = S.uploading.get('media:' + s.id);
+    h += `<div class="insp-sec"><h4>Modal</h4>
+      <div class="fld txt"><input id="f-acttitle" type="text" data-f="acttitle" value="${esc(a.title || '')}" placeholder="Título" maxlength="140" autocomplete="off" aria-label="Título del modal"></div>
+      <textarea id="f-actbody" class="txa" data-f="actbody" rows="5" maxlength="6000" placeholder="Texto. Deja una línea en blanco entre párrafos." aria-label="Texto del modal">${esc(a.body || '')}</textarea>
+      <div class="mthumbs" role="list" aria-label="Imágenes del modal">${media.map((m, i) => `<div class="thumb" role="listitem"><img src="${esc(assetUrl(m.id))}" alt="" draggable="false"><button type="button" class="thumb-x" data-action="modal-media-remove" data-slot="${s.id}" data-i="${i}" aria-label="Quitar imagen ${i + 1}">${icon('x')}</button></div>`).join('')}${up ? Array.from({ length: up.count || 1 }, () => '<div class="thumb is-pending"><span class="spinner"></span></div>').join('') : ''}<label class="thumb thumb-add" title="Añadir imágenes">${icon('plus')}<span class="sr-only">Añadir imágenes al modal</span><input type="file" class="sr-only" data-modal-media="${s.id}" accept="${ACCEPT.image}" multiple></label></div>
+      <p class="insp-hint">Las imágenes son opcionales y van debajo del texto.</p></div>`;
+  }
+  if (cur === 'download') h += `<div class="insp-sec"><h4>Archivos para descargar${s.files && s.files.length ? `<span>${s.files.length}</span>` : ''}</h4>${filesBlock(s)}</div>`;
+  return h;
+}
+
 /* The block as a whole */
 function secOverlayAdd(c) {
   const { row, slot } = c;
@@ -3054,7 +3579,7 @@ function palDelete(id) {
 const animStyles = () => (S.tree && S.tree.animStyles) || [];
 const styleById = (id) => animStyles().find(x => x.id === id) || null;
 const TEXT_ROLES = { title: ['título', 'títulos'], subtitle: ['subtítulo', 'subtítulos'], body: ['texto', 'textos'] };
-const MOD_GROUPS = { image: ['imagen', 'imágenes'], video: ['video', 'videos'], carousel: ['carrusel', 'carruseles'], color: ['fondo de color', 'fondos de color'], text: ['caja de texto', 'cajas de texto'] };
+const MOD_GROUPS = { image: ['imagen', 'imágenes'], video: ['video', 'videos'], carousel: ['carrusel', 'carruseles'], color: ['módulo de color', 'módulos de color'], text: ['caja de texto', 'cajas de texto'], svg: ['SVG', 'SVG'] };
 const textRole = (b) => b.size >= 40 ? 'title' : b.size >= 24 ? 'subtitle' : 'body';
 const ownVals = (a) => { const o = { ...a }; delete o.style; delete o.over; return o; };
 const linkVals = (st) => ({ ...normAnim(st.anim, st.kind), style: st.id, over: false });
@@ -3378,13 +3903,46 @@ function onField(k, v) {
       break;
     }
     case 'bg': case 'bgcolor': case 'bgpal': {
-      if (!slot || slot.type !== 'text') return;
+      if (!slot || (slot.type !== 'text' && slot.type !== 'svg')) return;
       if (k === 'bgpal') { const p = palById(v); if (!p) return; slot.bg = { kind: 'color', color: p.hex }; }
       else if (k === 'bgcolor') slot.bg = { kind: 'color', color: v };
       else slot.bg = v === 'color' ? { kind: 'color', color: (slot.bg && slot.bg.color) || BRAND } : { kind: v };
-      const n = slotEl(slot.id); n && paintTextSlot(n, slot, isOverlaySlot(slot));
+      const n = slotEl(slot.id); if (n) { if (slot.type === 'svg') paintSvg(n, slot); else paintTextSlot(n, slot, isOverlaySlot(slot)); }
       paintBgSwatches(slot);
       break;
+    }
+    case 'ffit': case 'fzoom': case 'fx': case 'fy': case 'fpos': {
+      if (!slot || slot.type !== 'image') return;
+      const f = { ...FRAME_DEF, ...(slot.frame || {}) };
+      if (k === 'ffit') f.fit = v; else if (k === 'fzoom') f.zoom = v; else if (k === 'fx') f.x = v; else if (k === 'fy') f.y = v;
+      else if (POS9.includes(v)) { f.x = AXY[v[1]] * 100; f.y = AXY[v[0]] * 100; }
+      setFrame(slot, f); paintFrameUi(slot);
+      break;
+    }
+    case 'svgpos': case 'sscale': case 'sdx': case 'sdy': {
+      if (!slot || slot.type !== 'svg') return;
+      if (k === 'svgpos') { if (!POS9.includes(v)) return; slot.pos = v; setPressed('svgpos', v); }
+      else if (k === 'sscale') { slot.scale = v; const o = $('#sscale-out'); if (o) o.textContent = v + '%'; }
+      else slot[k === 'sdx' ? 'dx' : 'dy'] = v || 0;
+      const n = slotEl(slot.id); n && paintSvg(n, slot);
+      break;
+    }
+    case 'clabel': {
+      if (!slot || slot.type !== 'color') return;
+      slot.label = v === 'true' || v === true;
+      const n = slotEl(slot.id); n && paintColor(n, slot);
+      renderInspector(); break;
+    }
+    case 'act': {
+      if (!slot || !slot.type || !(ACT_KINDS[slot.type] || []).includes(v)) return;
+      if (v === 'none') delete slot.action; else slot.action = { ...(slot.action || {}), kind: v };
+      renderInspector(); break;
+    }
+    case 'actvalue': case 'acttitle': case 'actbody': {
+      if (!slot || !slot.action) return;
+      const f = { actvalue: 'value', acttitle: 'title', actbody: 'body' }[k];
+      if (String(v).trim()) slot.action[f] = String(v); else delete slot.action[f];
+      return; /* text being typed: nothing on the page changes while editing */
     }
     case 'pt': case 'pr': case 'pb': case 'pl': {
       if (!slot || !PAD_TYPES.includes(slot.type)) return;
@@ -3421,6 +3979,7 @@ function onField(k, v) {
       const c = (pc ? pc.hex : k === 'hex' ? '#' + String(v).replace('#', '') : v).toLowerCase(); if (!hexOk(c)) return;
       media.color = c;
       const m = $('#stage .row.is-editing .fs-media'); if (m) { m.style.setProperty('--fs-color', c); m.dataset.color = c; }
+      { const ce = slotEl(media.id); if (ce && ce.classList.contains('slot-color')) paintColor(ce, media); }
       const lab = $('#insp .hex .sw-color'); if (lab) lab.style.setProperty('--c', c);
       if (k !== 'hex') setFieldValue('hex', c.replace('#', '').toUpperCase());
       if (k !== 'fscolor') { const ci = $('#insp [data-f="fscolor"]'); if (ci) ci.value = c; }
@@ -3509,8 +4068,8 @@ function fileType(f) {
 }
 function accept(f, kind) {
   const t = fileType(f);
-  const ok = kind === 'video' ? VID_TYPES.includes(t) : IMG_TYPES.includes(t);
-  if (!ok) { toast(kind === 'video' ? `«${f.name}» no es un video compatible. Usa MP4 o WebM.` : `«${f.name}» no es una imagen compatible. Usa PNG, JPG, WebP, GIF o SVG.`); return null; }
+  const ok = kind === 'video' ? VID_TYPES.includes(t) : kind === 'svg' ? t === 'image/svg+xml' : IMG_TYPES.includes(t);
+  if (!ok) { toast(kind === 'video' ? `«${f.name}» no es un video compatible. Usa MP4 o WebM.` : kind === 'svg' ? `«${f.name}» no es un SVG. Sube un archivo .svg.` : `«${f.name}» no es una imagen compatible. Usa PNG, JPG, WebP, GIF o SVG.`); return null; }
   const max = t === 'image/svg+xml' ? 2 * MB : 20 * MB;
   if (f.size > max) { toast(`«${f.name}» pesa ${(f.size / MB).toFixed(1)} MB. El máximo es ${max / MB} MB.`); return null; }
   return t;
@@ -3549,13 +4108,26 @@ const UPLOAD_ERR = {
 };
 async function uploadOne(file, type, analyze = false) {
   if (!B.assets) { toast('No tienes permiso para subir archivos a este catálogo.'); return null; }
-  const meta = await readMeta(file, type, analyze);
+  const meta = type === 'image/svg+xml' ? await svgMeta(file) : /^(image|video)\//.test(type) ? await readMeta(file, type, analyze) : {};
   const run = () => B.assets.upload(file, { type });
   try {
     let r;
     try { r = await run(); } catch (e) { if (e && e.code === 'store_unavailable') { await sleep(600); r = await run(); } else throw e; }
-    return { id: r.id, ...meta };
+    return { id: r.id, name: String(file.name || '').slice(0, 200), size: file.size || 0, type, ...meta };
   } catch (e) { toast(UPLOAD_ERR[e && e.code] || 'No se pudo subir el archivo. Inténtalo de nuevo.'); return null; }
+}
+/* An SVG's proportion comes from its width/height or viewBox: some drawings have no intrinsic size as an image */
+async function svgMeta(file) {
+  const m = await readMeta(file, 'image/svg+xml');
+  try {
+    const head = (await file.slice(0, 4096).text()).replace(/\s+/g, ' ');
+    const tag = (/<svg\b[^>]*>/i.exec(head) || [''])[0];
+    const vb = /viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(tag);
+    const num = (a) => { const x = new RegExp('(?:^|\\s)' + a + '\\s*=\\s*["\']\\s*([\\d.]+)\\s*(px)?\\s*["\']', 'i').exec(tag); return x ? parseFloat(x[1]) : 0; };
+    const w = num('width') || (vb && +vb[1]), h = num('height') || (vb && +vb[2]);
+    if (w > 0 && h > 0) return { w: Math.round(w * 100) / 100, h: Math.round(h * 100) / 100 };
+  } catch {}
+  return m;
 }
 async function handleFiles(slotId, fileList) {
   const e = S.edit; const s = e && findSlot(e.draft, slotId);
@@ -3571,7 +4143,7 @@ async function handleFiles(slotId, fileList) {
     S.uploading.delete(slotId);
     if (S.edit === e) { got.forEach(g => e.uploaded.add(g.id)); record(null); }
     const s2 = S.edit === e && findSlot(e.draft, slotId);
-    if (s2 && s2.type === 'carousel') s2.images.push(...got.map(g => ({ id: g.id, w: g.w, h: g.h }))); else if (S.edit !== e) dropAssets(got.map(g => g.id));
+    if (s2 && s2.type === 'carousel') s2.images.push(...got.map(g => ({ id: g.id, w: g.w, h: g.h, name: g.name, size: g.size }))); else if (S.edit !== e) dropAssets(got.map(g => g.id));
     after(); return;
   }
   const f = files[0]; const t = accept(f, s.type); if (!t) return;
@@ -3581,7 +4153,7 @@ async function handleFiles(slotId, fileList) {
   S.uploading.delete(slotId);
   if (res && S.edit === e) { e.uploaded.add(res.id); record(null); }
   const s2 = S.edit === e && findSlot(e.draft, slotId);
-  if (res) { if (s2 && (s2.type === 'image' || s2.type === 'video')) { s2.asset = res.id; s2.w = res.w; s2.h = res.h; } else if (S.edit !== e) dropAssets([res.id]); }
+  if (res) { if (s2 && (s2.type === 'image' || s2.type === 'video' || s2.type === 'svg')) { s2.asset = res.id; s2.w = res.w; s2.h = res.h; s2.name = res.name; s2.size = res.size; } else if (S.edit !== e) dropAssets([res.id]); }
   after();
 }
 async function uploadLogo(file) {
@@ -3678,12 +4250,18 @@ function lumGrid(el) {
     const g = { W, H, nw, nh, d, a, t: performance.now() }; LG.set(el, g); return g;
   } catch { LG.set(el, { fail: true, t: performance.now() }); return null; } /* unreadable (cross-origin): don't redraw a large image on every pass */
 }
+const posOff = (tok, free) => { if (!tok || tok === 'center') return free / 2; if (tok === 'left' || tok === 'top') return 0; if (tok === 'right' || tok === 'bottom') return free; const n = parseFloat(tok); return !isFinite(n) ? free / 2 : /%$/.test(tok) ? free * n / 100 : n; };
 function regionLum(el, rect) {
   const g = lumGrid(el); if (!g) return null;
   const box = el.getBoundingClientRect(); if (!box.width || !box.height) return null;
-  const fit = getComputedStyle(el).objectFit;
+  const cs = getComputedStyle(el), fit = cs.objectFit;
   let sx, sy, ox = 0, oy = 0;
-  if (fit === 'cover' || fit === 'contain') { const s = fit === 'cover' ? Math.max(box.width / g.nw, box.height / g.nh) : Math.min(box.width / g.nw, box.height / g.nh); sx = sy = s; ox = (box.width - g.nw * s) / 2; oy = (box.height - g.nh * s) / 2; }
+  if (fit === 'cover' || fit === 'contain') {
+    /* where object-position puts the image in its element (a framed image is also larger than its box: box is the element) */
+    const s = fit === 'cover' ? Math.max(box.width / g.nw, box.height / g.nh) : Math.min(box.width / g.nw, box.height / g.nh); sx = sy = s;
+    const [px, py] = (cs.objectPosition || '50% 50%').split(/\s+/);
+    ox = posOff(px, box.width - g.nw * s); oy = posOff(py, box.height - g.nh * s);
+  }
   else { sx = box.width / g.nw; sy = box.height / g.nh; }
   const l = Math.max(rect.left, box.left), r = Math.min(rect.right, box.right), t = Math.max(rect.top, box.top), b = Math.min(rect.bottom, box.bottom);
   if (r <= l || b <= t) return null;
@@ -3698,6 +4276,7 @@ function regionLum(el, rect) {
 function mediaInk(mediaEl, rect) {
   const dim = (+mediaEl.dataset.dim || 0) / 100;
   if (mediaEl.dataset.kind === 'color' || mediaEl.dataset.color) { const key = contrastKey(mediaEl.dataset.color); return { ink: dim >= .5 ? 'light' : key }; }
+  if (mediaEl.classList.contains('slot-svg')) return null; /* a drawing on the theme's surface (a colored box is handled above) */
   let src = null;
   const car = $('.carousel', mediaEl) || (mediaEl.classList.contains('carousel') ? mediaEl : null);
   if (car) { const c = CAR.get(car); src = c && c.currentImg(); }
@@ -3809,7 +4388,7 @@ function motionPlan(row) {
   });
 }
 const hasAnim = (row) => motionPlan(row).some(m => animated(m.a) || m.blocks.length);
-const innerOf = (el) => $(':scope > img, :scope > video, :scope > .carousel > .car-viewport, :scope > .tpad', el);
+const innerOf = (el) => $(':scope > img, :scope > video, :scope > .carousel > .car-viewport, :scope > .svg-in, :scope > .tpad', el);
 const isMediaInner = (n) => !!n && !n.classList.contains('tpad');
 const scrollST = (rowEl, P) => ({ trigger: rowEl, start: P.start || 'top bottom', end: P.end || 'bottom top', scrub: true });
 const WIPE = { bottom: 'inset(100% 0% 0% 0%)', top: 'inset(0% 0% 100% 0%)', left: 'inset(0% 100% 0% 0%)', right: 'inset(0% 0% 0% 100%)' };
@@ -3996,12 +4575,12 @@ function scrollIntoViewSoft(el) {
 }
 function flashRow(el) { if (!el) return; el.classList.remove('is-flash'); void el.offsetWidth; el.classList.add('is-flash'); setTimeout(() => el.classList.remove('is-flash'), 1700); }
 function onScroll() {
-  Ink.schedule(); spySchedule();
+  Ink.schedule(); spySchedule(); ghostSoon();
   ROOT.classList.toggle('is-scrolled', scrollY > 8);
   if (S.pop && !S.pop.sticky) closePop();
 }
 addEventListener('scroll', onScroll, { passive: true });
-addEventListener('resize', () => { closePop(true); Ink.schedule(); measureNav(); markStartsFull(); });
+addEventListener('resize', () => { closePop(true); Ink.schedule(); measureNav(); markStartsFull(); ghostSoon(); });
 function measureNav() { if (!MOBILE.matches) return; ROOT.style.setProperty('--nav-h', $('#rail').offsetHeight + 'px'); }
 if ('ResizeObserver' in window) new ResizeObserver(() => { measureNav(); Ink.schedule(); }).observe($('#rail-nav'));
 MOBILE.addEventListener('change', () => { measureNav(); renderInspector(); Ink.schedule(); });
@@ -4154,7 +4733,19 @@ async function ensureAllPages() {
   }));
 }
 const fold = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-function textsOfRow(r) { return allSlots(r).filter(s => s && s.type === 'text').flatMap(s => s.blocks.map(b => b.text)).filter(t => t && t.trim()); }
+/* What search finds in a block: its texts, the names of its SVGs and files, its modal and the colors it shows */
+function textsOfRow(r) {
+  return allSlots(r).filter(Boolean).flatMap(s => {
+    const a = s.action || {}, out = [];
+    if (s.type === 'text') out.push(...(s.blocks || []).map(b => b.text));
+    if (s.type === 'svg' && s.name) out.push(s.name);
+    if (s.type === 'color' && hexOk(s.color || '')) { const p = palByHex(s.color); out.push((p ? p.name + ' · ' : '') + s.color.toUpperCase()); }
+    if (a.kind === 'modal') out.push(a.title, a.body);
+    if (a.kind === 'copy' && a.value) out.push(a.value);
+    (s.files || []).forEach(f => out.push(f.name));
+    return out;
+  }).filter(t => typeof t === 'string' && t.trim());
+}
 function searchIndex(q) {
   const nq = fold(q.trim()); if (!nq) return [];
   const out = [];
@@ -4254,11 +4845,11 @@ function moveItem(kind, id, dir) {
 }
 
 /* ---------- Popover ---------- */
-function openPop(trigger, content, { sticky = false, data = null } = {}) {
+function openPop(trigger, content, { sticky = false, data = null, anchor = null } = {}) {
   const m = $('#pop');
   if (S.pop && S.pop.trigger === trigger) { closePop(); return; }
   closePop(true);
-  S.pop = { trigger, sticky, data };
+  S.pop = { trigger, sticky, data, anchor };
   if (trigger.hasAttribute('aria-expanded')) trigger.setAttribute('aria-expanded', 'true');
   m.innerHTML = content;
   m.setAttribute('role', data && data.kind === 'palette' ? 'dialog' : 'menu');
@@ -4267,7 +4858,7 @@ function openPop(trigger, content, { sticky = false, data = null } = {}) {
   const f = $('.mi[aria-checked="true"]', m) || $('.mi', m); f && f.focus({ preventScroll: true });
 }
 function placePop(trigger) {
-  const m = $('#pop'); const r = trigger.getBoundingClientRect();
+  const m = $('#pop'); const r = ((S.pop && S.pop.trigger === trigger && S.pop.anchor) || trigger).getBoundingClientRect();
   const w = m.offsetWidth, h = m.offsetHeight;
   let left = r.right - w; if (left < 8) left = Math.min(r.left, innerWidth - w - 8);
   let top = r.bottom + 6, origin = 'top right';
@@ -4304,9 +4895,119 @@ function closePop(instant) {
   const m = $('#pop'); if (!S.pop) return;
   const t = S.pop.trigger; S.pop = null;
   if (t && t.isConnected && t.hasAttribute('aria-expanded')) t.setAttribute('aria-expanded', 'false');
+  if (t && t.classList) t.classList.remove('is-pop');
   if (instant || RM) { m.hidden = true; return; }
   m.classList.add('is-closing');
   setTimeout(() => { if (!S.pop) { m.hidden = true; m.classList.remove('is-closing'); } }, 120);
+}
+
+/* ---------- Click actions of modules: copy, modal, download ---------- */
+function slotOf(el) {
+  const row = el.closest('.row'); if (!row) return null;
+  const r = (S.pages.get(row.dataset.sub) || []).find(x => x.id === row.dataset.id);
+  return r ? findSlot(r, el.dataset.slot) : null;
+}
+function slotAct(el) {
+  const s = slotOf(el), a = s && actInfo(s); if (!a) return;
+  if (a.kind === 'copy') copyText(copyValue(s), el);
+  else if (a.kind === 'modal') openActModal(s, el);
+  else if (a.kind === 'download') {
+    const list = dlItems(s);
+    if (list.length === 1) { downloadFile(list[0]); return; }
+    const chip = $(':scope > .act-chip', el) || el;
+    openPop(el, `<p class="pal-h">Descargar</p>` + list.map((f, i) => `<button type="button" class="mi" role="menuitem" data-action="dl-file" data-i="${i}">${icon('download')}<span class="mi-t">${esc(f.name)}</span><span class="mi-v">${esc([fmtOf(f), fmtSize(f.size)].filter(Boolean).join(' · '))}</span></button>`).join(''), { data: { kind: 'dl', items: list }, anchor: chip });
+    el.classList.add('is-pop');
+  }
+}
+/* Supabase files live on another origin, where <a download> is ignored: the storage sends them as an attachment with
+   the given name instead. Local (blob:) and artifact (/_blob/) files are same-origin. */
+function downloadFile(f) {
+  const url = assetUrl(f.id); if (!url) { toast('Archivo no disponible'); return; }
+  const a = document.createElement('a');
+  if (S.backend === 'supabase') a.href = url + '?download=' + encodeURIComponent(f.name);
+  else { a.href = url; a.download = f.name; }
+  a.rel = 'noopener'; a.style.display = 'none';
+  document.body.append(a); a.click(); a.remove();
+}
+async function copyText(v, from) {
+  let ok = false;
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(v); ok = true; } } catch {}
+  if (!ok) { /* older browsers, or no permission: a hidden field and the copy command */
+    const t = document.createElement('textarea'); t.value = v; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.append(t); t.select(); try { ok = document.execCommand('copy'); } catch {} t.remove();
+    if (from && from.isConnected) from.focus({ preventScroll: true });
+  }
+  toast(!ok ? 'No se pudo copiar. Selecciona el texto y cópialo a mano.' : v.length <= 32 && !v.includes('\n') ? `${v} copiado` : 'Texto copiado');
+}
+function openActModal(s, from) {
+  const a = s.action || {}, m = $('#amodal'), media = a.media || [];
+  const paras = String(a.body || '').split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
+  m.innerHTML = `<div class="amodal-bg" data-action="amodal-close"></div><div class="amodal-panel" data-lenis-prevent>
+      <button type="button" class="amodal-x" data-action="amodal-close" aria-label="Cerrar">${icon('x')}</button>
+      <h2 id="amodal-t"${a.title ? '' : ' class="sr-only"'}>${esc(a.title || 'Detalle')}</h2>
+      ${paras ? `<div class="amodal-body">${paras}</div>` : ''}
+      ${media.length ? `<div class="amodal-media${media.length === 1 ? ' is-one' : ''}">${media.map(x => `<img src="${esc(assetUrl(x.id))}" alt="" decoding="async"${x.w && x.h ? ` width="${x.w}" height="${x.h}"` : ''}${XO()}>`).join('')}</div>` : ''}
+    </div>`;
+  S.modal = { from: from || document.activeElement };
+  closePop(true);
+  m.hidden = false;
+  if (lenis) lenis.stop(); else ROOT.classList.add('ov-open', 'no-lenis');
+  if (!RM) {
+    $('.amodal-bg', m).animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
+    $('.amodal-panel', m).animate([{ opacity: 0, transform: 'translateY(14px) scale(.98)' }, { opacity: 1, transform: 'none' }], { duration: 360, easing: 'cubic-bezier(.23,1,.32,1)' });
+  }
+  $('.amodal-x', m).focus({ preventScroll: true });
+}
+function closeActModal() {
+  const m = $('#amodal'); if (!S.modal) return;
+  const from = S.modal.from; S.modal = null;
+  const fin = () => { if (S.modal) return; m.hidden = true; m.innerHTML = ''; };
+  if (!S.overlay) { ROOT.classList.remove('ov-open', 'no-lenis'); lenis && lenis.start(); }
+  if (RM) fin();
+  else {
+    $('.amodal-bg', m).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
+    $('.amodal-panel', m).animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(8px) scale(.985)' }], { duration: 160, easing: 'ease-out', fill: 'forwards' }).finished.then(fin, fin);
+  }
+  if (from && from.isConnected) from.focus({ preventScroll: true });
+}
+
+/* ---------- Source files, modal images (editor) ---------- */
+function sourceType(f) {
+  const ext = extOf(f.name);
+  let t = (f.type || '').toLowerCase().split(';')[0].trim();
+  if (t === 'image/jpg' || t === 'image/pjpeg') t = 'image/jpeg';
+  if (t === 'application/x-zip-compressed' || t === 'application/x-zip') t = 'application/zip';
+  if (ext === 'ai') t = 'application/illustrator'; else if (ext === 'eps') t = 'application/postscript'; /* browsers disagree on these two */
+  if (!SRC_TYPES.includes(t) && EXT[ext]) t = EXT[ext];
+  return t;
+}
+function acceptSource(f) {
+  const t = sourceType(f);
+  if (!SRC_TYPES.includes(t)) { toast(`«${f.name}» no se puede ofrecer para descargar. Usa SVG, PNG, JPG, PDF, ZIP, EPS o AI.`); return null; }
+  if (f.size > 50 * MB) { toast(`«${f.name}» pesa ${(f.size / MB).toFixed(1)} MB. El máximo es 50 MB.`); return null; }
+  return t;
+}
+/* Uploads into a list of the module (its source files, or the images of its modal) while the block is being edited */
+async function uploadInto(slotId, fileList, kind) {
+  const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s || !fileList || !fileList.length) return;
+  const ok = [...fileList].map(f => [f, kind === 'files' ? acceptSource(f) : accept(f, 'image')]).filter(x => x[1]);
+  if (!ok.length) return;
+  const key = kind + ':' + slotId;
+  S.uploading.set(key, { label: ok.length === 1 ? ok[0][0].name : `${ok.length} archivos`, count: ok.length });
+  renderInspector(); updateFoot(); renderStatus();
+  const got = (await Promise.all(ok.map(([f, t]) => uploadOne(f, t)))).filter(Boolean);
+  S.uploading.delete(key);
+  const s2 = S.edit === e && findSlot(e.draft, slotId);
+  if (!s2 || (kind === 'media' && !(s2.action && s2.action.kind === 'modal'))) { if (S.edit !== e) dropAssets(got.map(g => g.id)); else got.forEach(g => e.uploaded.add(g.id)); }
+  else if (got.length) {
+    got.forEach(g => e.uploaded.add(g.id));
+    record(null);
+    if (kind === 'files') s2.files = [...(s2.files || []), ...got.map(g => ({ id: g.id, name: g.name, type: g.type, size: g.size }))];
+    else s2.action.media = [...(s2.action.media || []), ...got.map(g => ({ id: g.id, w: g.w || 0, h: g.h || 0 }))];
+    if (kind === 'files') toast(got.length === 1 ? `«${got[0].name}» listo para descargar` : `${got.length} archivos listos para descargar`);
+  }
+  if (S.edit === e) { renderInspector(); updateFoot(); }
+  renderStatus();
 }
 
 /* ---------- Toasts ---------- */
@@ -4320,7 +5021,7 @@ function toast(msg) {
 
 /* ================= Events ================= */
 /* Buttons that open (and close again) their own popover: an outside click does not close it first */
-const POP_TRIGGERS = ['item-menu', 'dd', 'pal-open'];
+const POP_TRIGGERS = ['item-menu', 'dd', 'pal-open', 'slot-act'];
 document.addEventListener('click', (ev) => {
   const a = ev.target.closest('[data-action]');
   if (S.pop && !ev.target.closest('#pop') && !(a && POP_TRIGGERS.includes(a.dataset.action))) closePop();
@@ -4379,7 +5080,32 @@ document.addEventListener('click', (ev) => {
     case 'style-unlink': styleOp('unlink', a.dataset.kind); break;
     case 'style-apply': styleOp('apply', a.dataset.kind); break;
     case 'style-delete': styleOp('delete', a.dataset.kind); break;
-    case 'insp-view': S.inspView = inspViewOf(a.dataset.v).v; ls.set('insp', S.inspView); renderInspector(); break;
+    case 'insp-view': S.inspView = inspViewOf(a.dataset.v).v; ls.set('insp', S.inspView); if (S.frameUi) { S.frameUi = null; paintFrameMode(); } renderInspector(); break;
+    case 'frame-mode': setFrameMode(!S.frameUi); break;
+    case 'frame-reset': { const s = activeSlot(); if (!s || s.type !== 'image' || !s.frame) break; record(null); setFrame(s, FRAME_DEF); paintFrameUi(s); Ink.schedule(); break; }
+    case 'frame-zoom': {
+      const s = frameSlot(), el = s && slotEl(s.id); if (!el) break;
+      record('frame-zoom');
+      const b = el.getBoundingClientRect(); frameZoomAt(s, el, (s.frame || FRAME_DEF).zoom * (+a.dataset.dir > 0 ? 1.25 : .8), b.left + b.width / 2, b.top + b.height / 2);
+      Ink.schedule(); break;
+    }
+    case 'svg-dl': {
+      const s = activeSlot(); if (!S.edit || !s || s.type !== 'svg') break;
+      record(null);
+      if (s.action && s.action.kind === 'download') delete s.action; else s.action = { ...(s.action || {}), kind: 'download' };
+      renderInspector(); break;
+    }
+    case 'file-remove': { const s = activeSlot(); if (!S.edit || !s || !s.files) break; record(null); s.files = s.files.filter(f => f.id !== id); if (!s.files.length) delete s.files; renderInspector(); break; }
+    case 'modal-media-remove': { const s = S.edit && findSlot(S.edit.draft, slotId); if (!s || !s.action || !s.action.media) break; record(null); s.action.media.splice(+a.dataset.i, 1); if (!s.action.media.length) delete s.action.media; renderInspector(); break; }
+    case 'slot-act': {
+      /* The module's own controls (video, carousel, links) keep their click; so does a text being selected */
+      if (ev.target !== a && ev.target.closest('button, a, input, select, textarea, label, .spl, .car-arrow, .media-ctrls')) break;
+      const sel = getSelection(); if (sel && !sel.isCollapsed && a.contains(sel.anchorNode)) break;
+      const car = $('.carousel', a), c = car && CAR.get(car); if (c && performance.now() - (c.dragT || 0) < 400) break;
+      slotAct(a); break;
+    }
+    case 'dl-file': { const P = S.pop, f = P && P.data && P.data.items && P.data.items[+a.dataset.i]; closePop(true); if (f) downloadFile(f); break; }
+    case 'amodal-close': closeActModal(); break;
     case 'type-style-new': S.typeStyleUi = { mode: 'new' }; renderInspector(); { const i = $('#type-style-name'); i && i.focus(); } break;
     case 'type-style-ask': {
       const b = activeBlock(); S.typeStyleUi = { mode: a.dataset.mode, id: b && b.ts }; renderInspector();
@@ -4429,8 +5155,8 @@ document.addEventListener('click', (ev) => {
       record(null);
       const st = (e.stash[s.id] = e.stash[s.id] || {});
       if (s.type) st[s.type] = clone(s);
-      if (st[t]) { const keep = clone(st[t]), anim = s.anim; Object.keys(s).forEach(k => delete s[k]); Object.assign(s, keep); if (anim) s.anim = anim; else delete s.anim; }
-      else fillType(s, t, e.draft.layout === 'half' ? 'half' : 'full');
+      if (st[t]) { const keep = clone(st[t]), anim = s.anim, carry = { files: s.files, action: s.action }; Object.keys(s).forEach(k => delete s[k]); Object.assign(s, keep); if (anim) s.anim = anim; else delete s.anim; carryExtras(s, carry); }
+      else fillType(s, t, fillCtx(e.draft));
       S.animSlot = s.id;
       if (s.type === 'text') { const b = s.blocks[1] || s.blocks[0]; e.blocks[s.id] = b.id; }
       bump(); break;
@@ -4438,7 +5164,7 @@ document.addEventListener('click', (ev) => {
     case 'pick-type': {
       const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
       record(null);
-      fillType(s, a.dataset.type, e.draft.layout === 'half' ? 'half' : 'full');
+      fillType(s, a.dataset.type, fillCtx(e.draft));
       S.animSlot = s.id; e.slot = s.id;
       if (s.type === 'text') { const t = s.blocks[1] || s.blocks[0]; e.blocks[s.id] = t.id; S.focusKey = 'b:' + t.id; }
       bump(); break;
@@ -4496,11 +5222,11 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('pointerdown', (ev) => {
   const s = ev.target.closest && ev.target.closest('#stage .row.is-editing [data-slot]');
   if (s && !ev.target.closest('.spl, .thumbs')) setActiveSlot(s.dataset.slot);
-  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev);
+  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev); frameDown(ev);
 });
-document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); });
-document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); });
-document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); });
+document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); frameMove(ev); });
+document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); frameUp(ev); });
+document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); frameUp(ev); });
 document.addEventListener('dblclick', (ev) => { if (ev.target.closest('[data-rz]') && S.edit) onField('hmode', 'auto'); });
 
 /* Scrub numeric fields by dragging their icon */
@@ -4563,6 +5289,7 @@ document.addEventListener('input', (ev) => {
   if (el.id === 'pal-new-hex') { S.palUi = { ...S.palUi, hex: el.value }; el.parentElement.style.setProperty('--c', el.value); return; }
   if (el.dataset && el.dataset.palHex) { el.parentElement.style.setProperty('--c', el.value); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
+  if (k === 'actvalue' || k === 'acttitle' || k === 'actbody') { onField(k, el.value); return; }
   if (isPadKey(k) && !el.value.trim()) { onField(k, null); return; } /* an empty side goes back to automatic */
   if (k === 'bgcolor' || k === 'fscolor') { onField(k, el.value); return; }
   if (k === 'dim') { onField('dim', +el.value); return; }
@@ -4575,6 +5302,13 @@ document.addEventListener('change', (ev) => {
   if (el.id === 'menu-bg-file') { const f = el.files && el.files[0]; el.value = ''; if (f) uploadMenuBg(f); return; }
   if (el.id === 'menu-color') { const c = el.value; mutateTree(t => { t.menu.bg = { kind: 'color', color: c }; }); return; }
   if (el.dataset.upload) { const files = el.files; handleFiles(el.dataset.upload, files).finally(() => { try { el.value = ''; } catch {} }); return; }
+  if (el.dataset.files || el.dataset.modalMedia) { const files = [...(el.files || [])]; try { el.value = ''; } catch {} uploadInto(el.dataset.files || el.dataset.modalMedia, files, el.dataset.files ? 'files' : 'media'); return; }
+  if (el.dataset.fileName) {
+    const s = activeSlot(), f = s && s.files && s.files.find(x => x.id === el.dataset.fileName); if (!f) return;
+    const name = el.value.trim().slice(0, 200);
+    if (!name || name === f.name) { el.value = f.name; return; }
+    record(null); f.name = name; return;
+  }
   if (el.dataset.palHex) { palEdit(el.dataset.palHex, 'hex', el.value); return; }
   if (el.dataset.palName) { palEdit(el.dataset.palName, 'name', el.value); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
@@ -4617,25 +5351,36 @@ document.addEventListener('keydown', (ev) => {
   }
   if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter' && S.edit && S.mode === 'admin') { ev.preventDefault(); if (t && t.blur && t.closest && t.closest('#insp')) t.blur(); confirmEdit(); return; }
   if (t && t.dataset && t.dataset.f && FIELD[t.dataset.f] && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) { ev.preventDefault(); stepField(t, ev.key === 'ArrowUp' ? 1 : -1, ev.shiftKey); return; }
-  if (t && t.dataset && t.dataset.f && ev.key === 'Enter') { t.blur(); return; }
+  if (t && t.dataset && (t.dataset.f || t.dataset.fileName) && ev.key === 'Enter' && t.tagName !== 'TEXTAREA') { t.blur(); return; }
+  if (t && t.matches && t.matches('.slot[data-act]') && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); slotAct(t); return; }
   if (t && t.id === 'search-input') {
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); if (!lastResults.length) return; S.srSel = clamp(S.srSel + (ev.key === 'ArrowDown' ? 1 : -1), 0, lastResults.length - 1); renderSearch(t.value); const s = $('#sr-' + S.srSel); s && s.scrollIntoView({ block: 'nearest' }); return; }
     if (ev.key === 'Enter') { ev.preventDefault(); const r = lastResults[S.srSel]; if (r) goResult(r.cat, r.sub, r.row); return; }
   }
-  if ((ev.metaKey || ev.ctrlKey) && (ev.key === 'k' || ev.key === 'K')) { ev.preventDefault(); if (S.overlay === 'search') closeOverlay(true); else openOverlay('search', { instant: true }); return; }
-  if (ev.key === '/' && !typing && !S.overlay && !S.edit) { ev.preventDefault(); openOverlay('search', { instant: true }); return; }
+  if ((ev.metaKey || ev.ctrlKey) && (ev.key === 'k' || ev.key === 'K') && !S.modal) { ev.preventDefault(); if (S.overlay === 'search') closeOverlay(true); else openOverlay('search', { instant: true }); return; }
+  if (ev.key === '/' && !typing && !S.overlay && !S.edit && !S.modal) { ev.preventDefault(); openOverlay('search', { instant: true }); return; }
   if (ev.key === 'Escape') {
+    if (S.modal) { closeActModal(); return; }
     if (Motion.pv) { Motion.stopPreview(); return; }
+    if (S.frameUi && !(S.pop && S.pop.trigger)) { setFrameMode(false); return; }
     if (S.pop) { const tr = S.pop.trigger; closePop(); tr && tr.focus && tr.focus(); return; }
     if (S.overlay) { closeOverlay(true); return; }
     if (S.adder) { setAdder(null); return; }
     if (S.confirmDelete) { S.confirmDelete = null; refreshRowTools(); return; }
   }
-  if (ev.key === 'Tab' && S.overlay) {
-    const f = focusables($('#' + S.overlay)); if (!f.length) return;
+  if (ev.key === 'Tab' && (S.modal || S.overlay)) {
+    const f = focusables(S.modal ? $('#amodal') : $('#' + S.overlay)); if (!f.length) return;
     const i = f.indexOf(document.activeElement);
     if (ev.shiftKey && (i <= 0)) { ev.preventDefault(); f[f.length - 1].focus(); }
     else if (!ev.shiftKey && i === f.length - 1) { ev.preventDefault(); f[0].focus(); }
+  }
+  if (S.frameUi && !typing && /^Arrow(Left|Right|Up|Down)$/.test(ev.key)) {
+    const s = frameSlot(); if (!s) return;
+    ev.preventDefault(); record('frame-key');
+    const f = { ...FRAME_DEF, ...(s.frame || {}) }, d = ev.shiftKey ? 10 : 1;
+    if (ev.key === 'ArrowLeft') f.x = clamp(f.x - d, 0, 100); if (ev.key === 'ArrowRight') f.x = clamp(f.x + d, 0, 100);
+    if (ev.key === 'ArrowUp') f.y = clamp(f.y - d, 0, 100); if (ev.key === 'ArrowDown') f.y = clamp(f.y + d, 0, 100);
+    setFrame(s, f); paintFrameUi(s); Ink.schedule(); return;
   }
   const th = t && t.closest && t.closest('.thumb[data-index]');
   if (th && ev.altKey && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight')) {
@@ -4658,7 +5403,7 @@ document.addEventListener('focusout', (ev) => {
 let overEl = null;
 const canImport = () => S.backend === 'supabase' && S.canEdit && S.mode === 'admin' && !S.edit && !S.importing;
 document.addEventListener('dragover', (ev) => {
-  const z = ev.target.closest && ev.target.closest('[data-drop]');
+  const z = ev.target.closest && (ev.target.closest('[data-drop-files]') || ev.target.closest('[data-drop]'));
   if (!z && canImport() && ev.dataTransfer && [...ev.dataTransfer.types].includes('Files')) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; return; }
   if (!z || !S.edit || !ev.dataTransfer || ![...ev.dataTransfer.types].includes('Files')) return;
   ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy';
@@ -4668,6 +5413,8 @@ document.addEventListener('dragleave', (ev) => { if (overEl && !overEl.contains(
 document.addEventListener('drop', (ev) => {
   const z = ev.target.closest && ev.target.closest('[data-drop]');
   if (overEl) { overEl.classList.remove('is-over'); overEl = null; }
+  const zf = ev.target.closest && ev.target.closest('[data-drop-files]');
+  if (zf && S.edit && ev.dataTransfer && ev.dataTransfer.files.length) { ev.preventDefault(); uploadInto(zf.dataset.dropFiles, ev.dataTransfer.files, 'files'); return; }
   if (!z && canImport() && ev.dataTransfer && [...ev.dataTransfer.files].some(f => /\.json$/i.test(f.name))) { ev.preventDefault(); importExport(ev.dataTransfer.files); return; }
   if (!z || !S.edit) return;
   ev.preventDefault();
@@ -4720,7 +5467,7 @@ document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.close
 /* ================= Smooth scroll ================= */
 function initLenis() {
   if (RM || typeof window.Lenis !== 'function') return;
-  try { lenis = new window.Lenis({ autoRaf: true, lerp: .1, smoothWheel: true, prevent: (n) => !!(n.closest && n.closest('.rail-nav, .ov, .insp, .pop, .thumbs')) }); }
+  try { lenis = new window.Lenis({ autoRaf: true, lerp: .1, smoothWheel: true, prevent: (n) => !!(n.closest && n.closest('.rail-nav, .ov, .insp, .pop, .thumbs, .amodal, .is-framing')) }); }
   catch { lenis = null; }
 }
 
