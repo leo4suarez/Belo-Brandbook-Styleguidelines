@@ -34,12 +34,12 @@ async function scenario(browser, stalled) {
   await page.route(/cdn\.jsdelivr\.net\/npm\/lenis/, r => r.fulfill({ path: FIX + 'lenis.min.js', contentType: 'text/javascript' }));
   await page.route(/cdn\.jsdelivr\.net\/npm\/gsap@[^/]+\/dist\/(gsap|ScrollTrigger|SplitText)\.min\.js/, r => r.fulfill({ path: FIX + r.request().url().split('/').pop(), contentType: 'text/javascript' }));
   await page.goto(BASE);
-  await page.waitForSelector('#s-s_sepuede .row');
+  await page.waitForSelector('#home #globe .gt');
   await page.waitForTimeout(500);
   const tag = stalled ? 'STALLED' : 'NORMAL';
-  await page.waitForTimeout(1200);
-  await expectDrawn(page, tag + ' opening screen');
-  await page.keyboard.press('Escape'); await page.waitForTimeout(300); // close the opening menu
+  // Home is the opening screen now: the menu stays closed until its button is used
+  const home = await page.evaluate(() => document.documentElement.dataset.view === 'home' && !document.querySelector('#menu').classList.contains('is-open') && location.hash === '');
+  log((home ? 'ok   ' : 'FAIL ') + tag + ' opening screen is Home, menu closed'); if (!home) failures++;
   let frames;
   if (!stalled) frames = page.evaluate(() => new Promise(res => { const d = []; let last = performance.now(); const t0 = last; const f = (t) => { d.push(t - last); last = t; if (t - t0 < 1000) requestAnimationFrame(f); else res(d); }; requestAnimationFrame(f); }));
   await page.click('#btn-menu');
@@ -65,11 +65,16 @@ async function scenario(browser, stalled) {
   await page.waitForTimeout(900);
   log(tag, 'after category:', await state(page), '| title:', await page.textContent('.rail-title'));
   log(tag, 'errors:', JSON.stringify(errors));
-  // The production case: reload, close the opening menu while it is still animating in, open it again.
-  await page.reload(); await page.waitForSelector('#menu.is-open'); await page.waitForTimeout(150);
+  // The production case: reload, open the menu from Home, close it while it is still animating in, open it again.
+  await page.reload(); await page.waitForSelector('#home #globe .gt');
+  await page.click('#btn-menu'); await page.waitForTimeout(150);
   await page.keyboard.press('Escape'); await page.waitForTimeout(120);
   await page.click('#btn-menu'); await page.waitForTimeout(1500);
-  await expectDrawn(page, tag + ' reopen right after the opening screen');
+  await expectDrawn(page, tag + ' reopen right after closing it mid-animation (from Home)');
+  // A category from the menu leaves Home for the category page
+  await page.click('.ov-cat[data-id="c_ourbrand"]'); await page.waitForTimeout(900);
+  const left = await page.evaluate(() => document.documentElement.dataset.view === 'cat' && !!document.querySelector('#s-s_sepuede .row') && document.querySelector('#s-s_sepuede .row').getClientRects().length > 0);
+  log((left ? 'ok   ' : 'FAIL ') + tag + ' a category in the menu opens its page from Home'); if (!left) failures++;
   await ctx.close();
 }
 (async () => {

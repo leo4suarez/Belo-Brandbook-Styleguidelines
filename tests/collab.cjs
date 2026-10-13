@@ -29,6 +29,7 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
 
 (async () => {
   const browser = await chromium.launch();
+  const menuUp = (p) => p.evaluate(() => document.querySelector('#menu').classList.contains('is-open') && getComputedStyle(document.querySelector('#menu-bg')).opacity === '1');
   const open = async (label, user) => {
     const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1 });
     await fake.attach(ctx, label);
@@ -45,6 +46,13 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
     page.on('pageerror', e => page.errors.push(label + ' pageerror: ' + e.message));
     await page.emulateMedia({ colorScheme: 'light' });
     await page.goto(BASE);
+    // Home is the opening screen; the tests work on the category page, reached through the menu like a visitor would.
+    await page.waitForSelector('#home #globe .gt');
+    page.landedHome = await page.evaluate(() => document.documentElement.dataset.view === 'home' && !document.querySelector('#menu').classList.contains('is-open'));
+    await page.click('#btn-menu'); await page.waitForTimeout(800);
+    page.menuWasUp = await menuUp(page);
+    await page.click('.ov-cat[data-id="c_brand"]');
+    await page.mouse.move(0, 0); // where the pointer starts on a fresh page (not over the section list, which keeps the wheel)
     await page.waitForSelector('#s-s_intro .row');
     await page.waitForTimeout(500);
     return page;
@@ -71,19 +79,21 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
     await p.waitForTimeout(300);
   };
 
-  const menuUp = (p) => p.evaluate(() => document.querySelector('#menu').classList.contains('is-open') && getComputedStyle(document.querySelector('#menu-bg')).opacity === '1');
-
-  // 1. A visitor lands on the menu, sees the shared content read-only, and has a way to sign in.
+  // 1. A visitor lands on Home, opens the menu, sees the shared content read-only, and has a way to sign in.
   const A = await open('ana');
-  check(await menuUp(A), 'the link opens on the menu, fully drawn');
+  check(A.landedHome, 'the link opens on Home with the menu closed');
+  check(A.menuWasUp, 'the menu opens from Home, fully drawn');
   check(await mode(A) === 'viewer', 'visitor starts in viewer mode');
+  const pageSwitch = (p) => p.evaluate(() => { const h = document.querySelector('#page-mode'); return !!h && !h.hidden && h.getClientRects().length > 0 && h.querySelectorAll('[data-action="mode"]').length === 2; });
+  check(!(await pageSwitch(A)), 'visitor has no viewer/admin switch on the page');
   check((await A.textContent('#s-s_intro .row[data-id="r_a"]')).includes('Hola Belo'), 'visitor sees content from Supabase');
   check(await A.locator('#menu [data-action="mode"]').count() === 0, 'visitor has no Admin switch');
   check(await A.locator('#menu .acct-in').count() === 1, 'menu offers "Iniciar sesión"');
+  await A.click('#btn-menu'); await A.waitForTimeout(800);
   await A.screenshot({ path: T + 'sb-01-menu-signed-out.png' });
+  await A.keyboard.press('Escape'); await A.waitForTimeout(400);
 
   // 2. Google sign-in round trip (PKCE): Ana comes back signed in, in Admin, on the section she was viewing.
-  await A.keyboard.press('Escape'); await A.waitForTimeout(400);
   await A.evaluate(() => history.replaceState(null, '', '#s_logo'));
   await A.click('#btn-menu'); await A.waitForTimeout(800);
   fake.nextLogin = ana.id;
@@ -92,16 +102,22 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
   await until(async () => await mode(A) === 'admin');
   check(await mode(A) === 'admin', 'after Google sign-in Ana is in Admin');
   check(/Hola, Ana/.test(await toasts(A)), 'welcome toast after sign-in');
+  check(await until(() => pageSwitch(A)), 'signed in as an editor, Ana gets the viewer/admin switch on the page');
   check(await A.evaluate(() => !location.search.includes('code=') && location.hash === '#s_logo'), 'auth code removed from the URL and section restored');
 
-  check(!(await A.evaluate(() => document.querySelector('#menu').classList.contains('is-open'))), 'coming back from sign-in skips the opening menu');
+  check(await A.evaluate(() => !document.querySelector('#menu').classList.contains('is-open') && document.documentElement.dataset.view === 'cat'), 'coming back from sign-in skips Home and the menu');
 
   // 3. Leo is already signed in; Pat (gmail) can sign in but not edit. Jo signs in with @paisanos.io.
   const L = await open('leo', leo);
   check(await mode(L) === 'admin', 'Leo (paisanos) opens in Admin');
+  check(await pageSwitch(L), 'Leo has the viewer/admin switch on the page');
+  await L.click('#btn-menu'); await L.waitForTimeout(800);
   await L.screenshot({ path: T + 'sb-03-menu-editor.png' });
+  await L.keyboard.press('Escape'); await L.waitForTimeout(400);
   const O = await open('pat', pat);
   check(await mode(O) === 'viewer', 'Pat (gmail) stays in viewer');
+  check(!(await pageSwitch(O)), 'Pat (read only) has no viewer/admin switch on the page');
+  await O.click('#btn-menu'); await O.waitForTimeout(800);
   check((await O.textContent('#menu .acct')).includes('Solo lectura') && await O.locator('#menu [data-action="mode"]').count() === 0, 'Pat sees "Solo lectura" and no Admin switch');
   await O.screenshot({ path: T + 'sb-02-menu-read-only.png' });
   await O.keyboard.press('Escape');

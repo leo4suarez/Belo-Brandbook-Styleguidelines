@@ -20,8 +20,12 @@ async function open(browser, opts = {}) {
   await page.route(/cdn\.jsdelivr\.net\/npm\/gsap@[^/]+\/dist\/(gsap|ScrollTrigger|SplitText)\.min\.js/, r => r.fulfill({ path: FIX + r.request().url().split('/').pop(), contentType: 'text/javascript' }));
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto(BASE);
+  // Home is the opening screen: go to the category through the menu
+  await page.waitForSelector('#home #globe .gt');
+  await page.click('#btn-menu'); await page.waitForTimeout(700);
+  await page.click('.ov-cat[data-id="c_ourbrand"]');
   await page.waitForSelector('#s-s_sepuede .row');
-  if (await page.evaluate(() => document.querySelector('#menu').classList.contains('is-open'))) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); } // close the opening menu
+  await page.mouse.move(0, 0); // where the pointer starts on a fresh page (not over the section list, which keeps the wheel)
   return { page, ctx, errors };
 }
 const settled = (page, sel) => page.evaluate((sel) => [...document.querySelectorAll(sel)].every(el => {
