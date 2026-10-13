@@ -203,7 +203,12 @@ function kit(page) {
   await page.setInputFiles('.row.is-editing input[data-upload]', FIX + 'img1.jpg');
   await page.waitForTimeout(400);
   check((await k.toasts()).some(t => /no es un SVG/.test(t)) && await page.locator('.row.is-editing .slot-svg img').count() === 0, 'a JPG is refused by the SVG module');
-  await page.setInputFiles('.row.is-editing input[data-upload]', FIX + 'belo-mark.svg');
+  await page.setInputFiles('.row.is-editing input[data-upload]', FIX + 'tall-mark.svg');
+  await page.waitForSelector('.row.is-editing .slot-svg .svg-in > img.is-loaded');
+  const tall = await page.evaluate(() => { const b = document.querySelector('.row.is-editing .svg-in').getBoundingClientRect(), i = document.querySelector('.row.is-editing .svg-in > img').getBoundingClientRect(); return { bh: b.height, h: i.height, t: i.top - b.top, b: b.bottom - i.bottom }; });
+  check(near(tall.h, .6 * tall.bh) && near(tall.t, tall.b), `a portrait SVG fits the box: 60% of its height, centered (${JSON.stringify(tall)})`);
+  await page.setInputFiles('#insp input[data-upload]', FIX + 'belo-mark.svg');
+  await until(() => page.evaluate(() => /belo-mark/.test(document.querySelector('#insp .file-meta')?.textContent || '')));
   await page.waitForSelector('.row.is-editing .slot-svg .svg-in > img.is-loaded');
   check(await page.locator('.row.is-editing .slot-svg svg').count() === 0, 'the drawing is shown through an <img>, never inlined');
   check(/belo-mark\.svg/.test(await page.textContent('#insp .file-meta')) && await k.has('#f-pt') && await k.has('input[data-f="sscale"]') && await k.has('[data-k="svgpos"]') && await k.has('#f-sdx') && await k.has('[data-action="svg-dl"]') && await k.has('[data-k="bg"]'), 'the SVG panel has file, box, background, spacing, size, alignment, offset and download');
@@ -232,6 +237,7 @@ function kit(page) {
   check(near(cbox, 1, .02) && /Azul Belo/.test(await page.textContent('.row.is-editing .slot-color')) && /#002FA7/.test(await page.textContent('.row.is-editing .slot-color')), 'a color module is a square swatch named after the palette, with its HEX');
   await page.click('#insp [data-action="seg"][data-k="fspal"][data-v="pc_blanco"]');
   check(/Blanco/.test(await page.textContent('.row.is-editing .slot-color')) && await page.getAttribute('.row.is-editing .slot-color', 'data-tone') === 'dark', 'a light swatch writes its label in dark ink');
+  check(await page.evaluate(() => getComputedStyle(document.querySelector('.row.is-editing .slot-color')).boxShadow).then(v => /inset/.test(v) && !/rgba\(0, 0, 0, 0\)/.test(v)), 'a white swatch gets a hairline so it shows on the white page');
   await page.click('#insp [data-action="seg"][data-k="fspal"][data-v="pc_azul"]');
   await k.view('act');
   const colorKinds = await page.$$eval('#insp [data-k="act"]', b => b.map(x => x.dataset.v));
@@ -245,6 +251,8 @@ function kit(page) {
   await k.view('design');
   await k.confirm();
   const halfRow = await lastRow();
+  const halfH = await halfRow.evaluate(r => [...r.querySelectorAll('.row-grid > .slot')].map(s => Math.round(s.getBoundingClientRect().height)));
+  check(halfH.length === 2 && near(halfH[0], halfH[1]), `in a half row the SVG and the color module are as tall as each other (${halfH})`);
 
   // 6. Image with a modal, then with two source files
   await k.newRow('s_poder', 'full');
@@ -281,12 +289,14 @@ function kit(page) {
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   check(await page.locator('#amodal[hidden]').count() === 1 && await page.evaluate(() => document.activeElement && document.activeElement.dataset.act === 'modal'), 'Esc closes it and focus returns to the module');
   await page.keyboard.press('Enter');
-  await page.waitForSelector('#amodal:not([hidden]) .amodal-panel');
-  check(true, 'Enter on the focused module opens it again');
+  check(await until(() => page.locator('#amodal:not([hidden]) .amodal-panel').count().then(n => n === 1)), 'Enter on the focused module opens it again');
   await page.mouse.click(30, 450); await page.waitForTimeout(300);
   check(await page.locator('#amodal[hidden]').count() === 1, 'a click on the backdrop closes it');
 
   await k.edit(modalRow);
+  const quiet = await page.evaluate(() => { const el = document.querySelector('#s-s_poder .row:not(.is-editing) .slot-color[data-act]'); el.focus(); el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); el.click(); return !!el; });
+  await page.waitForTimeout(300);
+  check(quiet && !(await k.toasts()).some(t => /copiado/.test(t)) && await page.locator('#amodal[hidden]').count() === 1, 'while a block is being edited, the other modules ignore Enter and clicks');
   await k.view('act');
   await page.click('#insp [data-action="seg"][data-k="act"][data-v="download"]');
   check(/la imagen|del módulo/.test(await page.textContent('#insp .files + .insp-hint')), 'without files, the download falls back to the module file');
@@ -384,6 +394,20 @@ function kit(page) {
   check(await tp.locator('#amodal:not([hidden])').count() === 1 && await tp.evaluate(() => document.querySelector('#amodal .amodal-panel').getAnimations().length === 0), 'with reduced motion the modal opens without animating');
   await tp.click('#amodal .amodal-x');
   check(await tp.locator('#amodal[hidden]').count() === 1, 'and closes at once');
+  // A one-line text with an action keeps its chip inside the module, under the words
+  await tk.newRow('s_poder', 'full');
+  await tp.click('.row.is-editing [data-action="pick-type"][data-type="text"]');
+  await tp.locator('.row.is-editing .tb').first().click(); await tp.keyboard.type('Detalle de uso');
+  await tk.view('act');
+  await tp.click('#insp [data-action="seg"][data-k="act"][data-v="modal"]');
+  await tp.fill('#f-acttitle', 'Uso del logotipo');
+  await tk.view('design');
+  await tp.click('#insp [data-action="confirm-edit"]'); await tp.waitForTimeout(500);
+  const tRow = tp.locator('#s-s_poder .row').last();
+  await tRow.scrollIntoViewIfNeeded();
+  const tchip = await tRow.evaluate(r => { const s = r.querySelector('.slot[data-act]').getBoundingClientRect(), c = r.querySelector('.act-chip').getBoundingClientRect(), t = r.querySelector('.tb').getBoundingClientRect(); return { inside: c.top >= s.top - .5 && c.bottom <= s.bottom + .5 && c.left >= s.left - .5 && c.right <= s.right + .5, below: c.top >= t.bottom }; });
+  check(tchip.inside && tchip.below, `the chip of a one-line text stays inside the module, under the text (${JSON.stringify(tchip)})`);
+  await tp.screenshot({ path: T + 'media-11-text-chip-touch.png' });
   check(terr.length === 0, 'no page errors on touch' + (terr.length ? ': ' + terr.join(' | ') : ''));
   await tctx.close();
 

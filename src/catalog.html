@@ -24,6 +24,8 @@
   --surface-2:#E7E9EE;
   --line:rgba(0,0,0,.08);
   --line-strong:rgba(0,0,0,.2);
+  /* hairline around a color swatch that would melt into the page: near-white ones on light, near-black ones on dark */
+  --swatch-edge-hi:rgba(0,0,0,.1); --swatch-edge-lo:transparent;
   --brand:#002FA7;
   --focus:#002FA7;
   --danger:#D4321F;
@@ -55,6 +57,7 @@
 :root[data-scheme="dark"]{
   --bg:#000000; --ink:#FFFFFF; --muted:rgba(255,255,255,.5); --surface:#111214; --surface-2:#1D1E22;
   --line:rgba(255,255,255,.1); --line-strong:rgba(255,255,255,.24); --focus:#7C95FF; --danger:#FF7A66; --ok:#3DD68C; --warn:#F5C04A;
+  --swatch-edge-hi:transparent; --swatch-edge-lo:rgba(255,255,255,.14);
   --panel:#141518; --field:#1F2025; --field-hover:#292A30; --seg-on:#34353C;
   --material:rgba(22,22,24,.8); --material-edge:rgba(255,255,255,.08); --chip:rgba(245,245,247,.95); --on-chip:#000000;
   --shadow-soft:0 1px 2px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.4);
@@ -66,6 +69,7 @@
   :root:not([data-scheme]){
     --bg:#000000; --ink:#FFFFFF; --muted:rgba(255,255,255,.5); --surface:#111214; --surface-2:#1D1E22;
     --line:rgba(255,255,255,.1); --line-strong:rgba(255,255,255,.24); --focus:#7C95FF; --danger:#FF7A66; --ok:#3DD68C; --warn:#F5C04A;
+    --swatch-edge-hi:transparent; --swatch-edge-lo:rgba(255,255,255,.14);
     --panel:#141518; --field:#1F2025; --field-hover:#292A30; --seg-on:#34353C;
     --material:rgba(22,22,24,.8); --material-edge:rgba(255,255,255,.08); --chip:rgba(245,245,247,.95); --on-chip:#000000;
     color-scheme:dark;
@@ -330,6 +334,7 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .frame-bar output{min-width:42px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
 .frame-bar .btn{height:30px;margin-left:4px}
 .fs-media .frame-bar{bottom:84px} /* above the toasts and the status pill, which share the bottom of the screen */
+html.frame-on .status{visibility:hidden} /* on a phone the bar spans the screen and would sit on it */
 @container (max-width:560px){.fb-hint{display:none}}
 
 /* SVG module: a box (proportion or block height, background, inner spacing) and the drawing inside it, sized as a % of
@@ -338,12 +343,18 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .slot-svg.bg-surface{background:var(--surface)}
 .slot-svg.bg-color{background:var(--slot-bg)}
 .row.has-h .slot-svg,.row.has-h .slot-color{aspect-ratio:auto!important}
-.svg-in{position:absolute;inset:var(--pt,clamp(20px,3.2cqi,40px)) var(--pr,clamp(20px,3.2cqi,40px)) var(--pb,clamp(20px,3.2cqi,40px)) var(--pl,clamp(20px,3.2cqi,40px))}
-.svg-in > img{position:absolute;display:block;width:calc(var(--sw,60) * 1%);height:auto;max-width:none;left:calc(var(--ax,.5) * 100% + var(--sdx,0) * 1%);top:calc(var(--ay,.5) * 100% + var(--sdy,0) * 1%);translate:calc(var(--ax,.5) * -100%) calc(var(--ay,.5) * -100%);-webkit-user-drag:none;opacity:0;transition:opacity 520ms ease}
+/* In a half row they match the module next to them: the proportion sets the least height, the row the rest */
+.row[data-layout="half"] .row-grid > .slot-svg,.row[data-layout="half"] .row-grid > .slot-color{width:100%;height:100%}
+.svg-in{position:absolute;inset:var(--pt,clamp(20px,3.2cqi,40px)) var(--pr,clamp(20px,3.2cqi,40px)) var(--pb,clamp(20px,3.2cqi,40px)) var(--pl,clamp(20px,3.2cqi,40px));container-type:size}
+/* Tamaño is a share of the largest drawing that fits the inner area on both axes (--sar = the drawing's width/height),
+   so a square or portrait mark never runs out of a landscape box */
+.svg-in > img{position:absolute;display:block;width:calc(var(--sw,60) / 100 * min(100cqw, 100cqh * var(--sar,100)));height:auto;max-width:none;left:calc(var(--ax,.5) * 100% + var(--sdx,0) * 1%);top:calc(var(--ay,.5) * 100% + var(--sdy,0) * 1%);translate:calc(var(--ax,.5) * -100%) calc(var(--ay,.5) * -100%);-webkit-user-drag:none;opacity:0;transition:opacity 520ms ease}
 .svg-in.is-broken::after{content:"Archivo no disponible";position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:var(--muted)}
 
 /* Color module: a swatch of the brand, with its name and HEX in the ink that contrasts with it */
 .slot-color{background:var(--sc,#002FA7);color:#FFFFFF;transition:background-color 200ms ease}
+.slot-color[data-edge="hi"]{box-shadow:inset 0 0 0 1px var(--swatch-edge-hi)}
+.slot-color[data-edge="lo"]{box-shadow:inset 0 0 0 1px var(--swatch-edge-lo)}
 .slot-color[data-tone="dark"]{color:#000000}
 .sc-label{position:absolute;left:clamp(16px,3.2cqi,32px);right:clamp(16px,3.2cqi,32px);bottom:clamp(16px,3.2cqi,32px);display:flex;flex-direction:column;gap:3px;line-height:1.15;pointer-events:none}
 .sc-name{font-size:clamp(14px,2.6cqi,26px);font-weight:650;letter-spacing:-.015em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -363,6 +374,11 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 @media (hover:none){.act-chip{opacity:1;transform:none}}
 .slot-video .act-chip{right:100px}
 .fs-media .act-chip{right:20px;bottom:20px}
+/* A text module carries its chip under the last line, in the flow: a one-line text is shorter than the chip, and a
+   floating chip at the far end of a wide row would read as detached from the words */
+.tpad > .act-chip{position:relative;right:auto;bottom:auto;flex:none;align-self:flex-start;max-width:100%;margin-top:clamp(12px,1.6cqi,18px)}
+.tpad:has(> .tblocks > .tb:last-child[data-align="center"]) > .act-chip{align-self:center}
+.tpad:has(> .tblocks > .tb:last-child[data-align="right"]) > .act-chip{align-self:flex-end}
 .pop .mi-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pop .pal-h{margin:6px 12px 6px}
 
@@ -1321,12 +1337,12 @@ function normTree(t) {
   return t;
 }
 
-const contrastKey = (hex) => {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return 'dark';
+const hexLum = (hex) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null;
   const n = parseInt(m[1], 16);
-  const L = .2126 * lin((n >> 16) & 255) + .7152 * lin((n >> 8) & 255) + .0722 * lin(n & 255);
-  return inkFromLum(L);
+  return .2126 * lin((n >> 16) & 255) + .7152 * lin((n >> 8) & 255) + .0722 * lin(n & 255);
 };
+const contrastKey = (hex) => { const L = hexLum(hex); return L === null ? 'dark' : inkFromLum(L); };
 function lin(v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }
 function inkFromLum(L) { return (1.05 / (L + .05)) >= ((L + .05) / .05) ? 'light' : 'dark'; }
 const inkOverPhoto = (L) => L < .4 ? 'light' : 'dark';
@@ -2383,6 +2399,7 @@ function paintSvg(el, s) {
   el.style.aspectRatio = s.ratio && s.ratio !== 'auto' ? s.ratio : s.w && s.h ? `${s.w}/${s.h}` : '16/9';
   const pos = POS9.includes(s.pos) ? s.pos : 'mc';
   el.style.setProperty('--sw', isNum(s.scale) ? s.scale : 60);
+  if (s.w && s.h) el.style.setProperty('--sar', +(s.w / s.h).toFixed(4));
   el.style.setProperty('--ax', AXY[pos[1]]); el.style.setProperty('--ay', AXY[pos[0]]);
   el.style.setProperty('--sdx', s.dx || 0); el.style.setProperty('--sdy', s.dy || 0);
   padVars(el, s.pad, '--p', '--k');
@@ -2391,7 +2408,12 @@ function buildSvg(s, ref) {
   const el = document.createElement('figure'); el.className = 'slot slot-svg'; el.dataset.slot = s.id; el.style.setProperty('--ref', ref || 1114);
   paintSvg(el, s);
   const box = document.createElement('div'); box.className = 'svg-in';
-  if (s.asset) box.append(imgEl(s.asset, s.w, s.h, (s.name || '').replace(/\.svg$/i, '') || 'SVG'));
+  if (s.asset) {
+    const im = imgEl(s.asset, s.w, s.h, (s.name || '').replace(/\.svg$/i, '') || 'SVG');
+    /* older modules without stored dimensions take the proportion from the file once it loads */
+    if (!(s.w && s.h)) im.addEventListener('load', () => { if (im.naturalWidth && im.naturalHeight) el.style.setProperty('--sar', +(im.naturalWidth / im.naturalHeight).toFixed(4)); }, { once: true });
+    box.append(im);
+  }
   el.append(box);
   return el;
 }
@@ -2399,6 +2421,8 @@ function buildSvg(s, ref) {
 function paintColor(el, s) {
   const c = hexOk(s.color || '') ? s.color.toLowerCase() : BRAND;
   el.style.setProperty('--sc', c); el.dataset.color = c; el.dataset.tone = contrastKey(c);
+  const L = hexLum(c); /* near-white or near-black swatches get a hairline (the theme decides which one shows) */
+  if (L > .8) el.dataset.edge = 'hi'; else if (L < .012) el.dataset.edge = 'lo'; else delete el.dataset.edge;
   el.style.aspectRatio = s.ratio && s.ratio !== 'auto' ? s.ratio : '1/1';
   let lab = $(':scope > .sc-label', el);
   if (s.label === false) { if (lab) lab.remove(); return; }
@@ -2449,7 +2473,8 @@ function decorateAct(el, s) {
   el.dataset.action = 'slot-act'; el.dataset.act = a.kind;
   el.setAttribute('role', 'button'); el.tabIndex = 0;
   if (s.type !== 'text') el.setAttribute('aria-label', a.aria);
-  el.insertAdjacentHTML('beforeend', `<span class="act-chip"${s.type !== 'text' ? ' aria-hidden="true"' : ''}>${icon(a.icon)}<span>${esc(a.label)}</span></span>`);
+  const host = (s.type === 'text' && $(':scope > .tpad', el)) || el;
+  host.insertAdjacentHTML('beforeend', `<span class="act-chip"${s.type !== 'text' ? ' aria-hidden="true"' : ''}>${icon(a.icon)}<span>${esc(a.label)}</span></span>`);
   return el;
 }
 
@@ -3349,10 +3374,10 @@ function secSvgFile(c) {
 function secSvgPlace(c) {
   const s = c.slot;
   return `<div class="insp-sec"><h4>SVG<span>Dentro del contenedor</span></h4>
-      <div class="insp-line"><span class="lbl">Tamaño</span><div class="rng"><input type="range" min="5" max="100" step="1" data-f="sscale" value="${s.scale}" aria-label="Tamaño del SVG, en % del ancho del contenedor"><output id="sscale-out">${s.scale}%</output></div></div>
+      <div class="insp-line"><span class="lbl">Tamaño</span><div class="rng"><input type="range" min="5" max="100" step="1" data-f="sscale" value="${s.scale}" aria-label="Tamaño del SVG, en % del mayor tamaño que entra en el contenedor"><output id="sscale-out">${s.scale}%</output></div></div>
       <div class="insp-line top"><span class="lbl">Alineación</span>${matrixHTML('svgpos', s.pos, 'Alineación del SVG')}</div>
       <div class="insp-line"><span class="lbl">Desplazar</span><div class="grid2">${fld('sdx', 'arrX', s.dx, '%', { title: 'Desplazamiento horizontal' })}${fld('sdy', 'arrY', s.dy, '%', { title: 'Desplazamiento vertical' })}</div></div>
-      <p class="insp-hint">El tamaño es un porcentaje del ancho del contenedor, sin contar el espaciado interno.</p>
+      <p class="insp-hint">El tamaño es un porcentaje del mayor tamaño que entra en el contenedor, sin contar el espaciado interno: al 100 % el SVG lo llena de lado a lado o de arriba abajo.</p>
     </div>`;
 }
 function secSvgDownload(c) {
@@ -3371,7 +3396,7 @@ function filesBlock(s) {
     : own.length ? `Sin archivos, se descarga ${own.length > 1 ? 'cada imagen del carrusel' : 'el archivo del módulo'}.` : 'Sube al menos un archivo para que el clic descargue algo.';
   return `<div class="files" data-drop-files="${s.id}">${rows}
       <div class="insp-row"><label class="btn ghost sm grow">${icon('plus')}${files.length ? 'Añadir archivos' : 'Subir archivos'}<input type="file" class="sr-only" data-files="${s.id}" accept="${ACCEPT.files}" multiple></label></div></div>
-      <p class="insp-hint">${hint} SVG, PNG, JPG, PDF, ZIP, EPS o AI, hasta 50 MB. También puedes soltarlos aquí.</p>`;
+      <p class="insp-hint">${hint} SVG, PNG, JPG, PDF, ZIP, EPS, AI o video MP4, hasta 50 MB. También puedes soltarlos aquí.</p>`;
 }
 function secFsDim(c) { return c.fs ? dimSec(c.slot) : ''; }
 const dimSec = (s) => `<div class="insp-sec"><h4>Oscurecer</h4><div class="rng"><input type="range" min="0" max="80" step="5" data-f="dim" value="${s.dim || 0}" aria-label="Oscurecer el fondo"><output id="dim-out">${s.dim || 0}%</output></div></div>
@@ -4908,13 +4933,14 @@ function slotOf(el) {
   return r ? findSlot(r, el.dataset.slot) : null;
 }
 function slotAct(el) {
+  if (S.edit) return; /* while a block is being edited the other rows are dimmed: their actions wait (mouse and keyboard) */
   const s = slotOf(el), a = s && actInfo(s); if (!a) return;
   if (a.kind === 'copy') copyText(copyValue(s), el);
   else if (a.kind === 'modal') openActModal(s, el);
   else if (a.kind === 'download') {
     const list = dlItems(s);
     if (list.length === 1) { downloadFile(list[0]); return; }
-    const chip = $(':scope > .act-chip', el) || el;
+    const chip = $(':scope > .act-chip, :scope > .tpad > .act-chip', el) || el;
     openPop(el, `<p class="pal-h">Descargar</p>` + list.map((f, i) => `<button type="button" class="mi" role="menuitem" data-action="dl-file" data-i="${i}">${icon('download')}<span class="mi-t">${esc(f.name)}</span><span class="mi-v">${esc([fmtOf(f), fmtSize(f.size)].filter(Boolean).join(' · '))}</span></button>`).join(''), { data: { kind: 'dl', items: list }, anchor: chip });
     el.classList.add('is-pop');
   }
@@ -4983,7 +5009,7 @@ function sourceType(f) {
 }
 function acceptSource(f) {
   const t = sourceType(f);
-  if (!SRC_TYPES.includes(t)) { toast(`«${f.name}» no se puede ofrecer para descargar. Usa SVG, PNG, JPG, PDF, ZIP, EPS o AI.`); return null; }
+  if (!SRC_TYPES.includes(t)) { toast(`«${f.name}» no se puede ofrecer para descargar. Usa SVG, PNG, JPG, PDF, ZIP, EPS, AI o video MP4.`); return null; }
   if (f.size > 50 * MB) { toast(`«${f.name}» pesa ${(f.size / MB).toFixed(1)} MB. El máximo es 50 MB.`); return null; }
   return t;
 }
@@ -5014,6 +5040,10 @@ async function uploadInto(slotId, fileList, kind) {
 function toast(msg) {
   const host = $('#toasts');
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  /* On a phone the inspector is a sheet at the bottom of the screen: the toast rises above it instead of covering its
+     Cancelar / Confirmar */
+  const insp = $('#insp'), r = insp && !insp.hidden && !ROOT.classList.contains('frame-on') && MOBILE.matches ? insp.getBoundingClientRect() : null;
+  host.style.bottom = r && r.height ? Math.round(innerHeight - r.top + 10) + 'px' : '';
   host.append(t);
   while (host.children.length > 3) host.firstElementChild.remove();
   setTimeout(() => { t.classList.add('is-leaving'); setTimeout(() => t.remove(), 220); }, 3400);
@@ -5352,7 +5382,7 @@ document.addEventListener('keydown', (ev) => {
   if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter' && S.edit && S.mode === 'admin') { ev.preventDefault(); if (t && t.blur && t.closest && t.closest('#insp')) t.blur(); confirmEdit(); return; }
   if (t && t.dataset && t.dataset.f && FIELD[t.dataset.f] && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) { ev.preventDefault(); stepField(t, ev.key === 'ArrowUp' ? 1 : -1, ev.shiftKey); return; }
   if (t && t.dataset && (t.dataset.f || t.dataset.fileName) && ev.key === 'Enter' && t.tagName !== 'TEXTAREA') { t.blur(); return; }
-  if (t && t.matches && t.matches('.slot[data-act]') && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); slotAct(t); return; }
+  if (t && t.matches && !S.edit && t.matches('.slot[data-act]') && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); slotAct(t); return; }
   if (t && t.id === 'search-input') {
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); if (!lastResults.length) return; S.srSel = clamp(S.srSel + (ev.key === 'ArrowDown' ? 1 : -1), 0, lastResults.length - 1); renderSearch(t.value); const s = $('#sr-' + S.srSel); s && s.scrollIntoView({ block: 'nearest' }); return; }
     if (ev.key === 'Enter') { ev.preventDefault(); const r = lastResults[S.srSel]; if (r) goResult(r.cat, r.sub, r.row); return; }
