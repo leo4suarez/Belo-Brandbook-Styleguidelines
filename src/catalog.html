@@ -347,6 +347,16 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .rt-sep{flex:none;width:1px;height:18px;margin:0 3px 0 1px;background:var(--line-strong);opacity:.7}
 .icon-btn.rt-grip{cursor:grab;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;color:var(--muted)}
 .icon-btn.rt-grip:hover{color:var(--ink)}
+/* On phones and touch screens the toolbar is always on top of the block, so it stays small: the handle, Editar as an
+   icon and a "…" menu with the rest (the same actions, in the same order) */
+.rt-more{display:none}
+@media (max-width:860px),(hover:none){
+  .row-tools{top:10px;right:10px}
+  .row-tools .rt-wide{display:none}
+  .row-tools .rt-more{display:grid}
+  .row-tools .rt-edit{width:32px;padding:0;gap:0}
+  .row-tools .rt-edit .rt-lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+}
 
 /* Block organization: the dragged block stays dimmed in place, a light ghost follows the pointer and a brand line
    marks where it lands (between blocks, in an empty section, or on a section of the rail) */
@@ -693,6 +703,11 @@ html.is-row-drag .sec.is-empty.is-drop .adder::after{background:color-mix(in srg
 .toasts{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:130;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
 .toast{padding:11px 16px;border-radius:12px;background:var(--chip);color:var(--on-chip);font-size:13px;font-weight:500;box-shadow:var(--shadow-float);animation:toastIn 300ms var(--ease-out) both}
 .toast.is-leaving{animation:toastOut 200ms ease-in both}
+/* A toast that can take you somewhere: the only part of the toasts that catches the pointer */
+.toast.has-act{display:flex;align-items:center;gap:4px;padding-right:6px;pointer-events:auto}
+.toast-act{height:28px;margin-left:6px;padding:0 11px;border-radius:999px;background:color-mix(in srgb,var(--on-chip) 12%,transparent);color:inherit;font-size:12.5px;font-weight:650;white-space:nowrap;transition:background-color 140ms ease,transform 140ms var(--ease-out)}
+.toast-act:hover{background:color-mix(in srgb,var(--on-chip) 20%,transparent)}
+.toast-act:active{transform:scale(.95)}
 
 /* ---------- Motion ---------- */
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -1958,12 +1973,13 @@ function setRowTools(t, id, confirm) {
   t.innerHTML = confirm
     ? `<span class="rt-q">¿Eliminar este bloque?</span><button type="button" class="btn plain sm" data-action="row-delete-cancel" data-id="${id}">Cancelar</button><button type="button" class="btn danger sm" data-action="row-delete-confirm" data-id="${id}">Eliminar</button>`
     : `<button type="button" class="icon-btn rt-grip" data-action="row-drag" data-id="${id}" aria-label="Arrastrar para mover" title="Arrastrar para mover">${icon('grip')}</button><span class="rt-sep" aria-hidden="true"></span>
-       <button type="button" class="btn plain sm" data-action="row-edit" data-id="${id}">${icon('edit')}Editar</button>
-       <button type="button" class="icon-btn" data-action="row-dup" data-id="${id}" aria-label="Duplicar" title="Duplicar">${icon('dup')}</button>
-       <button type="button" class="icon-btn" data-action="row-move" data-id="${id}" aria-label="Mover a…" title="Mover a…" aria-haspopup="menu" aria-expanded="false">${icon('moveTo')}</button>
-       <button type="button" class="icon-btn" data-action="row-up" data-id="${id}" aria-label="Subir bloque">${icon('up')}</button>
-       <button type="button" class="icon-btn" data-action="row-down" data-id="${id}" aria-label="Bajar bloque">${icon('dn')}</button>
-       <button type="button" class="icon-btn danger" data-action="row-delete" data-id="${id}" aria-label="Eliminar bloque">${icon('trash')}</button>`;
+       <button type="button" class="btn plain sm rt-edit" data-action="row-edit" data-id="${id}">${icon('edit')}<span class="rt-lbl">Editar</span></button>
+       <button type="button" class="icon-btn rt-wide" data-action="row-dup" data-id="${id}" aria-label="Duplicar" title="Duplicar">${icon('dup')}</button>
+       <button type="button" class="icon-btn rt-wide" data-action="row-move" data-id="${id}" aria-label="Mover a…" title="Mover a…" aria-haspopup="menu" aria-expanded="false">${icon('moveTo')}</button>
+       <button type="button" class="icon-btn rt-wide" data-action="row-up" data-id="${id}" aria-label="Subir bloque">${icon('up')}</button>
+       <button type="button" class="icon-btn rt-wide" data-action="row-down" data-id="${id}" aria-label="Bajar bloque">${icon('dn')}</button>
+       <button type="button" class="icon-btn danger rt-wide" data-action="row-delete" data-id="${id}" aria-label="Eliminar bloque">${icon('trash')}</button>
+       <button type="button" class="icon-btn rt-more" data-action="row-more" data-id="${id}" aria-label="Más acciones" title="Más acciones" aria-haspopup="menu" aria-expanded="false">${icon('more')}</button>`;
   if (confirm) { const b = $('[data-action="row-delete-cancel"]', t); b && b.focus({ preventScroll: true }); }
 }
 
@@ -2687,7 +2703,8 @@ async function moveRowTo(fromSub, id, toSub, { before = null, index = Infinity, 
     renderStage(); measure();
   };
   if (shown) { flip(apply); landRow(id, toSub, top, follow); } else apply();
-  toast(`Bloque movido a «${name(toSub)}»`);
+  /* Into another category the page stays put (you may have more to move from here); "Ver" goes to the block */
+  toast(`Bloque movido a «${name(toSub)}»`, shown ? null : { label: 'Ver', action: 'row-follow', data: { sub: toSub, id } });
   return true;
 }
 /* After a move: flash the block, or follow it when it landed out of sight (from the rail or "Mover a…") */
@@ -2695,6 +2712,16 @@ function landRow(id, subId, top, follow) {
   const el = rowEl(id); if (!el) return;
   if (follow && top != null && (top < 0 || top > innerHeight * .62)) scrollToSub(subId, { row: id });
   else flashRow(el);
+}
+/* "…" on the compact toolbar (phones, touch): the actions the wide toolbar shows as icons */
+function rowMorePop(trigger, subId, id) {
+  const rows = S.pages.get(subId) || []; const i = rows.findIndex(r => r.id === id);
+  const d = ` data-id="${id}" data-from="${subId}"`;
+  openPop(trigger, `<button type="button" class="mi" role="menuitem" data-action="row-dup"${d}>${icon('dup')}Duplicar</button>
+    <button type="button" class="mi" role="menuitem" data-action="row-move"${d}>${icon('moveTo')}Mover a…</button>
+    <button type="button" class="mi" role="menuitem" data-action="row-up"${d}${i <= 0 ? ' disabled' : ''}>${icon('up')}Subir</button>
+    <button type="button" class="mi" role="menuitem" data-action="row-down"${d}${i < 0 || i >= rows.length - 1 ? ' disabled' : ''}>${icon('dn')}Bajar</button>
+    <button type="button" class="mi danger" role="menuitem" data-action="row-delete"${d}>${icon('trash')}Eliminar</button>`, { data: { sub: subId, id } });
 }
 /* "Mover a…": every subcategory of every category; the block goes to the end of the one picked */
 function movePop(trigger, subId, id) {
@@ -4233,18 +4260,32 @@ function closePop(instant) {
 }
 
 /* ---------- Toasts ---------- */
-function toast(msg) {
+/* `act` adds a button to the toast ({ label, action, data }), handled by the click switch like any other; such a toast
+   stays a little longer so there is time to reach it */
+function toast(msg, act = null) {
   const host = $('#toasts');
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  if (act) {
+    t.classList.add('has-act');
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'toast-act'; b.textContent = act.label;
+    b.dataset.action = act.action; Object.entries(act.data || {}).forEach(([k, v]) => { b.dataset[k] = v; });
+    t.append(b);
+  }
   host.append(t);
   while (host.children.length > 3) host.firstElementChild.remove();
-  setTimeout(() => { t.classList.add('is-leaving'); setTimeout(() => t.remove(), 220); }, 3400);
+  setTimeout(() => { t.classList.add('is-leaving'); setTimeout(() => t.remove(), 220); }, act ? 5600 : 3400);
+}
+
+/* A row action comes from the block's own toolbar or from its "…" menu (which closes on the way) */
+function rowSubOf(a) {
+  if (a.closest('#pop')) { closePop(true); return a.dataset.from; }
+  return a.closest('.row').dataset.sub;
 }
 
 /* ================= Events ================= */
 document.addEventListener('click', (ev) => {
   const a = ev.target.closest('[data-action]');
-  if (S.pop && !ev.target.closest('#pop') && !(a && (a.dataset.action === 'item-menu' || a.dataset.action === 'dd' || a.dataset.action === 'row-move'))) closePop();
+  if (S.pop && !ev.target.closest('#pop') && !(a && (a.dataset.action === 'item-menu' || a.dataset.action === 'dd' || a.dataset.action === 'row-move' || a.dataset.action === 'row-more'))) closePop();
   if (!a || a.disabled) return;
   const act = a.dataset.action, id = a.dataset.id, slotId = a.dataset.slot;
   switch (act) {
@@ -4371,11 +4412,20 @@ document.addEventListener('click', (ev) => {
     case 'confirm-edit': confirmEdit(); break;
     case 'cancel-edit': cancelEdit(); break;
     case 'row-edit': { const r = a.closest('.row'); startEdit(r.dataset.sub, id); break; }
-    case 'row-up': case 'row-down': { const r = a.closest('.row'); moveRow(r.dataset.sub, id, act === 'row-up' ? -1 : 1); break; }
-    case 'row-delete': S.confirmDelete = id; refreshRowTools(); break;
-    case 'row-dup': { const r = a.closest('.row'); dupRow(r.dataset.sub, id); break; }
-    case 'row-move': { ev.stopPropagation(); const r = a.closest('.row'); movePop(a, r.dataset.sub, id); break; }
+    case 'row-up': case 'row-down': { const sub = rowSubOf(a); moveRow(sub, id, act === 'row-up' ? -1 : 1); break; }
+    case 'row-delete': rowSubOf(a); S.confirmDelete = id; refreshRowTools(); break;
+    case 'row-dup': { const sub = rowSubOf(a); dupRow(sub, id); break; }
+    case 'row-more': { ev.stopPropagation(); const r = a.closest('.row'); rowMorePop(a, r.dataset.sub, id); break; }
+    case 'row-move': {
+      ev.stopPropagation();
+      /* From the "…" menu the list of sections takes its place, under the same button */
+      const P = S.pop, inPop = !!a.closest('#pop');
+      if (inPop) { closePop(true); if (P && P.trigger && P.trigger.isConnected) movePop(P.trigger, a.dataset.from, id); }
+      else movePop(a, a.closest('.row').dataset.sub, id);
+      break;
+    }
     case 'row-move-to': { const P = S.pop; closePop(true); if (P && P.data && P.data.id) moveRowTo(P.data.sub, P.data.id, a.dataset.sub, { follow: true }); break; }
+    case 'row-follow': { const c = catOf(a.dataset.sub); const t = a.closest('.toast'); if (t) t.remove(); if (c) openCategory(c.id, { to: a.dataset.sub, row: id }); break; }
     case 'row-drag': if (!rdragMoved) toast('Arrastra para mover el bloque'); rdragMoved = false; break;
     case 'row-delete-cancel': S.confirmDelete = null; refreshRowTools(); break;
     case 'row-delete-confirm': { const r = a.closest('.row'); deleteRow(r.dataset.sub, id); break; }
@@ -4619,7 +4669,7 @@ async function importExport(fileList) {
   onTree();
   toast(`Listo: se importaron ${what}.`);
 }
-document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.closest('#pop') && !ev.target.closest('[data-action="item-menu"], [data-action="dd"], [data-action="row-move"]')) closePop(); }, true);
+document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.closest('#pop') && !ev.target.closest('[data-action="item-menu"], [data-action="dd"], [data-action="row-move"], [data-action="row-more"]')) closePop(); }, true);
 
 /* ================= Smooth scroll ================= */
 function initLenis() {

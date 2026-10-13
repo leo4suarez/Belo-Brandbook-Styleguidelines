@@ -90,7 +90,8 @@ const dragState = (p) => p.evaluate(() => {
   const r0 = P.locator('#stage .row[data-id="r_t"]');
   await r0.hover(); await P.waitForTimeout(250);
   const tools = await r0.evaluate(el => [...el.querySelectorAll('.row-tools [data-action]')].map(b => b.dataset.action + (b.getAttribute('aria-label') ? '=' + b.getAttribute('aria-label') : '')));
-  check(tools.join(',') === 'row-drag=Arrastrar para mover,row-edit,row-dup=Duplicar,row-move=Mover a…,row-up=Subir bloque,row-down=Bajar bloque,row-delete=Eliminar bloque', 'row toolbar: ' + tools.join(', '));
+  check(tools.join(',') === 'row-drag=Arrastrar para mover,row-edit,row-dup=Duplicar,row-move=Mover a…,row-up=Subir bloque,row-down=Bajar bloque,row-delete=Eliminar bloque,row-more=Más acciones', 'row toolbar: ' + tools.join(', '));
+  check(await r0.evaluate(el => el.querySelector('[data-action="row-more"]').offsetWidth === 0 && [...el.querySelectorAll('.row-tools .rt-wide')].every(b => b.offsetWidth > 0)), 'wide screen: every action is a button of its own (no "…")');
   const tb = await r0.locator('.row-tools').boundingBox();
   await P.screenshot({ path: T + 'blocks-00-toolbar.png', clip: { x: tb.x - 24, y: tb.y - 16, width: tb.width + 48, height: tb.height + 32 } });
 
@@ -207,6 +208,17 @@ const dragState = (p) => p.evaluate(() => {
   check(await until(async () => (await ids(P, 's_poder')).length === 0), 'block leaves «Poder, frontera y sonrisa»');
   check(/Bloque movido a «Tono»/.test(await toasts(P)), 'toast "Bloque movido a «Tono»"');
   await P.waitForTimeout(400);
+  // The page stays where it was, and the toast's "Ver" goes to the block in its new category
+  await P.screenshot({ path: T + 'blocks-04b-moved-away.png' });
+  await P.click('.toast [data-action="row-follow"]');
+  check(await until(() => P.evaluate((t) => {
+    const r = document.querySelector('#stage .row[data-id="r_t"]'); if (!r || location.hash !== '#' + t || !document.querySelector(`#s-${t}`)) return false;
+    const b = r.getBoundingClientRect(); return b.top >= 0 && b.top < innerHeight * .6 && !document.querySelector('.toast.has-act');
+  }, tono)), '"Ver" on the toast opens «Tono» with the block in view');
+  await P.waitForTimeout(600);
+  await P.screenshot({ path: T + 'blocks-04c-followed.png' });
+  await P.click('#btn-menu'); await P.waitForTimeout(700);
+  await P.click('#menu [data-action="menu-cat"][data-id="c_ourbrand"]'); await P.waitForTimeout(900);
 
   // 10. What was saved: opening the categories again reads every section back from storage
   await P.click('#btn-menu'); await P.waitForTimeout(700);
@@ -285,8 +297,24 @@ const dragState = (p) => p.evaluate(() => {
   const M = await openLocal(browser, 'mobile', { w: 390, h: 844, phone: true });
   const mr = M.locator('#stage .row[data-id="r_t"]');
   await mr.scrollIntoViewIfNeeded(); await M.waitForTimeout(300);
-  await mr.locator('[data-action="row-dup"]').click(); await M.waitForTimeout(600);
+  // The toolbar stays compact over the block: the handle, Editar as an icon and "…" with the rest
+  const bar = await M.evaluate(() => {
+    const t = document.querySelector('#stage .row[data-id="r_t"] .row-tools'); const r = t.getBoundingClientRect();
+    return { w: Math.round(r.width), shown: [...t.querySelectorAll('[data-action]')].filter(b => b.offsetWidth > 0).map(b => b.dataset.action).join(','), edit: t.querySelector('[data-action="row-edit"]').textContent.trim() };
+  });
+  check(bar.shown === 'row-drag,row-edit,row-more' && bar.w <= 124 && bar.edit === 'Editar', 'narrow screen: a compact toolbar (handle, Editar, "…") ' + JSON.stringify(bar));
+  await M.screenshot({ path: T + 'blocks-05a-mobile-toolbar.png' });
+  await mr.locator('[data-action="row-more"]').click(); await M.waitForTimeout(250);
+  const more = await M.evaluate(() => [...document.querySelectorAll('#pop .mi')].map(b => b.textContent.trim() + (b.disabled ? '(off)' : '')).join(','));
+  check(more === 'Duplicar,Mover a…,Subir(off),Bajar(off),Eliminar', '"…" holds the other actions: ' + more);
+  await M.screenshot({ path: T + 'blocks-05b-mobile-more.png' });
+  await M.click('#pop [data-action="row-move"]'); await M.waitForTimeout(250);
+  check(await M.evaluate(() => document.querySelectorAll('#pop [data-action="row-move-to"]').length === 8 && !!document.querySelector('#pop [aria-current][data-sub="s_direccion"]') && document.querySelector('#stage .row[data-id="r_t"] [data-action="row-more"]').getAttribute('aria-expanded') === 'true'), '"Mover a…" from "…" opens the list of sections under the same button');
+  await M.keyboard.press('Escape'); await M.waitForTimeout(200);
+  await mr.locator('[data-action="row-more"]').click(); await M.waitForTimeout(250);
+  await M.click('#pop [data-action="row-dup"]'); await M.waitForTimeout(600);
   const mdup = (await ids(M, 's_direccion'))[1];
+  check(!!mdup && await M.evaluate(() => !!document.querySelector('#pop').hidden), 'Duplicar from "…" duplicates and closes the menu');
   check(await M.evaluate(() => document.documentElement.scrollWidth - innerWidth) === 0, 'narrow screen: the toolbar does not overflow');
   const mrow = M.locator(`#stage .row[data-id="${mdup}"]`);
   await mrow.scrollIntoViewIfNeeded(); await M.waitForTimeout(300);
