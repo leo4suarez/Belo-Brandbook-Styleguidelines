@@ -929,6 +929,9 @@ html.globe-grabbing,html.globe-grabbing *{cursor:grabbing!important}
 /* Editors switch viewer / admin from any section page: bottom left, colored by what is under it */
 .page-mode{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;--ov-solid:var(--brand);animation:fadeIn 240ms var(--ease-out) both}
 .page-mode[hidden]{display:none}
+/* Out of the way while a block is carried: the drop targets are the page and the rail (its fade-in animation holds
+   the opacity, so it is hidden with visibility) */
+html.is-row-drag .page-mode{visibility:hidden}
 .page-mode .seg-solid button[aria-pressed="true"]{color:#FFFFFF}
 
 /* ---------- Popover, status, toasts ---------- */
