@@ -279,6 +279,25 @@ function watch(page, errors) {
   check(await pressed('fspal') === null, 'a custom color leaves the palette unselected');
   await cancel();
 
+  // A side field settles on the value in use once typing ends
+  await edit('r_t');
+  await page.click('#insp [data-action="pad-link"]');
+  await page.fill('#f-pt', '-5'); await page.dispatchEvent('#f-pt', 'input'); await page.dispatchEvent('#f-pt', 'change');
+  check(await page.inputValue('#f-pt') === '0' && (await pad('.row.is-editing .tpad'))[0] === 0, 'a negative side is stored and shown as 0');
+  await page.fill('#f-pt', 'abc'); await page.dispatchEvent('#f-pt', 'input'); await page.dispatchEvent('#f-pt', 'change');
+  check(await page.inputValue('#f-pt') === '0', 'text that is not a number goes back to the stored side');
+  // Two texts of the block being edited share a style: updating it from one moves the other one too, unmodified
+  await page.locator(b1).click();
+  await page.selectOption('#insp select[data-f="typestyle"]', 'ts_subheadline');
+  await page.locator(b2).click();
+  await page.selectOption('#insp select[data-f="typestyle"]', 'ts_subheadline');
+  await field('size', 44);
+  await page.click('#insp [data-action="type-style-update"]');
+  await page.waitForTimeout(400);
+  await page.locator(b1).click();
+  check(await fsOf(b1) === '44' && await styleSel() === 'ts_subheadline' && !(await has('.type-style-mod')), 'updating a style from one text moves the other linked text of the same block');
+  await cancel();
+
   // 5. Narrow screens: the sections fit the bottom sheet
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(500);
@@ -340,6 +359,19 @@ function watch(page, errors) {
   const kk = await L.evaluate(() => { const el = document.querySelector('#s-s_one .slot-text'); return Math.min(1, el.clientWidth / 1114); });
   const after = await L.evaluate(() => { const tb = document.querySelector('#s-s_one .tb[data-block="b_a"]'); return { color: getComputedStyle(tb).color, fs: tb.style.getPropertyValue('--fs'), pad: parseFloat(getComputedStyle(document.querySelector('#s-s_one .tpad')).paddingTop) }; });
   check(after.color === 'rgb(0, 47, 167)' && after.fs === '64' && Math.abs(after.pad - 24 * kk) < .2, `after a reload the text keeps its style, color and spacing (${JSON.stringify(after)})`);
+  // Someone else changes the style while a linked text is being edited: the text shows as modified, the list follows
+  const ana = fake.addUser({ email: 'ana@paisanos.io', name: 'Ana Ruiz' });
+  const remoteTree = (fn) => { const cur = fake.docs.get('catalog/tree'); const d = JSON.parse(JSON.stringify(cur.data)); fn(d); return fake.saveDoc(ana, { p_path: 'catalog/tree', p_data: d, p_expected: cur.version }); };
+  await row1.hover(); await row1.locator('[data-action="row-edit"]').click();
+  await L.waitForSelector('#insp:not([hidden]) .insp-body');
+  await L.locator('.row.is-editing .tb[data-block="b_a"]').click();
+  check(!(await L.locator('#insp .type-style-mod').count()), 'the linked text starts unmodified');
+  remoteTree(d => { const h = d.textStyles.find(x => x.id === 'ts_headline'); h.size = 70; h.name = 'Titular'; });
+  check(await until(async () => await L.locator('#insp .type-style-mod').count() === 1 && /^Titular/.test(await L.textContent('#insp select[data-f="typestyle"] option[value="ts_headline"]'))), 'a style changed by someone else marks the edited text as modified and renames it in the list');
+  remoteTree(d => { d.textStyles = d.textStyles.filter(x => x.id !== 'ts_headline'); });
+  check(await until(async () => await L.inputValue('#insp select[data-f="typestyle"]') === '' && await L.locator('#insp [data-action="type-style-new"]').count() === 1), 'a style removed by someone else unlinks the edited text');
+  await L.click('#insp [data-action="cancel-edit"]');
+  await L.waitForTimeout(300);
   check(lerr.length === 0, 'no page errors on the shared catalog' + (lerr.length ? ': ' + lerr.join(' | ') : ''));
 
   await browser.close();

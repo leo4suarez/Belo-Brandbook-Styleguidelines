@@ -1629,6 +1629,9 @@ function onTree() {
     syncSubscriptions(); renderRail(); renderStage();
   }
   if (S.overlay === 'menu') renderMenu();
+  /* Someone else changed, renamed or removed a text style: the block being edited keeps its values, so its link is
+     re-checked (it shows as modified, or loses a link to a removed style) before the panel renders it again */
+  { const sig = JSON.stringify(typeStyles()); if (sig !== LOOK.ts) { LOOK.ts = sig; if (S.edit) { syncTypeLinks(S.edit.draft); renderInspector(); } } }
   renderPalPop();
   if (intro && !RM) introMenu($('#menu'), 40, '.ov-item, .ov-add'); /* the categories arrive after the opening screen is up */
 }
@@ -1828,7 +1831,7 @@ const rowSig = (item) => item.editing ? `E:${S.edit.v}` : 'V:' + JSON.stringify(
    linked blocks in their pages, so those rows rebuild by their own signature), but their color is a palette id: when
    the palette changes, the texts on screen are repainted in place. Rebuilding the rows instead would replay their
    enter animations for everyone watching. Names are left out, so renaming a color repaints nothing. */
-const LOOK = { sig: null };
+const LOOK = { sig: null, ts: null };
 function syncLook() {
   const sig = JSON.stringify(palColors().map(p => [p.id, p.hex]));
   if (sig === LOOK.sig) return;
@@ -2954,13 +2957,17 @@ async function typeStyleOp(op) {
   if (op === 'reset') { record(null); linkTypeStyle(b, st); paintBlock(b); renderInspector(); Ink.schedule(); return; }
   if (op === 'update') {
     const vals = pickType(b), bid = b.id;
-    mutateTree(t => { const x = t.textStyles.find(y => y.id === st.id); if (x) Object.assign(x, vals); });
     await animTargets();
-    const ns = typeStyleById(st.id); if (!ns) return;
-    commitTargets(forEachTarget(t => {
+    if (!typeStyleById(st.id)) return;
+    /* The linked texts take the new values before the style changes, so nothing re-checking links in between (a tree
+       update arriving meanwhile) sees them as modified */
+    const ns = { ...typeStyleById(st.id), ...vals };
+    const changed = forEachTarget(t => {
       if (t.kind !== 'text' || t.item.ts !== st.id || (t.item.tsOver && t.item.id !== bid)) return false;
       linkTypeStyle(t.item, ns); return true;
-    }, true), TYPE_FIELDS);
+    }, true);
+    mutateTree(t => { const x = t.textStyles.find(y => y.id === st.id); if (x) Object.assign(x, vals); });
+    commitTargets(changed, TYPE_FIELDS);
     toast(`Estilo «${st.name}» actualizado`);
     return;
   }
@@ -4573,6 +4580,8 @@ document.addEventListener('change', (ev) => {
   const k = el.dataset && el.dataset.f; if (!k) return;
   if (k === 'ratio') { onField('ratio', el.value); return; }
   if (['menter', 'mscroll', 'tenter', 'tscroll', 'torder', 'measefam', 'teasefam', 'mstyle', 'tstyle', 'typestyle'].includes(k)) { onField(k, el.value); return; }
+  /* A side shows what it stores once typing ends: "abc" or "-5" settle on the value in use, empty on automatic */
+  if (isPadKey(k)) { const s = activeSlot(), p = s && s.pad; el.value = p && isNum(p[k[1]]) ? fmt(k, p[k[1]]) : ''; return; }
   if (FIELD[k]) { const v = parseField(k, el.value); el.value = v == null || v === 0 ? (k === 'h' ? '' : el.value) : fmt(k, v); }
 });
 document.addEventListener('paste', (ev) => {
