@@ -18,12 +18,13 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 
 ### Funciones principales
 
-- **Home:** es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección). Un slider espacial de tarjetas, armado con CSS 3D y sin librerías: las tarjetas están del lado de adentro de una curva, la del medio mira de frente y las de los costados giran hacia el centro y se alejan un poco, hasta salir por los dos bordes.
-  - Cada tarjeta es un marco blanco (oscuro en el tema oscuro) con la imagen o el video adentro y, si el elemento tiene leyenda, una franja en mayúsculas con la leyenda y su número. Los elementos de la galería de la Home se repiten en un loop infinito hasta llenar la curva. Los videos se reproducen (sin sonido, en loop) solo en las tarjetas que se ven.
-  - Se navega con **Anterior** / **Siguiente** y los puntos de abajo (un contador si hay muchos elementos), con las flechas del teclado, con la rueda o el trackpad, y arrastrando o deslizando: la fila sigue con inercia y se acomoda en la tarjeta más cercana.
-  - Al pasar el mouse, la tarjeta se acerca un poco. Al hacer clic en cualquier tarjeta, se agranda hasta un lightbox centrado (con su leyenda) mientras la tarjeta se desliza al centro detrás; se cierra con la X, Esc o un clic afuera.
-  - En Admin, el botón **Galería** (abajo a la izquierda) abre el panel para sumar imágenes o videos (también soltándolos), quitarlos, ordenarlos arrastrando y escribir la leyenda (opcional) del elemento elegido; elegir una miniatura lleva su tarjeta al centro. Sin contenido, el slider muestra tarjetas de muestra en azul Belo, blanco y grises.
-  - El logo (o la palabra "belo" si no hay logo cargado) siempre vuelve a la Home. Con `prefers-reduced-motion` el cambio de tarjeta es instantáneo, sin inercia, y los videos no arrancan solos.
+- **Home:** es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección). Un slider espacial de tarjetas, armado con CSS 3D y sin librerías: las tarjetas están paradas del lado de adentro de un cilindro, una al lado de la otra por longitud de arco y con el mismo espacio entre todas, cada una girada hacia el eje. La del medio mira de frente; hacia los bordes envuelven la vista, giran y se achican un poco (un toque esférico), sin taparse nunca entre vecinas.
+  - Cada tarjeta es la imagen o el video mismo, sin marco, con las esquinas redondeadas que se elijan. Si el elemento tiene leyenda, va como texto simple en mayúsculas debajo, con su número. Todas comparten la altura y el ancho sale de la proporción: la del archivo, salvo que se elija Horizontal (16:9), Vertical (4:5) o Cuadrada. Los elementos se repiten en un loop infinito hasta llenar la curva. Los videos se reproducen (sin sonido, en loop) solo en las tarjetas que se ven.
+  - Se mueve sola, despacio y sin parar. Con el mouse sobre las tarjetas (o sobre los controles) frena suavemente y, al salir, vuelve a arrancar; en pantallas táctiles arranca de nuevo un par de segundos después del último toque. También se pausa con la Home oculta, la pestaña en segundo plano, el lightbox o la galería abiertos.
+  - Se navega con **Anterior** / **Siguiente** y los puntos de abajo (un contador si hay muchos elementos; siguen a la tarjeta del medio), con las flechas del teclado, con la rueda o el trackpad, y arrastrando o deslizando: la fila sigue con inercia y se acomoda en la tarjeta más cercana.
+  - Al pasar el mouse, la tarjeta se acerca un poco. Al hacer clic en cualquier tarjeta, se agranda hasta un lightbox centrado (con su leyenda y su proporción original) mientras la tarjeta se desliza al centro detrás; se cierra con la X, Esc o un clic afuera.
+  - En Admin, el botón **Galería** (abajo a la izquierda) abre el panel para sumar imágenes o videos (también soltándolos), quitarlos y ordenarlos arrastrando; para el elemento elegido, su formato (Original / Horizontal / Vertical / Cuadrada) y su leyenda (opcional); y para todas, las **Esquinas** (0 a 40). Elegir una miniatura lleva su tarjeta al centro y todo se puede deshacer. Sin contenido, el slider muestra tarjetas de muestra en azul Belo, blanco y grises.
+  - El logo (o la palabra "belo" si no hay logo cargado) siempre vuelve a la Home. Con `prefers-reduced-motion` no se mueve sola, el cambio de tarjeta es instantáneo, sin inercia, y los videos no arrancan solos.
   - Arranca en modo claro salvo que la persona haya elegido otro tema.
 - Menú de pantalla completa, desde el botón de arriba:
   - Categorías grandes abajo a la izquierda.
@@ -95,7 +96,7 @@ npm test                          # build + flows, panel, menu, motion, collab, 
 - Las pruebas recorren los flujos principales: crear y editar bloques, panel, deshacer y rehacer, menú, buscador, temas y mobile.
 - `collab.cjs` prueba el guardado compartido con la librería real de Supabase contra un Supabase simulado (`tests/fake-supabase.cjs`): login con Google, permisos, cambios en vivo entre dos editores, conflictos, presencia, archivos, reintentos e importación.
 - `blocks.cjs` prueba duplicar, arrastrar dentro de una sección, a otra y sobre el sidebar, **Mover a…**, Esc para cancelar y que borrar un duplicado no borre los archivos del original.
-- `home.cjs` prueba la Home: el slider (curva 3D, botones, puntos, teclado, rueda, arrastre con inercia), hover, lightbox de la tarjeta clickeada, galería (subir, leyendas, ordenar, quitar y deshacer), movimiento reducido, mobile y el switch viewer/admin de las secciones.
+- `home.cjs` prueba la Home: el slider (curva 3D sin tarjetas encimadas, movimiento automático y su pausa con el mouse o el toque, botones, puntos, teclado, rueda, arrastre con inercia), hover, lightbox de la tarjeta clickeada, galería (subir, leyendas, formatos, esquinas, ordenar, quitar y deshacer), movimiento reducido, mobile y el switch viewer/admin de las secciones.
 - `editor.cjs` prueba el inspector contextual, el espaciado interno, los estilos de texto (también entre secciones y entre dos editores) y la paleta.
 - `media.cjs` prueba el encuadre, el módulo SVG, el módulo de color, las interacciones (copiar, modal y descarga) y los archivos descargables, también guardados en el Supabase simulado.
 - Las capturas quedan en `tests/output/`, que está ignorado por git.
@@ -139,7 +140,8 @@ Hay dos tipos de documento (en Supabase y en la base del artifact):
   {
     logo: { id, w, h, mono } | null,
     menu: { bg: { kind: 'color', color } | { kind: 'image', asset, w, h, dim } },
-    home: { media: [{ id, kind: 'image' | 'video', w, h, label }] },   // la galería del slider, en orden (label: leyenda opcional)
+    home: { media: [{ id, kind: 'image' | 'video', w, h, label, ratio }], radius },  // la galería del slider, en orden
+                                                                      // label: leyenda opcional; ratio: '16/9' | '4/5' | '1/1' (sin ratio = la del archivo); radius: esquinas (0-40, por defecto 16)
     animStyles: [{ id, name, kind: 'mod' | 'text', of, anim }],
     textStyles: [{ id, name, font, size, weight, lh, ls, upper }],    // estilos de texto (ids ts_…)
     palette: [{ id, name, hex }],                                     // paleta de marca (ids pc_…)
@@ -227,3 +229,4 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
 - **v6.1 (prueba local): slider espacial en la Home.**
   - El globo de la Home se reemplaza por un slider de tarjetas sobre una curva en CSS 3D, con loop infinito, inercia, hover y el mismo lightbox. Toma como referencia el "Spatial Cards Slider" de Osmo.
   - Leyenda opcional por elemento de la galería (`label`), editable en el panel **Galería**. Los datos guardados antes siguen funcionando igual.
+  - Segunda vuelta: se mueve sola despacio (frena con el mouse encima y vuelve al salir), tarjetas sin marco con la proporción de cada archivo (o Horizontal / Vertical / Cuadrada por elemento, `ratio`), esquinas regulables para todas (`home.radius`) y una curva nueva: un cilindro visto desde adentro, con las tarjetas ubicadas por longitud de arco y espacio parejo, para que nunca se tapen entre vecinas, con un toque esférico hacia los bordes.

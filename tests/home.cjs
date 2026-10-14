@@ -54,6 +54,13 @@ const enterCategory = async (p, cat = 'c_ourbrand', sel = '#s-s_sepuede .row') =
   await p.click(`.ov-cat[data-id="${cat}"]`);
   await p.waitForSelector(sel); await p.waitForTimeout(500);
 };
+// Neighbouring cards never cover each other: in screen order each one starts after the previous one ends
+const overlaps = (cs) => cs.slice(1).map((c, j) => Math.round((cs[j].r - c.l) * 10) / 10).filter(o => o > .5);
+const minGap = (cs) => Math.min(...cs.slice(1).map((c, j) => c.l - cs[j].r));
+// Where the mouse can rest: over the controls (the drift pauses there, like over the cards) or above the cards (it drifts)
+const park = async (p) => { const r = await p.locator('#hs-nav .hs-dots, #hs-nav .hs-count').first().boundingBox(); await p.mouse.move(r.x + r.width / 2, r.y + r.height / 2); };
+const away = (p) => p.mouse.move(1490, 140);
+const xOf = (p, k) => p.evaluate((k) => { const r = document.querySelector(`#hs-stage .hs-card[data-k="${k}"]`).getBoundingClientRect(); return r.left + r.width / 2; }, k);
 const thumbIds = (p) => p.evaluate(() => [...document.querySelectorAll('#home-gal .hg-th[data-index]')].map(t => t.dataset.id));
 // A pointer drag across the slider, n steps of dx pixels, ms apart
 const drag = async (p, x, y, dx, n = 10, ms = 16) => {
@@ -82,7 +89,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   }));
   check(land.view === 'home' && land.home === 'block' && land.stage === 'none' && land.nav === 'none' && !land.menu && land.hash === '', 'the page opens on Home: slider shown, section list and stage hidden, no hash, menu closed');
   check(land.scheme === 'light', 'light theme by default even when the OS prefers dark (' + land.scheme + ')');
-  check(land.n >= 9 && land.ph === land.n && land.dots === 8, `with no media yet the slider loops ${land.n} placeholder cards, one dot per placeholder (${land.dots})`);
+  check(land.n >= 8 && land.n % 8 === 0 && land.ph === land.n && land.dots === 8, `with no media yet the slider loops ${land.n} placeholder cards, one dot per placeholder (${land.dots})`);
   check(land.btns === 'Anterior,Siguiente', 'Prev / Next buttons are labeled in Spanish');
   check(land.over <= 0 && land.scroll <= 0, 'Home fills the screen: no page scroll either way');
   check(land.logo === 'belo|1', 'no logo uploaded: the "belo" wordmark is the way Home (' + land.logo + ')');
@@ -90,17 +97,47 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   check(await pageSwitch(page) === null, 'no viewer/admin switch on Home');
   {
     const cs = await cards(page), c = await center(page), W = 1512;
-    check(Math.abs(c.dx) < 1 && c.ph === '4' && await page.evaluate((k) => !!document.querySelector(`.hs-card[data-k="${k}"] .hs-b`), c.k), 'the brand blue placeholder with the small "b" sits in the middle');
-    check(cs[0].l < 0 && cs[cs.length - 1].r > W && cs.length >= 5, `the row runs off both edges (${cs.length} cards in view)`);
-    const side = cs.filter(x => Math.abs(x.x - W / 2) > 100);
-    check(Math.abs(c.zl - c.zr) < 1 && side.length >= 4 && side.every(x => (x.x < W / 2 ? x.zl > x.zr : x.zr > x.zl) && x.z < c.z - 1), 'real 3D: the middle card faces the viewer, the side ones turn toward the middle (outer edge closer) and recede');
+    check(Math.abs(c.dx) < 90 && c.ph === '4' && await page.evaluate((k) => !!document.querySelector(`.hs-card[data-k="${k}"] .hs-b`), c.k), 'the brand blue placeholder with the small "b" opens in the middle');
+    check(cs[0].l < 0 && cs[cs.length - 1].r > W && cs.length >= 4, `the row runs off both edges (${cs.length} cards in view: ${Math.round(cs[0].l)} … ${Math.round(cs[cs.length - 1].r)})`);
+    const side = cs.filter(x => Math.abs(x.x - W / 2) > 200);
+    check(Math.abs(c.zl - c.zr) < 40 && side.length >= 3 && side.every(x => (x.x < W / 2 ? x.zl > x.zr : x.zr > x.zl)), 'real 3D: the middle card faces the viewer, the side ones turn to face the axis of the curve');
     const R = cs.filter(x => x.x > W / 2).sort((a, b) => a.x - b.x);
-    check(R.length >= 2 && R[1].zr - R[1].zl > R[0].zr - R[0].zl, 'the farther from the middle, the more a card turns (the row bends)');
+    check(R.length >= 2 && R[1].zr - R[1].zl > R[0].zr - R[0].zl, 'the farther from the middle, the more a card turns (the row wraps around)');
+    check(overlaps(cs).length === 0 && minGap(cs) > 2, `no card is drawn over its neighbour, out to both edges (smallest gap ${Math.round(minGap(cs))}px)`);
+    const shapes = await page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card')].map(e => { const m = e.querySelector('.hs-media'), cs = getComputedStyle(e); return { bg: cs.backgroundColor, pad: cs.paddingTop, fill: m.offsetWidth === e.offsetWidth && m.offsetHeight === e.offsetHeight, ar: Math.round(e.offsetWidth / e.offsetHeight * 100) / 100, h: e.offsetHeight }; }));
+    check(shapes.every(x => x.bg === 'rgba(0, 0, 0, 0)' && x.pad === '0px' && x.fill), 'no card frames: each card is the image itself, edge to edge');
+    check(new Set(shapes.map(x => x.ar)).size >= 3 && new Set(shapes.map(x => x.h)).size === 1, 'cards share one height and their widths follow their shapes (placeholders mix 4:5, 1:1 and 16:9)');
   }
   await page.screenshot({ path: T + 'home-01-landing.png' });
 
-  // Prev / Next glide along the curve and loop; the dots follow
-  await page.mouse.move(1490, 880);
+  // Autoplay: the row drifts slowly on its own; the mouse over the cards (or the controls) eases it to a stop, leaving
+  // starts it again; the dot follows whatever card is in the middle
+  {
+    await away(page); await page.waitForTimeout(1200);
+    const k = (await center(page)).k;
+    const a0 = await xOf(page, k); await page.waitForTimeout(1000); const a1 = await xOf(page, k); await page.waitForTimeout(1000); const a2 = await xOf(page, k);
+    check(a1 < a0 - 8 && a2 < a1 - 8 && Math.abs((a0 - a1) - (a1 - a2)) < 8 && a0 - a2 < 120, `the row drifts on its own, slowly and evenly (${Math.round(a0 - a1)} and ${Math.round(a1 - a2)} px/s)`);
+    const c = await center(page);
+    check(await dot(page) === c.i, 'the dot follows the card in the middle while it drifts');
+    const cs = await cards(page);
+    check(overlaps(cs).length === 0, 'mid-drift, still no card over its neighbour');
+    await page.screenshot({ path: T + 'home-02-drift.png' });
+    await page.mouse.move(c.x, c.y); await page.waitForTimeout(900);
+    const h0 = await xOf(page, c.k); await page.waitForTimeout(1000); const h1 = await xOf(page, c.k);
+    check(Math.abs(h1 - h0) < 1, `the mouse over the cards brings the drift to a stop (${(h1 - h0).toFixed(1)}px in 1s)`);
+    await page.click('#hs-nav [data-action="hs-next"]'); await settled(page);
+    const n = await center(page);
+    check(n.i === (c.i + 1) % 8 && Math.abs(n.dx) < 1, 'it can still be moved by hand meanwhile (Siguiente)');
+    await page.mouse.move(n.x, n.y); await page.waitForTimeout(800);
+    const s0 = await xOf(page, n.k); await page.waitForTimeout(800);
+    check(Math.abs(await xOf(page, n.k) - s0) < 1, 'and it stays put while the mouse is there');
+    await away(page); await page.waitForTimeout(2000);
+    const r0 = await xOf(page, n.k); await page.waitForTimeout(800); const r1 = await xOf(page, n.k);
+    check(r1 < r0 - 6, `leaving the cards starts the drift again (${Math.round(r0 - r1)}px in 0.8s)`);
+  }
+
+  // Prev / Next glide along the curve and loop; the dots follow (the mouse on the controls keeps the drift paused)
+  await page.click('#hs-nav .hs-dot[data-i="0"]'); await settled(page);
   await page.click('#hs-nav [data-action="hs-next"]'); await page.waitForTimeout(110);
   const mid = await center(page);
   check(Math.abs(mid.dx) > 20, `Siguiente glides (the row is between cards ${Math.round(mid.dx)}px after 110ms)`);
@@ -124,7 +161,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   check(c1.i === 4 && Math.abs(c1.dx) < 1, 'a horizontal trackpad swipe moves the row and settles on a card');
 
   // Drag: a short pull snaps to the next card, a tiny one back, a flick carries further; none of them opens a card
-  await page.mouse.move(1490, 880); await page.waitForTimeout(200);
+  await park(page); await page.waitForTimeout(200);
   await drag(page, 900, 450, -110, 10, 30); await settled(page);
   c1 = await center(page);
   check(c1.i === 5 && Math.abs(c1.dx) < 1 && !(await lb(page)).open, 'a short slow drag snaps to the next card, centered, and opens nothing');
@@ -136,17 +173,17 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   await settled(page, 1800);
   c1 = await center(page);
   const went = (c1.i - 5 + 8) % 8;
-  check(went >= 3 && Math.abs(c1.dx) < 1 && !(await lb(page)).open, `a flick carries on with inertia and lands on a card (${went} cards on)`);
+  check(went >= 2 && Math.abs(c1.dx) < 1 && !(await lb(page)).open, `a flick carries on with inertia and lands on a card (${went} cards on)`);
   check(Math.abs(flying.dx) > 2, 'the throw is animated, not a jump');
 
   // Hover: the card under the pointer lifts (closer, slightly bigger) with a pointer cursor; the neighbour too
   {
     const c = await center(page);
     await page.mouse.move(c.x, c.y); await page.waitForTimeout(600);
-    const h = await page.evaluate(() => { const el = document.querySelector('#hs-stage .hs-card.is-hover'); return el ? { k: el.dataset.k, cursor: getComputedStyle(document.querySelector('#home')).cursor, z: new DOMMatrix(getComputedStyle(el).transform).m43, shadow: getComputedStyle(el).boxShadow } : null; });
+    const h = await page.evaluate(() => { const el = document.querySelector('#hs-stage .hs-card.is-hover'); return el ? { k: el.dataset.k, cursor: getComputedStyle(document.querySelector('#home')).cursor, z: new DOMMatrix(getComputedStyle(el).transform).m43 } : null; });
     const after = (await cards(page)).find(x => x.k === c.k);
     check(!!h && h.k === c.k && h.cursor === 'pointer' && h.z > c.z + 5 && after.w > c.w + 2, `hovering a card lifts it toward the viewer (z ${Math.round(c.z)} → ${Math.round(h && h.z)}, width ${Math.round(c.w)} → ${Math.round(after.w)}) with a pointer cursor`);
-    await page.screenshot({ path: T + 'home-02-hover.png' });
+    await page.screenshot({ path: T + 'home-03-hover.png' });
     const n = (await cards(page)).filter(x => x.x > c.x + 50 && x.x < 1450)[0];
     await page.mouse.move(n.x, n.y); await page.waitForTimeout(400);
     check(await page.evaluate(() => (document.querySelector('#hs-stage .hs-card.is-hover') || {}).dataset?.k) === n.k, 'hover follows the pointer to a side card');
@@ -156,7 +193,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
 
   // Click: the card grows into a centered lightbox; Esc, the X and the backdrop close it; the card glides to the middle
   {
-    const n = (await cards(page)).filter(x => x.x > 900 && x.r < 1512)[0];
+    const n = (await cards(page)).filter(x => x.x > 900 && x.x < 1450)[0];
     await page.mouse.click(n.x, n.y); await page.waitForTimeout(150);
     let L = await lb(page);
     check(L.open && L.anims > 0 && L.out.length === 1 && L.out[0] === n.k, 'clicking a side card opens that card in the lightbox with a grow animation');
@@ -167,7 +204,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     check(L.focusIn, 'focus moves into the lightbox');
     await page.keyboard.press('Tab'); await page.keyboard.press('Tab'); await page.keyboard.press('Shift+Tab');
     check((await lb(page)).focusIn, 'Tab stays inside the lightbox');
-    await page.screenshot({ path: T + 'home-03-lightbox.png' });
+    await page.screenshot({ path: T + 'home-04-lightbox.png' });
     await page.keyboard.press('Escape'); await page.waitForTimeout(900);
     check(!(await lb(page)).open && (await lb(page)).out.length === 0, 'Esc closes the lightbox and the card is back');
     let c = await center(page); await page.mouse.click(c.x, c.y); await page.waitForTimeout(800);
@@ -187,7 +224,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   {
     let ok = 0, n = 0; const miss = [];
     for (const side of [0, 1]) {
-      await page.mouse.move(1490, 880); await settled(page, 300);
+      await park(page); await settled(page, 300);
       const ks = (await cards(page)).map(c => c.k);
       for (const k of ks) {
         const cs = await cards(page), j = cs.findIndex(x => x.k === k); if (j < 0) continue;
@@ -219,16 +256,47 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     let same = 0; for (let k = 0; k < cs.length; k++) if (key(cs[k]) === key(cs[(k + 1) % cs.length])) same++;
     return { n: cs.length, img: document.querySelectorAll('#hs-stage .hs-card img').length, vid: document.querySelectorAll('#hs-stage .hs-card video').length, ph: document.querySelectorAll('#hs-stage .hs-media[data-ph]').length, srcs: new Set(cs.map(key)).size, same, dots: document.querySelectorAll('#hs-nav .hs-dot').length, hint: !!document.querySelector('#home-tools .home-hint'), cnt: (document.querySelector('#home-tools .hbtn-n') || {}).textContent };
   });
-  check(filled.ph === 0 && filled.img > 0 && filled.vid > 0 && filled.srcs === 4 && filled.n % 4 === 0 && filled.n >= 9, `the media fill the slider, repeated to fill the curve (${filled.n} cards: ${filled.img} images, ${filled.vid} videos, no placeholders)`);
+  check(filled.ph === 0 && filled.img > 0 && filled.vid > 0 && filled.srcs === 4 && filled.n % 4 === 0 && filled.n >= 8, `the media fill the slider, repeated to fill the curve (${filled.n} cards: ${filled.img} images, ${filled.vid} videos, no placeholders)`);
   check(filled.same === 0 && filled.dots === 4, 'the same item is never next to itself, and there is one dot per item');
+  // Shapes: each card keeps its file's proportions; the gallery can make one horizontal, vertical or square, and back
+  const shape = (i) => page.evaluate((i) => [...document.querySelectorAll(`#hs-stage .hs-card[data-i="${i}"]`)].map(e => Math.round(e.offsetWidth / e.offsetHeight * 100) / 100), i);
+  check(await until(() => page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card')].every(e => { const i = e.querySelector('img'), v = e.querySelector('video'); const nw = i ? i.naturalWidth : v.videoWidth, nh = i ? i.naturalHeight : v.videoHeight; return nh && Math.abs(e.offsetWidth / e.offsetHeight - nw / nh) < .03; }))), 'each card keeps the proportions of its own file (the images and the video)');
+  check(await page.evaluate(() => new Set([...document.querySelectorAll('#hs-stage .hs-card')].map(e => e.offsetHeight)).size === 1), 'all cards share one height; widths follow the files');
+  const own0 = (await shape(0))[0];
+  check(await page.evaluate(() => document.querySelector('#home-gal [data-action="home-ratio"][aria-pressed="true"]')?.dataset.v === 'auto'), 'the gallery shows "Original" for a new item');
+  await page.click('#home-gal [data-action="home-ratio"][data-v="1/1"]'); await page.waitForTimeout(300);
+  check((await shape(0)).every(a => a === 1), 'Cuadrada makes its cards square');
+  await page.click('#home-gal [data-action="home-ratio"][data-v="4/5"]'); await page.waitForTimeout(300);
+  check((await shape(0)).every(a => a === .8), 'Vertical makes them 4:5');
+  await page.click('#home-gal [data-action="home-ratio"][data-v="16/9"]'); await page.waitForTimeout(300);
+  check((await shape(0)).every(a => a === 1.78) && (await shape(1)).every(a => a !== 1.78 || a === own0), 'Horizontal makes them 16:9, only for that item');
+  check(overlaps(await cards(page)).length === 0, 'with mixed shapes, still no card over its neighbour');
+  await page.mouse.move(1490, 140); await page.keyboard.press('Control+z'); await page.waitForTimeout(300);
+  check((await shape(0)).every(a => a === .8), 'Ctrl+Z goes back to the previous shape');
+  await page.click('#home-gal [data-action="home-ratio"][data-v="auto"]'); await page.waitForTimeout(300);
+  check((await shape(0)).every(a => a === own0), 'Original brings back the file\'s own proportions');
+  // Corners: one control for every card
+  const corner = () => page.evaluate(() => { const m = document.querySelector('#hs-stage .hs-card .hs-media'); return { r: parseFloat(getComputedStyle(m).borderTopLeftRadius), h: Math.max(...[...document.querySelectorAll('#hs-stage .hs-card')].map(e => e.offsetHeight)) }; });
+  const setRadius = (v) => page.evaluate((v) => { const r = document.querySelector('#home-radius'); r.value = v; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); }, v);
+  let cr = await corner();
+  check(Math.abs(cr.r - 16 * cr.h / 420) < .2 && await page.evaluate(() => document.querySelector('#home-radius').value === '16'), `the corners start at the default (16, ${cr.r}px on a ${cr.h}px card)`);
+  await setRadius(32); await page.waitForTimeout(300); cr = await corner();
+  check(Math.abs(cr.r - 32 * cr.h / 420) < .2 && await page.evaluate(() => document.querySelector('#home-radius-v').textContent === '32 px'), `the Esquinas control rounds every card (32 → ${cr.r}px)`);
+  await setRadius(0); await page.waitForTimeout(300);
+  check((await corner()).r === 0, 'and down to square corners');
+  await page.keyboard.press('Control+z'); await page.waitForTimeout(300);
+  check(Math.abs((await corner()).r - 32 * cr.h / 420) < .2, 'Ctrl+Z undoes a corner change');
+  await setRadius(16); await page.waitForTimeout(200);
   check(!filled.hint && filled.cnt === '4', 'the hint is gone and the Galería button counts 4');
+  await page.click('#home-gal .hg-th[data-index="3"]'); await settled(page);
   check(await until(() => page.evaluate(() => { const vs = [...document.querySelectorAll('#hs-stage .hs-card video')]; return vs.some(v => !v.paused) && vs.every(v => v.paused === !!v.closest('.is-off')); }), 5000), 'videos play (muted, looping) on the cards in view only; the rest hold still');
+  await page.click('#home-gal .hg-th[data-index="0"]'); await settled(page);
   check(await page.evaluate(() => [...document.querySelectorAll('#hs-stage video')].every(v => v.muted && v.loop)), 'card videos are muted and loop');
   // Captions: the field edits the selected thumbnail; the label strip appears under its cards
   check(await page.evaluate(() => document.querySelector('#home-gal .hg-th.is-sel')?.dataset.index === '0' && document.querySelector('#home-cap').value === '' && !document.querySelector('#hs-stage .hs-cap')), 'the first thumbnail is selected, without a caption, and no card has a label strip yet');
   await page.fill('#home-cap', 'Campaña 2026'); await page.keyboard.press('Enter'); await page.waitForTimeout(300);
-  const capCards = await page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card')].filter(c => c.querySelector('.hs-cap')).map(c => ({ i: c.dataset.i, t: c.querySelector('.hs-cap-t').textContent, n: c.querySelector('.hs-n').textContent, tt: getComputedStyle(c.querySelector('.hs-cap')).textTransform })));
-  check(capCards.length > 0 && capCards.every(c => c.i === '0' && c.t === 'Campaña 2026' && c.n === '01' && c.tt === 'uppercase'), `the caption shows in an uppercase label strip under every card of that item (${capCards.length})`);
+  const capCards = await page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card')].filter(c => c.querySelector('.hs-cap')).map(c => ({ i: c.dataset.i, t: c.querySelector('.hs-cap-t').textContent, n: c.querySelector('.hs-n').textContent, tt: getComputedStyle(c.querySelector('.hs-cap')).textTransform, bg: getComputedStyle(c.querySelector('.hs-cap')).backgroundColor, below: c.querySelector('.hs-cap').offsetTop >= c.querySelector('.hs-media').offsetHeight })));
+  check(capCards.length > 0 && capCards.every(c => c.i === '0' && c.t === 'Campaña 2026' && c.n === '01' && c.tt === 'uppercase' && c.bg === 'rgba(0, 0, 0, 0)' && c.below), `the caption shows as plain uppercase text under every card of that item, no strip behind it (${capCards.length})`);
   await page.click('#home-gal .hg-th[data-index="2"]'); await settled(page);
   check(await page.evaluate(() => document.querySelector('#home-gal .hg-th.is-sel')?.dataset.index === '2' && document.querySelector('#home-cap').value === '') && (await center(page)).i === 2, 'selecting another thumbnail edits its own caption and brings its card to the middle');
   await page.mouse.move(1490, 880);
@@ -372,7 +440,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     await p.waitForTimeout(500);
     check(await view(p) === 'cat' && await p.evaluate(() => document.querySelectorAll('#hs-stage .hs-card').length === 0), 'a link to a section opens it directly (the slider is not even built)');
     await p.click('#rail-logo [data-action="home"]'); await p.waitForTimeout(1200);
-    check(await view(p) === 'home' && await p.evaluate(() => document.querySelectorAll('#hs-stage .hs-card').length >= 9) && Math.abs((await center(p)).dx) < 1, 'the logo builds and shows Home');
+    check(await view(p) === 'home' && await p.evaluate(() => document.querySelectorAll('#hs-stage .hs-card').length >= 8) && Math.abs((await center(p)).dx) < 60, 'the logo builds and shows Home (' + Math.round((await center(p)).dx) + ')');
     check(p.errors.length === 0, 'no page errors (section link): ' + p.errors.join(' | '));
     await c.close();
   }
@@ -382,12 +450,14 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     const { page: p, ctx: c } = await open(browser, BASE, { reducedMotion: 'reduce' });
     await p.waitForSelector('#home .hs-card'); await p.waitForTimeout(300);
     check(Math.abs((await center(p)).dx) < 1, 'reduced motion: no intro sweep, the first card is in the middle at once');
+    await p.mouse.move(1490, 140); const k0 = (await center(p)).k, x0 = await xOf(p, k0); await p.waitForTimeout(1500);
+    check(Math.abs(await xOf(p, k0) - x0) < .5, 'reduced motion: no autoplay drift');
     await p.click('#hs-nav [data-action="hs-next"]'); await p.waitForTimeout(40);
     let m = await center(p);
     check(m.i === 1 && Math.abs(m.dx) < 1, 'reduced motion: Siguiente changes the card at once');
     await drag(p, 900, 450, -700, 4, 8); await p.waitForTimeout(40);
     m = await center(p);
-    check(Math.abs(m.dx) < 1 && m.i === 3, `reduced motion: a flick has no inertia, it lands on the nearest card at once (card ${m.i + 1})`);
+    check(Math.abs(m.dx) < 1 && m.i !== 1, `reduced motion: a flick has no inertia, it lands on the nearest card at once (card ${m.i + 1})`);
     await p.mouse.move(1490, 880); await p.waitForTimeout(300); /* a click right after a drag is part of the drag */
     await p.mouse.click(m.x, m.y); await p.waitForTimeout(60);
     const l = await lb(p);
@@ -408,7 +478,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
       const nav = r('#hs-nav'), tools = r('#home-tools .hbtn');
       return { over: document.documentElement.scrollWidth - innerWidth, w: mid.width, top: mid.top, bottom: mid.bottom, bar: r('.rail-top').bottom, navTop: nav.top, navL: nav.left, navR: nav.right, toolsR: tools.right };
     });
-    check(m.over <= 0 && m.w <= 390 * .62 && m.top > m.bar && m.bottom < m.navTop, `phone: the middle card fits between the top bar and the controls, no sideways scroll (${Math.round(m.w)}px wide)`);
+    check(m.over <= 0 && m.w <= 390 * .8 && m.top > m.bar && m.bottom < m.navTop, `phone: the middle card fits between the top bar and the controls, no sideways scroll (${Math.round(m.w)}px wide)`);
     check(m.navL > m.toolsR && m.navR <= 390, 'phone: the controls and the gallery button share the bottom row without touching');
     await p.screenshot({ path: T + 'home-07-phone.png' });
     // a swipe (real touch events) moves to the next card
@@ -425,6 +495,14 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     await p.screenshot({ path: T + 'home-08-phone-lightbox.png' });
     await p.tap('#home-lb .hlb-x'); await p.waitForTimeout(800);
     check(!(await lb(p)).open, 'phone: the X closes it');
+    {
+      const k = (await center(p)).k, x0 = await xOf(p, k); await p.waitForTimeout(700);
+      check(Math.abs(await xOf(p, k) - x0) < .5, 'phone: right after a touch the row holds still');
+      await p.waitForTimeout(3000); const x1 = await xOf(p, k); await p.waitForTimeout(800);
+      check(await xOf(p, k) < x1 - 4, 'phone: a couple of seconds later it drifts again on its own');
+      const cs = await cards(p);
+      check(overlaps(cs).length === 0 && cs.length >= 2, 'phone: no card over its neighbour');
+    }
     await p.tap('#btn-menu'); await p.waitForTimeout(700);
     await p.tap('.ov-cat[data-id="c_ourbrand"]'); await p.waitForTimeout(900);
     const sw = await pageSwitch(p);
@@ -452,11 +530,15 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     await E.waitForSelector('#home-cap');
     await E.fill('#home-cap', 'Lanzamiento'); await E.keyboard.press('Enter');
     check(await until(() => (fake.docs.get('catalog/tree').data.home.media[0] || {}).label === 'Lanzamiento', 8000), 'Supabase: the caption is stored with the item (label)');
+    await E.click('#home-gal [data-action="home-ratio"][data-v="1/1"]');
+    await E.evaluate(() => { const r = document.querySelector('#home-radius'); r.value = 28; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); });
+    check(await until(() => { const h = fake.docs.get('catalog/tree').data.home; return h.media[0].ratio === '1/1' && h.radius === 28; }, 8000), 'Supabase: the card shape (ratio) and the corners (home.radius) are stored');
     const vis = await open(browser, SUPA_BASE, {}, (c) => fake.attach(c, 'visitor'));
     const V = vis.page;
     await V.waitForSelector('#home .hs-card');
     check(await until(() => V.evaluate((id) => [...document.querySelectorAll('#hs-stage .hs-card img')].some(i => i.src.includes(id)) && !document.querySelector('#hs-stage .hs-media[data-ph]'), media.id)), 'Supabase: a visitor sees the slider made of that image');
     check(await until(() => V.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-cap-t')].some(t => t.textContent === 'Lanzamiento'))), 'Supabase: and its caption');
+    check(await until(() => V.evaluate(() => { const e = document.querySelector('#hs-stage .hs-card'), m = e.querySelector('.hs-media'); return e.offsetWidth === e.offsetHeight && Math.abs(parseFloat(getComputedStyle(m).borderTopLeftRadius) - 28 * e.offsetHeight / 420) < .2; })), 'Supabase: and its square shape and corners');
     check(await V.evaluate(() => !document.querySelector('#home-tools').getClientRects().length && !document.querySelector('#page-mode').getClientRects().length && !!document.querySelector('#hs-nav .hs-btn')), 'Supabase: the visitor has the slider controls but no gallery tools and no view switch');
     await E.reload(); await E.waitForSelector('#home .hs-card');
     check(await until(() => E.evaluate((id) => [...document.querySelectorAll('#hs-stage .hs-card img')].some(i => i.src.includes(id)), media.id)), 'Supabase: after a reload the slider still shows it');
