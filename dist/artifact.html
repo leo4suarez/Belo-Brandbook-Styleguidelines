@@ -62,14 +62,14 @@
   --home-bg:#F3F4F6; --hs-card:#FFFFFF;
   --hs-shadow:0 0 0 .5px rgba(0,16,64,.06),0 1px 2px rgba(0,16,64,.04),0 10px 24px -8px rgba(0,16,64,.12),0 30px 60px -24px rgba(0,16,64,.16);
   --hs-shadow-up:0 0 0 .5px rgba(0,16,64,.06),0 2px 6px rgba(0,16,64,.06),0 20px 40px -10px rgba(0,16,64,.2),0 50px 90px -30px rgba(0,16,64,.28);
-  --hs-shadow-btn:0 0 0 .5px rgba(0,16,64,.08),0 1px 2px rgba(0,16,64,.05),0 6px 16px -6px rgba(0,16,64,.14);
+  --hs-btn-line:rgba(0,0,0,.14); --hs-btn-line-hover:rgba(0,0,0,.42); /* the round prev / next buttons */
 }
 :root[data-scheme="dark"]{
   --ph-0:#17181C; --ph-1:#202126; --ph-2:#121A33; --ph-3:#1B2A5A; --ph-4:#002FA7; --ph-5:#2450D6;
   --home-bg:#000000; --hs-card:#151619;
   --hs-shadow:0 0 0 .5px rgba(255,255,255,.07),0 10px 24px -8px rgba(0,0,0,.7),0 30px 60px -24px rgba(0,0,0,.8);
   --hs-shadow-up:0 0 0 .5px rgba(255,255,255,.12),0 20px 40px -10px rgba(0,0,0,.8),0 50px 90px -30px rgba(0,0,0,.9);
-  --hs-shadow-btn:0 0 0 .5px rgba(255,255,255,.1),0 6px 16px -6px rgba(0,0,0,.7);
+  --hs-btn-line:rgba(255,255,255,.2); --hs-btn-line-hover:rgba(255,255,255,.55);
   --bg:#000000; --ink:#FFFFFF; --muted:rgba(255,255,255,.5); --surface:#111214; --surface-2:#1D1E22;
   --line:rgba(255,255,255,.1); --line-strong:rgba(255,255,255,.24); --focus:#7C95FF; --danger:#FF7A66; --ok:#3DD68C; --warn:#F5C04A;
   --swatch-edge-hi:transparent; --swatch-edge-lo:rgba(255,255,255,.14);
@@ -889,20 +889,13 @@ html[data-view="home"]{overscroll-behavior:none;background:var(--home-bg)}
 .hs-b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font);font-style:normal;font-weight:800;font-size:34cqw;line-height:1;letter-spacing:-.04em;padding-bottom:4cqh;pointer-events:none}
 .home.is-pointing{cursor:pointer}
 html.hs-grabbing,html.hs-grabbing *{cursor:grabbing!important}
-/* Prev / dots / next, centered at the bottom */
-.hs-nav{position:absolute;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:12px;touch-action:auto}
-.hs-btn{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 18px 0 13px;border-radius:999px;background:var(--hs-card);color:var(--ink);box-shadow:var(--hs-shadow-btn);font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;transition:transform 140ms var(--ease-out),box-shadow 200ms ease}
-.hs-btn[data-action="hs-next"]{padding:0 13px 0 18px}
-.hs-btn svg.i{width:17px;height:17px;stroke-width:2}
-.hs-btn:hover{box-shadow:var(--hs-shadow-up)}
-.hs-btn:active{transform:scale(.96)}
-.hs-dots{display:flex;align-items:center;padding:0 2px}
-.hs-dot{display:grid;place-items:center;height:28px;padding:0 3px}
-.hs-dot::before{content:"";width:6px;height:6px;border-radius:3px;background:color-mix(in srgb,var(--ink) 20%,transparent);transition:width 360ms var(--ease-out),background-color 240ms ease}
-.hs-dot:hover::before{background:color-mix(in srgb,var(--ink) 45%,transparent)}
-.hs-dot[aria-current="true"]::before{width:20px;background:var(--ink)}
-.hs-count{min-width:64px;text-align:center;font-size:12.5px;font-weight:650;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:var(--muted)}
-.hs-count b{color:var(--ink);font-weight:650}
+/* Prev / next: two round outline buttons with a thin chevron, centered at the bottom */
+.hs-nav{position:absolute;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:18px;touch-action:auto}
+.hs-btn{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--hs-btn-line);background:transparent;color:var(--ink);transition:border-color 200ms ease,background-color 200ms ease,transform 140ms var(--ease-out)}
+.hs-btn svg.i{width:20px;height:20px;stroke-width:1.5}
+.hs-btn:hover{border-color:var(--hs-btn-line-hover);background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.hs-btn:active{transform:scale(.94);background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.hs-btn:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
 /* Admin: the gallery button bottom left, and the gallery panel in the left column (it leaves the slider in view) */
 .home-tools{position:absolute;left:20px;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:3;display:flex;align-items:center;gap:14px;touch-action:auto}
 .hbtn{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--material);color:var(--ink);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:inset 0 0 0 .5px var(--material-edge),var(--shadow-float);font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;transition:transform 140ms var(--ease-out),background-color 200ms ease,color 200ms ease}
@@ -961,8 +954,8 @@ html.hs-grabbing,html.hs-grabbing *{cursor:grabbing!important}
 .hlb-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6cqh;padding:8cqh;text-align:center}
 .hlb-ph .hs-b{position:static;font-size:30cqh;padding:0}
 .hlb-ph p{margin:0;max-width:30ch;font-size:clamp(13px,4.6cqh,17px);font-weight:500;line-height:1.4;opacity:.62}
-.hlb-cap{position:fixed;margin:0;display:flex;flex-direction:column;gap:4px;font-family:var(--font);font-size:14px;line-height:1.45;color:var(--ink);overflow-wrap:anywhere}
-.hlb-cap p{margin:0}
+.hlb-cap{position:fixed;margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-family:var(--font);font-size:14px;line-height:1.45;color:var(--ink);overflow-wrap:anywhere}
+.hlb-cap p{margin:0;max-width:60ch}
 .hlb-t{font-weight:600;letter-spacing:-.005em}
 .hlb-d{font-weight:400;color:color-mix(in srgb,var(--ink) 62%,transparent)}
 .hlb-x{position:absolute;top:calc(20px + env(safe-area-inset-top,0px));right:20px;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--bg);box-shadow:var(--shadow-float);transition:transform 140ms var(--ease-out)}
@@ -1039,7 +1032,7 @@ html.is-row-drag .page-mode{visibility:hidden}
   @keyframes inspIn{from{opacity:0}to{opacity:1}}
   @keyframes popIn{from{opacity:0}to{opacity:1}}
   @keyframes toastIn{from{opacity:0}to{opacity:1}}
-  .pill-ind,.thumb,.drop-line,.sub-item .sub,.hg-th,.hs-card,.hs-media img,.hs-media video,.hs-dot::before{transition-duration:0ms!important}
+  .pill-ind,.thumb,.drop-line,.sub-item .sub,.hg-th,.hs-card,.hs-media img,.hs-media video,.hs-btn{transition-duration:0ms!important}
   .act-chip{transform:none!important}
   .tog::after,.slot-color{transition:none}
   .skel,.status i{animation:none!important}
@@ -1074,11 +1067,11 @@ html.is-row-drag .page-mode{visibility:hidden}
   .ov-list > :last-child{max-width:100%}
   .status{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
   .page-mode,.home-tools{left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
-  /* Home on a phone: the arrows lose their words and the gallery button its label, so both fit the bottom row; the
+  /* Home on a phone: smaller round arrows, and the gallery button loses its label, so both fit the bottom row; the
      hint goes above the button */
-  .hs-nav{bottom:calc(16px + env(safe-area-inset-bottom,0px));gap:6px}
-  .hs-btn,.hs-btn[data-action="hs-next"]{width:44px;padding:0;justify-content:center}
-  .hs-btn span,.hbtn-t{display:none}
+  .hs-nav{bottom:calc(16px + env(safe-area-inset-bottom,0px));gap:16px}
+  .hs-btn{width:44px;height:44px}
+  .hbtn-t{display:none}
   .hbtn{padding:0 12px}
   .home-tools{flex-direction:column-reverse;align-items:flex-start;gap:10px}
   .home-hint{max-width:150px}
@@ -5309,7 +5302,7 @@ const Slider = {
     const W = innerWidth, VH = innerHeight, mob = MOBILE.matches;
     this.vw = W;
     const top = ($('.rail-top').getBoundingClientRect().bottom || 64) + (mob ? 8 : 12);
-    const bottom = VH - (mob ? 16 : 24) - 44 - (mob ? 18 : 24);
+    const bottom = VH - (mob ? 16 : 24) - (mob ? 44 : 56) - (mob ? 18 : 24);
     const band = Math.max(220, bottom - top);
     const H = Math.round(clamp(mob ? Math.min(band * .52, W * .78) : Math.min(band * HS_H, W * .3), 150, 520));
     this.H = H; this.maxW = Math.round(W * (mob ? .8 : HS_MAXW)); this.gap = Math.round(H * HS_GAP + 6);
@@ -5388,23 +5381,15 @@ const Slider = {
       if (zi !== c.zi) { c.zi = zi; c.el.style.zIndex = zi; }
     }
     const n = this.nearest(this.pos), mid = n && this.cards[n.k];
-    if (mid && mid.i !== this.cur) { this.cur = mid.i; this.paintNav(); }
+    if (mid) this.cur = mid.i; /* the item in the middle, for the screen reader status */
     if (mid !== this.mid) { if (this.mid) this.mid.el.classList.remove('is-mid'); this.mid = mid; if (mid) mid.el.classList.add('is-mid'); }
     if (changed) this.media();
   },
-  /* Prev / next and a dot per item (a counter instead once they would not fit) */
+  /* Prev / next: two round buttons */
   renderNav() {
     const nav = $('#hs-nav'); if (!nav) return;
-    const n = this.m, dots = n <= (MOBILE.matches ? 8 : 12);
-    const what = this.items[0] && this.items[0].ph != null ? 'tarjeta' : 'elemento';
-    const mid = dots ? `<div class="hs-dots">${this.items.map((_, i) => `<button type="button" class="hs-dot" data-action="hs-dot" data-i="${i}" tabindex="-1" aria-label="Ir al ${what} ${i + 1}"></button>`).join('')}</div>` : '<div class="hs-count" aria-hidden="true"></div>';
-    const html = `<button type="button" class="hs-btn" data-action="hs-prev" aria-label="Anterior">${icon('left')}<span>Anterior</span></button>${mid}<button type="button" class="hs-btn" data-action="hs-next" aria-label="Siguiente"><span>Siguiente</span>${icon('right')}</button>`;
-    if (nav.dataset.html !== html) { nav.innerHTML = html; nav.dataset.html = html; this.cur = -1; }
-  },
-  paintNav() {
-    const i = this.cur;
-    $$('#hs-nav .hs-dot').forEach(d => { if (+d.dataset.i === i) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current'); });
-    const cnt = $('#hs-nav .hs-count'); if (cnt) cnt.innerHTML = `<b>${pad2(i + 1)}</b> / ${pad2(this.m)}`;
+    const html = `<button type="button" class="hs-btn" data-action="hs-prev" aria-label="Anterior">${icon('left')}</button><button type="button" class="hs-btn" data-action="hs-next" aria-label="Siguiente">${icon('right')}</button>`;
+    if (nav.dataset.html !== html) { nav.innerHTML = html; nav.dataset.html = html; }
   },
   live() {
     const it = this.items[this.cur], el = $('#hs-live'); if (!it || !el) return;
@@ -5646,7 +5631,7 @@ const Lightbox = {
     let w = maxW, h = w / ar; if (h > maxH) { h = maxH; w = h * ar; }
     return { left: (innerWidth - w) / 2, top: Math.max(8, (innerHeight - h - capH - gap) / 2), width: w, height: h };
   },
-  /* the frame, and the title and description under it, aligned with its left edge */
+  /* the frame, and the title and description centered under it (as wide as the frame, the text up to 60ch) */
   place() {
     const fr = $('#home-lb .hlb-frame'), cap = $('#home-lb .hlb-cap');
     let to = this.target();
@@ -6437,7 +6422,6 @@ document.addEventListener('click', (ev) => {
     case 'home-ratio': Gallery.ratio(a.dataset.v); break;
     case 'hs-prev': Slider.go(-1); break;
     case 'hs-next': Slider.go(1); break;
-    case 'hs-dot': Slider.toItem(+a.dataset.i); break;
     case 'logo': if (S.mode === 'admin') $('#logo-input').click(); break;
     case 'menu-open': openOverlay('menu'); break;
     case 'menu-close': closeOverlay(); break;
