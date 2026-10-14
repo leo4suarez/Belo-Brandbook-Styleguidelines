@@ -1,6 +1,6 @@
 # Belo · Brandbook & Style Guidelines
 
-Catálogo modular de la marca **Belo**. Las categorías y secciones se arman con bloques editables (texto, imagen, video, carrusel y color), en tres layouts: pantalla completa, ancho completo y dos mitades.
+Catálogo modular de la marca **Belo**. Las categorías y secciones se arman con bloques editables (texto, imagen, video, carrusel, color y SVG), en tres layouts: pantalla completa, ancho completo y dos mitades.
 
 - **Versión compartida:** <https://belo-brandbook.vercel.app>, en Vercel, con el contenido guardado en Supabase. Cualquiera con el link la ve y la gente de Paisanos la edita.
 - **Versión anterior (respaldo, congelada):** el artifact de Claude <https://claude.ai/artifact/BTAeownzjZUsJDNfH5bxT5>.
@@ -18,15 +18,35 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 
 ### Funciones principales
 
-- Menú de pantalla completa: es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección).
+- **Home:** es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección). Un globo de mosaicos redondeados que gira solo, armado con CSS 3D y sin librerías.
+  - Los mosaicos se llenan con las imágenes y los videos de la galería de la Home, repetidos hasta cubrir el globo y sin dos iguales seguidos. Los videos se pintan desde un único `<video>` oculto por archivo, solo en los mosaicos de frente.
+  - Al pasar el mouse, el mosaico se levanta y el giro se frena mucho (sin pararse). Al hacer clic, se agranda hasta un lightbox centrado; se cierra con la X, Esc o un clic afuera. También se puede arrastrar para girarlo.
+  - En Admin, el botón **Galería** (abajo a la izquierda) abre el panel para sumar imágenes o videos (también soltándolos), quitarlos y ordenarlos arrastrando. Sin contenido, el globo muestra mosaicos de muestra en azul Belo.
+  - El logo (o la palabra "belo" si no hay logo cargado) siempre vuelve a la Home. Con `prefers-reduced-motion` el globo queda quieto.
+  - Arranca en modo claro salvo que la persona haya elegido otro tema.
+- Menú de pantalla completa, desde el botón de arriba:
   - Categorías grandes abajo a la izquierda.
   - Arriba a la derecha, junto a la X: los selectores del fondo del menú (solo en Admin) y claro/oscuro con íconos.
   - Abajo a la derecha, viewer/admin con íconos (ojo y lápiz) al lado del usuario, o "Iniciar sesión".
-- Buscador.
+- **Viewer / admin en las secciones:** quien puede editar tiene el mismo switch del menú abajo a la izquierda de cada sección. Se oculta en la Home, con el menú o el buscador abiertos y mientras se edita un bloque.
+- Buscador. También encuentra SVG y archivos descargables por su nombre, y el texto de los modales.
 - Sidebar sin contenedor, con el título de la categoría y las subcategorías. Hace scroll-spy y auto-scroll dentro de la misma página.
 - Color de texto adaptativo sobre fondos blancos, azules o fotos, para el sidebar, el menú y el texto sobre imágenes.
 - Editor de texto con Phudu o Plus Jakarta Sans: tamaño, peso, interlineado, tracking, alineación y mayúsculas exactos.
 - Altura de módulo personalizada. Mientras se edita, el resto de la página se atenúa.
+- **Organizar bloques:** la barra de cada bloque suma una manija para arrastrar, **Duplicar** y **Mover a…** (cualquier sección de cualquier categoría), además de Editar / Subir / Bajar / Eliminar.
+  - Al arrastrar, el bloque queda atenuado en su lugar, una ficha liviana sigue al puntero y una línea azul marca dónde va a caer. Se puede soltar entre bloques, en una sección vacía ("Suelta aquí") o sobre una sección del sidebar. La página se desplaza sola cerca de los bordes y Esc cancela.
+  - Duplicar copia todo (contenido, ajustes, estilos, interacciones y archivos) con ids nuevos y lo deja justo abajo.
+  - Los archivos se borran del almacén solo cuando ningún bloque, sección ni la Home los usa: un duplicado comparte los archivos del original. Si alguna sección no se puede leer, no se borra nada.
+- **Inspector contextual:** cada tipo de módulo muestra solo las secciones que le corresponden (texto, imagen, video, carrusel, color, SVG y sus variantes de pantalla completa). Tiene tres vistas: Diseño, Animación e Interacción.
+- **Espaciado interno** en textos (también el texto sobre pantalla completa) y SVG: arriba, derecha, abajo e izquierda, con o sin el mismo valor en los cuatro lados, y **Restablecer** para volver al automático.
+- **Estilos de texto** vinculados para todo el catálogo (Headline, Subheadline, Body y Caption de entrada, y los que se creen con **Guardar como estilo**). Cambiar la tipografía de un texto vinculado lo marca como modificado; **Actualizar estilo** lo lleva a todos los textos vinculados sin modificar, en todas las secciones. También se puede restablecer, desvincular, renombrar y eliminar (los textos conservan sus valores).
+- **Paleta de marca** (Azul Belo, Blanco y Negro de entrada, se pueden sumar, renombrar y quitar colores): color de cada bloque de texto ("Automático" sigue la tinta adaptativa) y muestras rápidas en los fondos.
+- **Encuadre de imágenes** (también el fondo de pantalla completa): el **Contenedor** (proporción y alto) aparte de la **Imagen** adentro (cubrir o contener, escala de 100 a 400 % y punto focal con matriz de 9 posiciones o X / Y). **Encuadrar** permite mover la imagen arrastrando y acercarla con la rueda, el pellizco o la barra, mostrando lo que queda afuera en transparencia.
+- **Módulo SVG:** se sube un `.svg` (hasta 2 MB) y se muestra con `<img>`, nunca incrustado. Contenedor con fondo y espaciado, tamaño en % del ancho, alineación en 9 posiciones y desplazamiento. Con **Descargable**, en viewer muestra un botón «SVG» y un clic descarga el archivo con su nombre original.
+- **Módulo de color** también en bloques normales: una muestra (cuadrada por defecto) con el nombre y el HEX en la tinta que contrasta, elegida de la paleta o libre.
+- **Interacciones** por módulo, apagadas por defecto: al hacer clic, **Abrir modal** (título, texto e imágenes), **Descargar** o **Copiar valor** (el HEX en los colores, el texto en los textos). Solo se ofrecen las que tienen sentido para cada tipo. El módulo se vuelve un botón accesible con un chip que dice qué hace ("Copiar #002FA7", "Descargar", "Ver detalle"); copiar avisa "#002FA7 copiado".
+- **Archivos descargables:** cada módulo puede ofrecer sus originales (SVG, PNG, JPG, PDF, ZIP, EPS o AI, hasta 50 MB) con formato, nombre y peso, y un nombre visible editable. Con un archivo descarga directo; con varios abre un menú; sin ninguno descarga el archivo del propio módulo.
 - Barra flotante de tipo de módulo, botón de volver y `Ctrl+Z` / `Ctrl+Shift+Z` para deshacer y rehacer.
 - Carrusel con stepper animado (step player), arrastre con física de resorte y autoplay al entrar en pantalla.
 - Scroll suave con Lenis.
@@ -68,11 +88,15 @@ npm run serve                     # build + vista local en http://localhost:8765
 
 ```bash
 npx playwright install chromium   # la primera vez
-npm test                          # build + flows, panel, menu, motion y collab
+npm test                          # build + flows, panel, menu, motion, collab, blocks, home, editor y media
 ```
 
 - Las pruebas recorren los flujos principales: crear y editar bloques, panel, deshacer y rehacer, menú, buscador, temas y mobile.
 - `collab.cjs` prueba el guardado compartido con la librería real de Supabase contra un Supabase simulado (`tests/fake-supabase.cjs`): login con Google, permisos, cambios en vivo entre dos editores, conflictos, presencia, archivos, reintentos e importación.
+- `blocks.cjs` prueba duplicar, arrastrar dentro de una sección, a otra y sobre el sidebar, **Mover a…**, Esc para cancelar y que borrar un duplicado no borre los archivos del original.
+- `home.cjs` prueba la Home: globo, hover, lightbox, galería (subir, ordenar, quitar y deshacer), movimiento reducido, mobile y el switch viewer/admin de las secciones.
+- `editor.cjs` prueba el inspector contextual, el espaciado interno, los estilos de texto (también entre secciones y entre dos editores) y la paleta.
+- `media.cjs` prueba el encuadre, el módulo SVG, el módulo de color, las interacciones (copiar, modal y descarga) y los archivos descargables, también guardados en el Supabase simulado.
 - Las capturas quedan en `tests/output/`, que está ignorado por git.
 - Las pruebas bloquean Google Fonts y sirven Lenis desde `tests/fixtures/` y supabase-js desde `node_modules`, así que corren sin red. Por eso en el log aparece `Failed to load resource: net::ERR_FAILED`: es esperado.
 - Para cambiar el puerto: `PORT=8790 npm test`.
@@ -114,18 +138,32 @@ Hay dos tipos de documento (en Supabase y en la base del artifact):
   {
     logo: { id, w, h, mono } | null,
     menu: { bg: { kind: 'color', color } | { kind: 'image', asset, w, h, dim } },
+    home: { media: [{ id, kind: 'image' | 'video', w, h }] },          // la galería del globo, en orden
     animStyles: [{ id, name, kind: 'mod' | 'text', of, anim }],
+    textStyles: [{ id, name, font, size, weight, lh, ls, upper }],    // estilos de texto (ids ts_…)
+    palette: [{ id, name, hex }],                                     // paleta de marca (ids pc_…)
     categories: [{ id, name, subs: [{ id, name }] }]
   }
   ```
+  - `textStyles` y `palette` se crean con los valores de entrada solo si no existen: una lista vacía quiere decir que se borraron todos.
 - **`pages/{subId}`:** los bloques de cada sección, en orden.
   ```js
   { rows: [{ id, layout: 'fullscreen' | 'full' | 'half', h, slots: [slot], overlay? }] }
   ```
-  - `slot.type` puede ser `text`, `image`, `video`, `carousel` o `color`.
-  - Los textos guardan sus `blocks` con `font`, `size`, `weight`, `lh`, `ls`, `align` y `upper`.
+  - `slot.type` puede ser `text`, `image`, `video`, `carousel`, `color` o `svg`.
+  - Los textos guardan sus `blocks` con `font`, `size`, `weight`, `lh`, `ls`, `align` y `upper`. Además, opcionales:
+    - `ts`: el estilo de texto vinculado, y `tsOver: true` si se modificó localmente. Los valores propios son una copia del estilo.
+    - `color`: el id de un color de la paleta. Sin `color`, el texto usa la tinta automática; si el color se borra de la paleta, vuelve a la automática.
   - Las imágenes y los videos guardan el `asset`: el id del archivo subido. En Supabase es el nombre del objeto en el bucket `assets`; en el artifact se sirve en `/_blob/<id>`.
   - `overlay` es el texto opcional sobre un bloque de pantalla completa.
+  - Campos nuevos de los módulos (todos opcionales; si faltan, el módulo se ve como antes):
+    - `slot.pad`: `{ t, r, b, l }`, el espaciado interno de cada lado en px de diseño, o `null` para el automático de ese lado (textos y SVG).
+    - `slot.frame` (imágenes, también de fondo): `{ fit: 'cover' | 'contain', x, y, zoom }`, con el punto focal en % y la escala de 100 a 400 %. Se aplica con `object-position` y la propiedad `scale`, nunca con `transform`.
+    - `slot.action`: `{ kind: 'modal' | 'download' | 'copy', value?, title?, body?, media?: [{ id, w, h }] }`, lo que pasa al hacer clic.
+    - `slot.files`: `[{ id, name, type, size }]`, los archivos descargables (`name` es el nombre visible).
+    - SVG: `{ type: 'svg', asset, w, h, name, size, ratio, bg: { kind: 'none' | 'surface' | 'color', color? }, scale, pos, dx, dy }`, con `scale` en % del ancho, `pos` una de las 9 posiciones (`tl` … `br`) y `dx` / `dy` en % del contenedor. Descargable es `action: { kind: 'download' }`.
+    - Color en bloques normales: `{ type: 'color', color, ratio: '1/1', label }`; `label: false` oculta el nombre y el HEX.
+  - Todos los ids de archivos (`asset`, `images`, `files`, `action.media`, la galería de la Home) mantienen vivo el archivo en el almacén.
   - Animaciones (todas opcionales). Los presets están en `ENTER` y `SCROLL` dentro de `src/catalog.html`, y `ANIM_KEYS` define cuáles ofrece cada tipo:
     - `row.anim`: `{ stagger, tstagger }`, la secuencia del bloque.
     - `slot.anim`: `{ enter, scroll, dur, delay, ease, dir, dist }`, la animación del módulo.
@@ -179,3 +217,9 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
 - **v5.2:** animaciones de Fran (presets por módulo y por bloque de texto, curvas, vista previa y estilos vinculados) integradas con el guardado compartido. Aplicar un estilo a todos guarda solo la animación de cada elemento, así no pisa cambios de otros.
   - Si un cambio no se puede aplicar a un documento, se saltea en lugar de trabar los guardados siguientes.
   - Al cerrar el menú de inicio, las animaciones de entrada vuelven a correr.
+- **v6.0 (propuesta vene):**
+  - Home como pantalla de inicio, con el globo de la galería, y switch viewer/admin abajo a la izquierda en las secciones.
+  - Organizar bloques: arrastrar, duplicar y mover a cualquier sección, con borrado de archivos que respeta lo que siguen usando otros bloques.
+  - Inspector contextual con vista Interacción, espaciado interno, estilos de texto, paleta de marca, encuadre de imágenes, módulos SVG y de color, interacciones y archivos descargables.
+  - Arranca en modo claro por defecto: ya no sigue la preferencia del sistema si la persona no eligió un tema.
+  - La migración `supabase/migrations/20261009120000_catalog_assets_sources.sql`, que suma PDF, ZIP, EPS y AI a los tipos permitidos del bucket `assets`, **no está aplicada**. Hasta aplicarla en Supabase, esos archivos se rechazan al subirlos en la versión compartida (SVG, PNG, JPG y video ya funcionan).

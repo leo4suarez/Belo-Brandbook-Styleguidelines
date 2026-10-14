@@ -135,7 +135,10 @@ class FakeSupabase {
     const pub = /^\/storage\/v1\/object\/public\/assets\/(.+)$/.exec(p);
     if (pub && req.method() === 'GET') {
       const f = this.files.get(decodeURIComponent(pub[1]));
-      return f ? route.fulfill({ status: 200, contentType: f.type, body: f.body, headers: { 'access-control-allow-origin': '*' } }) : route.fulfill({ status: 404, body: 'not found' });
+      // ?download=<name> asks Storage to send the file as an attachment with that name (cross-origin <a download> is ignored)
+      const dl = u.searchParams.get('download');
+      const disp = dl != null ? { 'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(dl || pub[1])}` } : {};
+      return f ? route.fulfill({ status: 200, contentType: f.type, body: f.body, headers: { 'access-control-allow-origin': '*', ...disp } }) : route.fulfill({ status: 404, body: 'not found' });
     }
     const up = /^\/storage\/v1\/object\/assets\/(.+)$/.exec(p);
     if (up && req.method() === 'POST') {

@@ -18,14 +18,20 @@ const log = (...a) => console.log(...a);
   await page.route(/cdn\.jsdelivr\.net\/npm\/gsap@[^/]+\/dist\/(gsap|ScrollTrigger|SplitText)\.min\.js/, r => r.fulfill({ path: FIX + r.request().url().split('/').pop(), contentType: 'text/javascript' }));
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto(BASE);
-  await page.waitForSelector('.rail-title');
-  await page.waitForSelector('#s-s_sepuede .row');
+  await page.waitForSelector('#home #globe .gt');
   await page.waitForTimeout(900);
   const snap = async (name, opts = {}) => { await page.screenshot({ path: T + name + '.png', ...opts }); };
-  // The menu is the opening screen
-  log('landing menu open:', await page.evaluate(() => document.querySelector('#menu').classList.contains('is-open')), '| bg opacity', await page.evaluate(() => getComputedStyle(document.querySelector('#menu-bg')).opacity));
+  // Home is the opening screen; the menu opens from its button and leads to the category
+  log('landing view:', await page.evaluate(() => document.documentElement.dataset.view), '| menu open:', await page.evaluate(() => document.querySelector('#menu').classList.contains('is-open')));
+  await snap('v5-00-landing-home');
+  await page.click('#btn-menu'); await page.waitForTimeout(900);
+  log('menu bg opacity', await page.evaluate(() => getComputedStyle(document.querySelector('#menu-bg')).opacity));
   await snap('v5-00-landing-menu');
-  await page.keyboard.press('Escape'); await page.waitForTimeout(400);
+  await page.click('.ov-cat[data-id="c_ourbrand"]');
+  await page.mouse.move(0, 0); // where the pointer starts on a fresh page (not over the section list, which keeps the wheel)
+  await page.waitForSelector('.rail-title');
+  await page.waitForSelector('#s-s_sepuede .row');
+  await page.waitForTimeout(600);
   await snap('v2-01-admin-top');
   log('title:', await page.textContent('.rail-title'), '| scheme', await page.evaluate(() => document.documentElement.dataset.scheme));
 
