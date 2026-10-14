@@ -41,7 +41,10 @@ const cards = (p) => p.evaluate(() => [...document.querySelectorAll('#hs-stage .
 }).sort((a, b) => a.x - b.x));
 // The card in the middle of the viewport (by its screen center) and how far off center it is
 const center = async (p) => { const W = await p.evaluate(() => innerWidth); const c = (await cards(p)).map(c => ({ ...c, dx: c.x - W / 2 })).sort((a, b) => Math.abs(a.dx) - Math.abs(b.dx))[0]; return c; };
-const dot = (p) => p.evaluate(() => { const d = document.querySelector('#hs-nav .hs-dot[aria-current="true"]'); if (d) return +d.dataset.i; const c = document.querySelector('#hs-nav .hs-count b'); return c ? +c.textContent - 1 : -1; });
+// Bring item i (of m) to the middle with Siguiente, then let the glide settle (the mouse stays on the controls: no drift)
+const goTo = async (p, i, m) => { for (let k = 0; k < 2 * m; k++) { const c = await center(p); if (c.i === i && Math.abs(c.dx) < 1) return; await p.click('#hs-nav [data-action="hs-next"]'); await p.waitForTimeout(c.i === (i - 1 + m) % m ? 1400 : 500); } };
+// The round prev / next buttons as drawn
+const navBtns = (p) => p.evaluate(() => [...document.querySelectorAll('#hs-nav .hs-btn')].map(b => { const r = b.getBoundingClientRect(), cs = getComputedStyle(b), sv = b.querySelector('svg'); return { label: b.getAttribute('aria-label'), w: r.width, h: r.height, l: r.left, r: r.right, cx: r.left + r.width / 2, radius: cs.borderTopLeftRadius, bw: parseFloat(cs.borderTopWidth), bc: cs.borderTopColor, bg: cs.backgroundColor, shadow: cs.boxShadow, text: b.textContent.trim(), icon: sv ? sv.getBoundingClientRect().width : 0, stroke: sv ? parseFloat(getComputedStyle(sv).strokeWidth) : 0 }; }));
 const settled = async (p, ms = 1400) => { await p.waitForTimeout(ms); };
 const lb = (p) => p.evaluate(() => {
   const h = document.querySelector('#home-lb'), f = h.querySelector('.hlb-frame');
@@ -58,7 +61,7 @@ const enterCategory = async (p, cat = 'c_ourbrand', sel = '#s-s_sepuede .row') =
 const overlaps = (cs) => cs.slice(1).map((c, j) => Math.round((cs[j].r - c.l) * 10) / 10).filter(o => o > .5);
 const minGap = (cs) => Math.min(...cs.slice(1).map((c, j) => c.l - cs[j].r));
 // Where the mouse can rest: over the controls (the drift pauses there, like over the cards) or above the cards (it drifts)
-const park = async (p) => { const r = await p.locator('#hs-nav .hs-dots, #hs-nav .hs-count').first().boundingBox(); await p.mouse.move(r.x + r.width / 2, r.y + r.height / 2); };
+const park = async (p) => { const r = await p.locator('#hs-nav').boundingBox(); await p.mouse.move(r.x + r.width / 2, r.y + r.height / 2); };
 const away = (p) => p.mouse.move(1490, 140);
 // The search + menu buttons: distance from the right edge and the top, and whether they are sliding
 const bar = (p) => p.evaluate(() => { const a = document.querySelector('.rail-actions'), r = a.getBoundingClientRect(), l = document.querySelector('#rail-logo').getBoundingClientRect(); return { right: innerWidth - r.right, left: r.left, top: r.top, logoLeft: l.left, anims: a.getAnimations().length }; });
@@ -87,15 +90,30 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     nav: getComputedStyle(document.querySelector('#rail-nav')).display, menu: document.querySelector('#menu').classList.contains('is-open'),
     n: document.querySelectorAll('#hs-stage .hs-card').length, ph: document.querySelectorAll('#hs-stage .hs-media[data-ph]').length,
     persp: getComputedStyle(document.querySelector('#hs-stage')).perspective,
-    btns: [...document.querySelectorAll('#hs-nav .hs-btn')].map(b => b.getAttribute('aria-label')).join(','), dots: document.querySelectorAll('#hs-nav .hs-dot').length,
+    btns: [...document.querySelectorAll('#hs-nav .hs-btn')].map(b => b.getAttribute('aria-label')).join(','), dots: document.querySelectorAll('#hs-nav .hs-dot, #hs-nav .hs-count, #hs-nav .hs-dots').length,
     over: document.documentElement.scrollWidth - innerWidth, scroll: document.documentElement.scrollHeight - innerHeight,
     logo: (() => { const l = document.querySelector('#rail-logo [data-action="home"]'); return l ? l.textContent.trim() + '|' + l.getClientRects().length : ''; })(),
     hint: (document.querySelector('#home-tools .home-hint') || {}).textContent || ''
   }));
   check(land.view === 'home' && land.home === 'block' && land.stage === 'none' && land.nav === 'none' && !land.menu && land.hash === '', 'the page opens on Home: slider shown, section list and stage hidden, no hash, menu closed');
   check(land.scheme === 'light', 'light theme by default even when the OS prefers dark (' + land.scheme + ')');
-  check(land.n >= 8 && land.n % 8 === 0 && land.ph === land.n && land.dots === 8, `with no media yet the slider loops ${land.n} placeholder cards, one dot per placeholder (${land.dots})`);
+  check(land.n >= 8 && land.n % 8 === 0 && land.ph === land.n && land.dots === 0, `with no media yet the slider loops ${land.n} placeholder cards, no dots or counter (${land.dots})`);
   check(land.btns === 'Anterior,Siguiente', 'Prev / Next buttons are labeled in Spanish');
+  {
+    const [a, b] = await navBtns(page);
+    check(a.w === 56 && a.h === 56 && b.w === 56 && a.radius === '50%' && !a.text && !b.text && a.icon === 20 && a.stroke === 1.5, `the controls are two round 56px buttons with a thin 20px chevron, no words (${a.w}×${a.h}, stroke ${a.stroke})`);
+    check(b.l - a.r >= 16 && b.l - a.r <= 20 && Math.abs((a.l + b.r) / 2 - 756) < 1, `side by side, ${Math.round(b.l - a.r)}px apart, centered at the bottom`);
+    check(a.bw >= 1 && a.bw <= 1.5 && a.bg === 'rgba(0, 0, 0, 0)' && a.shadow === 'none', `thin light border, page background showing through, no shadow (${a.bw}px ${a.bc})`);
+    await page.hover('#hs-nav [data-action="hs-next"]'); await page.waitForTimeout(300);
+    const h = (await navBtns(page))[1];
+    check(h.bc !== b.bc, `hover darkens the border (${b.bc} → ${h.bc})`);
+    await page.screenshot({ path: T + 'home-01b-controls-hover.png', clip: { x: 556, y: 760, width: 400, height: 140 } });
+    await page.mouse.move(1490, 140); await page.keyboard.press('Tab');
+    let ring = '', guard = 0;
+    while (guard++ < 12) { ring = await page.evaluate(() => { const e = document.activeElement; return e && e.classList.contains('hs-btn') ? getComputedStyle(e).outlineStyle + ' ' + getComputedStyle(e).outlineWidth : ''; }); if (ring) break; await page.keyboard.press('Tab'); }
+    check(/solid 2px/.test(ring), 'the keyboard reaches them with a visible focus ring (' + ring + ')');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  }
   check(land.over <= 0 && land.scroll <= 0, 'Home fills the screen: no page scroll either way');
   check(land.logo === 'belo|1', 'no logo uploaded: the "belo" wordmark is the way Home (' + land.logo + ')');
   check(land.hint === 'Añade imágenes o videos a la galería', 'admins see the hint to fill the gallery');
@@ -132,7 +150,6 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     const a0 = await xOf(page, k); await page.waitForTimeout(1000); const a1 = await xOf(page, k); await page.waitForTimeout(1000); const a2 = await xOf(page, k);
     check(a1 < a0 - 8 && a2 < a1 - 8 && Math.abs((a0 - a1) - (a1 - a2)) < 8 && a0 - a2 < 120, `the row drifts on its own, slowly and evenly (${Math.round(a0 - a1)} and ${Math.round(a1 - a2)} px/s)`);
     const c = await center(page);
-    check(await dot(page) === c.i, 'the dot follows the card in the middle while it drifts');
     const cs = await cards(page);
     check(overlaps(cs).length === 0, 'mid-drift, still no card over its neighbour');
     await page.screenshot({ path: T + 'home-02-drift.png' });
@@ -151,19 +168,19 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   }
 
   // Prev / Next glide along the curve and loop; the dots follow (the mouse on the controls keeps the drift paused)
-  await page.click('#hs-nav .hs-dot[data-i="0"]'); await settled(page);
+  await park(page); await goTo(page, 0, 8);
   await page.click('#hs-nav [data-action="hs-next"]'); await page.waitForTimeout(110);
   const mid = await center(page);
   check(Math.abs(mid.dx) > 20, `Siguiente glides (the row is between cards ${Math.round(mid.dx)}px after 110ms)`);
   await settled(page);
   let c1 = await center(page);
-  check(c1.i === 1 && Math.abs(c1.dx) < 1 && await dot(page) === 1, 'Siguiente brings the next card to the middle and moves the dot');
+  check(c1.i === 1 && Math.abs(c1.dx) < 1, 'Siguiente brings the next card to the middle');
   await page.click('#hs-nav [data-action="hs-prev"]'); await settled(page, 900);
   await page.click('#hs-nav [data-action="hs-prev"]'); await settled(page);
   c1 = await center(page);
-  check(c1.i === 7 && await dot(page) === 7, 'Anterior twice from the second card loops around to the last one');
-  await page.click('#hs-nav .hs-dot[data-i="3"]'); await settled(page);
-  check((await center(page)).i === 3 && await dot(page) === 3, 'a dot brings its card to the middle');
+  check(c1.i === 7, 'Anterior twice from the second card loops around to the last one');
+  await goTo(page, 3, 8);
+  check((await center(page)).i === 3, 'Siguiente several times in a row adds up (to the fourth card)');
   await page.keyboard.press('ArrowRight'); await settled(page);
   check((await center(page)).i === 4, 'ArrowRight moves to the next card');
   await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowLeft'); await settled(page);
@@ -268,10 +285,10 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     const cs = [...document.querySelectorAll('#hs-stage .hs-card')];
     const key = (c) => { const i = c.querySelector('img'); return i ? i.getAttribute('src') : c.querySelector('video') ? 'video' : 'ph'; };
     let same = 0; for (let k = 0; k < cs.length; k++) if (key(cs[k]) === key(cs[(k + 1) % cs.length])) same++;
-    return { n: cs.length, img: document.querySelectorAll('#hs-stage .hs-card img').length, vid: document.querySelectorAll('#hs-stage .hs-card video').length, ph: document.querySelectorAll('#hs-stage .hs-media[data-ph]').length, srcs: new Set(cs.map(key)).size, same, dots: document.querySelectorAll('#hs-nav .hs-dot').length, hint: !!document.querySelector('#home-tools .home-hint'), cnt: (document.querySelector('#home-tools .hbtn-n') || {}).textContent };
+    return { n: cs.length, img: document.querySelectorAll('#hs-stage .hs-card img').length, vid: document.querySelectorAll('#hs-stage .hs-card video').length, ph: document.querySelectorAll('#hs-stage .hs-media[data-ph]').length, srcs: new Set(cs.map(key)).size, same, dots: document.querySelectorAll('#hs-nav .hs-dot, #hs-nav .hs-count, #hs-nav .hs-dots').length, hint: !!document.querySelector('#home-tools .home-hint'), cnt: (document.querySelector('#home-tools .hbtn-n') || {}).textContent };
   });
   check(filled.ph === 0 && filled.img > 0 && filled.vid > 0 && filled.srcs === 4 && filled.n % 4 === 0 && filled.n >= 8, `the media fill the slider, repeated to fill the curve (${filled.n} cards: ${filled.img} images, ${filled.vid} videos, no placeholders)`);
-  check(filled.same === 0 && filled.dots === 4, 'the same item is never next to itself, and there is one dot per item');
+  check(filled.same === 0 && filled.dots === 0, 'the same item is never next to itself (and there are no dots to count them)');
   // Shapes: each card keeps its file's proportions; the gallery can make one horizontal, vertical or square, and back
   const shape = (i) => page.evaluate((i) => [...document.querySelectorAll(`#hs-stage .hs-card[data-i="${i}"]`)].map(e => Math.round(e.offsetWidth / e.offsetHeight * 100) / 100), i);
   check(await until(() => page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card')].every(e => { const i = e.querySelector('img'), v = e.querySelector('video'); const nw = i ? i.naturalWidth : v.videoWidth, nh = i ? i.naturalHeight : v.videoHeight; return nh && Math.abs(e.offsetWidth / e.offsetHeight - nw / nh) < .03; }))), 'each card keeps the proportions of its own file (the images and the video)');
@@ -361,22 +378,22 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     await page.click('#home-gal [data-action="home-gal"]'); await page.waitForTimeout(300);
   }
   {
-    await page.click('#hs-nav .hs-dot[data-i="0"]'); await settled(page);
+    await park(page); await goTo(page, 0, 4);
     const c = await center(page);
     await page.mouse.click(c.x, c.y); await page.waitForTimeout(900);
     const L = await lb(page);
     check(L.open && !!L.img && L.img.startsWith('blob:'), 'an image card opens the image itself in the lightbox');
     const tx = await page.evaluate(() => { const f = document.querySelector('#home-lb .hlb-frame').getBoundingClientRect(), c = document.querySelector('#home-lb .hlb-cap'), t = c.querySelector('.hlb-t'), d = c.querySelector('.hlb-d'), cs = (e) => getComputedStyle(e), r = c.getBoundingClientRect();
-      return { t: t.textContent, d: d.textContent, ts: cs(t).fontSize, ds: cs(d).fontSize, tw: cs(t).fontWeight, dw: cs(d).fontWeight, tc: cs(t).color, dc: cs(d).color, fam: cs(t).fontFamily, left: r.left - f.left, gap: r.top - f.bottom, lh: parseFloat(cs(d).lineHeight) / parseFloat(cs(d).fontSize) }; });
+      return { t: t.textContent, d: d.textContent, ts: cs(t).fontSize, ds: cs(d).fontSize, tw: cs(t).fontWeight, dw: cs(d).fontWeight, tc: cs(t).color, dc: cs(d).color, fam: cs(t).fontFamily, mid: (r.left + r.right) / 2 - (f.left + f.right) / 2, ta: [cs(c).textAlign, cs(t).textAlign, cs(d).textAlign], tmid: (t.getBoundingClientRect().left + t.getBoundingClientRect().right) / 2 - (f.left + f.right) / 2, dmid: (d.getBoundingClientRect().left + d.getBoundingClientRect().right) / 2 - (f.left + f.right) / 2, dw2: d.getBoundingClientRect().width, fw: f.width, gap: r.top - f.bottom, lh: parseFloat(cs(d).lineHeight) / parseFloat(cs(d).fontSize) }; });
     check(tx.t === 'Campaña 2026' && tx.d === 'Fotos de la campaña de lanzamiento, con la luz de la tarde.', 'the title and the description show right under the opened image');
     check(tx.ts === '14px' && tx.ds === '14px' && tx.tw === '600' && tx.dw === '400' && tx.tc !== tx.dc && /Plus Jakarta Sans/.test(tx.fam) && tx.lh >= 1.35, `title 14px semibold, description 14px regular in a softer color, Plus Jakarta Sans, comfortable line height (${tx.ts}/${tx.tw}, ${tx.ds}/${tx.dw}, ${tx.lh.toFixed(2)})`);
-    check(Math.abs(tx.left) < 1 && tx.gap > 4 && tx.gap < 30, `aligned with the image's left edge, just under it (${Math.round(tx.gap)}px)`);
+    check(tx.ta.every(a => a === 'center') && Math.abs(tx.mid) < 1 && Math.abs(tx.tmid) < 1 && Math.abs(tx.dmid) < 1 && tx.dw2 <= tx.fw + .5 && tx.gap > 4 && tx.gap < 30, `centered under the image, just under it (${Math.round(tx.gap)}px), no wider than it`);
     await page.screenshot({ path: T + 'home-06-lightbox-image.png' });
     await page.keyboard.press('Escape'); await page.waitForTimeout(900);
   }
   {
     await page.mouse.move(1490, 880);
-    await page.click('#hs-nav .hs-dot[data-i="3"]'); await settled(page);
+    await park(page); await goTo(page, 3, 4);
     const c = await center(page);
     await page.mouse.click(c.x, c.y); await page.waitForTimeout(900);
     const L = await lb(page);
@@ -419,7 +436,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   check(await page.evaluate(() => document.querySelector('#home-gal').hidden), 'Esc closes the gallery');
   page.revoked.add(goneUrl);
   check(await until(async () => !(await loads(goneUrl))), 'closing the gallery deletes the removed file');
-  check(await page.evaluate(() => !document.querySelector('#hs-stage .hs-media[data-ph]') && document.querySelectorAll('#hs-nav .hs-dot').length === 3 && document.querySelectorAll('#hs-stage .hs-card').length % 3 === 0), 'the slider now cycles the three remaining items');
+  check(await page.evaluate(() => !document.querySelector('#hs-stage .hs-media[data-ph]') &&  document.querySelectorAll('#hs-stage .hs-card').length % 3 === 0), 'the slider now cycles the three remaining items');
   // files dropped anywhere on Home open the gallery and are added
   const dt = await page.evaluateHandle((b64) => { const d = new DataTransfer(); d.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'dropped.jpg', { type: 'image/jpeg' })); return d; }, fs.readFileSync(FIX + 'img4.jpg').toString('base64'));
   await page.dispatchEvent('#home', 'dragover', { dataTransfer: dt });
@@ -551,6 +568,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     });
     check(m.over <= 0 && m.w <= 390 * .8 && m.top > m.bar && m.bottom < m.navTop, `phone: the middle card fits between the top bar and the controls, no sideways scroll (${Math.round(m.w)}px wide)`);
     check(m.navL > m.toolsR && m.navR <= 390, 'phone: the controls and the gallery button share the bottom row without touching');
+    { const [a, b] = await navBtns(p); check(a.w === 44 && b.w === 44 && a.radius === '50%' && b.l - a.r >= 16 && b.l - a.r <= 20 && Math.abs((a.l + b.r) / 2 - 195) < 1, `phone: the same two round buttons, 44px, centered (${a.w}px, ${Math.round(b.l - a.r)}px apart)`); }
     { const b = await bar(p); check(Math.abs(b.right - 16) < 1 && Math.abs(b.logoLeft - 16) < 1, `phone: search and menu top right, 16px in like the logo (${Math.round(b.right)}px)`); }
     await p.screenshot({ path: T + 'home-07-phone.png' });
     // a swipe (real touch events) moves to the next card
