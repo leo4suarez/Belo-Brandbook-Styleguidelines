@@ -5,7 +5,9 @@
 <script>
 (function () {
   var h = document.documentElement, s = null, back = '';
-  try { s = localStorage.getItem('bc.scheme'); } catch (e) {}
+  /* Every visit opens in Light. The switch only lasts for the visit (this tab); a choice saved by earlier versions is dropped. */
+  try { localStorage.removeItem('bc.scheme'); } catch (e) {}
+  try { s = sessionStorage.getItem('bc.scheme'); } catch (e) {}
   try { back = sessionStorage.getItem('bc.authHash') || ''; } catch (e) {}
   /* Light unless the visitor picked a theme with the switch: neither the OS nor the host page decide it. */
   h.setAttribute('data-scheme', s === 'dark' ? 'dark' : 'light');
@@ -132,7 +134,15 @@ html.ov-open.no-lenis{overflow:hidden}
 .rail-nav{display:flex;flex-direction:column;gap:16px;min-height:0;overflow-y:auto;scrollbar-width:none;padding-bottom:24px;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent)}
 .rail-nav::-webkit-scrollbar{display:none}
 html.pm-on .rail-nav{padding-bottom:96px} /* the view switch sits at the bottom of the rail column */
-.rail-title{margin:0;font-family:var(--display);font-weight:900;font-size:clamp(34px,3.2vw,54px);line-height:.92;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance;overflow-wrap:anywhere}
+/* The category title reads like its sections (same body text), with a chevron that lists every category */
+.rail-title{margin:0 0 -16px;font:inherit} /* the first row of the list: same rhythm as its sections */
+.rail-cat{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:5px 0;font-size:16px;font-weight:500;line-height:1.25;letter-spacing:-.015em;text-align:left;overflow-wrap:anywhere;transition:opacity 160ms ease}
+.rail-cat:hover{opacity:.7}
+.rail-cat-t{min-width:0}
+.rail-cat svg.rail-chev{width:14px;height:14px;stroke-width:2.4;transition:transform 220ms var(--ease-out)}
+.rail-cat[aria-expanded="true"] svg.rail-chev{transform:rotate(180deg)}
+.lock-i{display:block;flex:none;width:1em;height:1em}
+.rail-lock{width:15px;height:15px;opacity:.8}
 .subs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .sub-item{display:flex;align-items:center;gap:4px;min-width:0}
 .sub{flex:1;min-width:0;padding:5px 0;font-size:16px;font-weight:500;line-height:1.25;letter-spacing:-.015em;opacity:.42;transition:opacity 200ms ease;overflow-wrap:anywhere}
@@ -259,6 +269,18 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .alist-t{flex:1;min-width:0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .alist-v{flex:none;max-width:48%;font-size:11px;font-weight:500;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .alist-v.is-on{opacity:1;color:var(--focus)}
+/* Layers of a text module: items, groups and what each group holds (indented); a Shift-selected run is tinted */
+.layers{max-height:236px;overflow-y:auto;scrollbar-width:thin}
+.layers button{min-height:30px;padding:3px 10px}
+.layers button.is-in{padding-left:30px}
+.layers button.is-range:not([aria-pressed="true"]){background:color-mix(in srgb,var(--focus) 10%,transparent);color:var(--ink)}
+.layers .alist-i{width:22px;height:22px}
+.layer-tools{justify-content:flex-end}
+.layer-tools .insp-hint{margin-right:auto}
+.insp-sec h4 .h4-fold{display:inline-flex;align-items:center;gap:6px;margin:-4px 0;padding:4px 0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;transition:color 160ms ease}
+.insp-sec h4 .h4-fold:hover{color:var(--ink)}
+.insp-sec h4 .h4-fold svg.i{width:13px;height:13px;stroke-width:2.4;transform:rotate(-90deg);transition:transform 200ms var(--ease-out)}
+.insp-sec h4 .h4-fold[aria-expanded="true"] svg.i{transform:none}
 
 /* Text */
 .slot-text{display:flex;flex-direction:column;color:var(--ink)}
@@ -269,15 +291,50 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 /* Inner spacing: --pt/--pr/--pb/--pl are set on the slot only for the sides the editor changed (design px × --k);
    every other side keeps the automatic value, so a module nobody touched renders exactly as before */
 .tpad{flex:1;display:flex;flex-direction:column;min-height:0;padding:var(--pt,0px) var(--pr,0px) var(--pb,0px) var(--pl,0px)}
-.slot-text:not(.bg-none) .tpad{padding:var(--pt,clamp(20px,3.2cqi,40px)) var(--pr,clamp(20px,3.2cqi,40px)) var(--pb,clamp(20px,3.2cqi,40px)) var(--pl,clamp(20px,3.2cqi,40px))}
-.slot-text.bg-none{overflow:visible}
+.slot-text:is(:not(.bg-none),.has-stroke) .tpad{padding:var(--pt,clamp(20px,3.2cqi,40px)) var(--pr,clamp(20px,3.2cqi,40px)) var(--pb,clamp(20px,3.2cqi,40px)) var(--pl,clamp(20px,3.2cqi,40px))}
+.slot-text.bg-none:not(.has-stroke){overflow:visible}
 .tblocks{display:flex;flex-direction:column;flex:1}
+/* Stroke of a module, over its content (an image or a color would cover an inset shadow) */
+.slot.has-stroke::before{content:"";position:absolute;inset:0;z-index:3;border:calc(var(--stw,1) * 1px) solid var(--stc,currentColor);border-radius:inherit;pointer-events:none}
 .align-center .tblocks{justify-content:center}
 .align-end .tblocks{justify-content:flex-end}
 .align-spread .tblocks{justify-content:space-between}
 .tb{margin:0;white-space:pre-wrap;overflow-wrap:break-word;text-wrap:pretty;font-optical-sizing:auto;font-size:max(calc(var(--fs) * var(--k)), min(calc(var(--fs) * 1px), 12px))}
-.tb + .tb{margin-top:max(12px,.32em)}
+.tblocks > .lx + .lx{margin-top:max(12px,.32em)}
+.slot-text.has-gap .tblocks{gap:calc(var(--tg) * var(--k))}
+.slot-text.has-gap .tblocks > .lx + .lx{margin-top:0}
 .tb.is-copy{max-width:64ch}
+/* Containers (text blocks and groups): width fill (default) / hug / fixed, a minimum height, fill, stroke, radius, spacing.
+   Scoped to .tblocks so the editing styles of a text (its rounded hover, its 1em minimum height) do not override them. */
+.lx{min-width:0}
+.tblocks .lx[data-bw="hug"]{width:fit-content;max-width:100%}
+.tblocks .lx[data-bw="fix"]{width:calc(var(--bw) * var(--k));max-width:100%;flex:none}
+.tblocks .lx[data-bh="fix"]{min-height:calc(var(--bh) * var(--k))}
+.tblocks .lx.has-fill{background:var(--bf)}
+.tblocks .lx.has-bst{border:calc(var(--bsw) * 1px) solid var(--bsc,currentColor)}
+.tblocks .lx.has-r{border-radius:calc(var(--br) * var(--k))}
+.tblocks .lx.has-pad{padding:calc(var(--bpy,0) * var(--k)) calc(var(--bpx,0) * var(--k))}
+.tb.lx:is([data-bw="hug"],[data-bw="fix"]){max-width:100%}
+.tblocks > .lx:is([data-bw="hug"],[data-bw="fix"])[data-align="center"]{align-self:center}
+.tblocks > .lx:is([data-bw="hug"],[data-bw="fix"])[data-align="right"]{align-self:flex-end}
+/* Auto-layout groups: a column or a row of items with its own gap and alignment */
+.tgroup{display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--gg,16) * var(--k))}
+.tgroup[data-dir="h"]{flex-direction:row}
+.tgroup[data-wrap]{flex-wrap:wrap}
+.tgroup[data-al="center"]{align-items:center}
+.tgroup[data-al="end"]{align-items:flex-end}
+.tgroup[data-al="stretch"]{align-items:stretch}
+.tgroup[data-ju="center"]{justify-content:center}
+.tgroup[data-ju="end"]{justify-content:flex-end}
+.tgroup[data-ju="between"]{justify-content:space-between}
+.tgroup:not([data-dir="h"]) > .lx[data-bw="fill"]{align-self:stretch}
+.tgroup[data-dir="h"] > .lx[data-bw="fill"]{flex:1 1 0}
+.tgroup[data-dir="h"] > .lx[data-bw="hug"]{flex:0 0 auto}
+/* Dividers: a line in the ink of the module (or a color), across the stack or, in a row, from top to bottom */
+.tdiv{flex:none;align-self:stretch;height:calc(var(--dt,1) * 1px);margin-block:calc(var(--dm,0) * var(--k));background:var(--dc,color-mix(in srgb,currentColor 28%,transparent))}
+.tdiv[data-len="fix"]{align-self:auto;width:calc(var(--dl) * var(--k));max-width:100%}
+.tgroup[data-dir="h"] > .tdiv{width:calc(var(--dt,1) * 1px);height:auto;margin-block:0;margin-inline:calc(var(--dm,0) * var(--k))}
+.tgroup[data-dir="h"] > .tdiv[data-len="fix"]{width:calc(var(--dt,1) * 1px);height:calc(var(--dl) * var(--k));align-self:center}
 .tb.is-copy[data-align="center"]{margin-inline:auto}
 .tb.is-copy[data-align="right"]{margin-left:auto}
 
@@ -421,6 +478,25 @@ html.frame-on .status{visibility:hidden} /* on a phone the bar spans the screen 
 .carousel:focus-visible .car-arrow:not(:disabled){opacity:1;transform:none}
 .car-arrow:disabled{pointer-events:none}
 
+/* Strip: images of any size side by side, scrolled sideways; the picked one (editing) shows its frame and a corner handle */
+.slot-carousel.is-strip{background:transparent;border-radius:0;overflow:visible}
+.carousel.is-strip{aspect-ratio:auto!important;height:auto!important;overflow:visible;border-radius:0!important;background:transparent}
+.car-strip{display:flex;align-items:flex-start;gap:calc(var(--sg,24) * var(--k));overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;cursor:grab}
+.car-strip::-webkit-scrollbar{display:none}
+.carousel.is-dragging .car-strip{cursor:grabbing;scroll-snap-type:none}
+.carousel[data-sal="center"] .car-strip{align-items:center}
+.carousel[data-sal="end"] .car-strip{align-items:flex-end}
+.cs-item{position:relative;flex:none;display:flex;flex-direction:column;gap:max(10px,calc(14 * var(--k)));width:calc(var(--iw) * var(--k));margin:0;scroll-snap-align:start}
+.cs-frame{position:relative;width:100%;height:calc(var(--ih) * var(--k));overflow:hidden;border-radius:var(--radius);background:var(--surface)}
+.cs-frame img{position:absolute;left:calc((1 - var(--fz,1)) * var(--fx,50) * 1%);top:calc((1 - var(--fz,1)) * var(--fy,50) * 1%);width:calc(var(--fz,1) * 100%);height:calc(var(--fz,1) * 100%);max-width:none;object-fit:cover;object-position:calc(var(--fx,50) * 1%) calc(var(--fy,50) * 1%);pointer-events:none;-webkit-user-drag:none}
+.cs-cap{max-width:52ch;font-size:max(12px,calc(14 * var(--k)));line-height:1.45;opacity:.72;text-wrap:pretty;white-space:pre-wrap}
+.row.is-editing .car-strip{padding:6px;cursor:default}
+.row.is-editing .cs-item{cursor:pointer}
+.row.is-editing .cs-item.is-sel .cs-frame{outline:2px solid var(--focus);outline-offset:3px;cursor:grab;touch-action:none}
+.cs-item.is-panning .cs-frame{cursor:grabbing}
+.cs-rz{position:absolute;z-index:2;right:-8px;top:calc(var(--ih) * var(--k) - 8px);width:16px;height:16px;border-radius:50%;background:var(--bg);box-shadow:inset 0 0 0 2.5px var(--focus),var(--shadow-soft);cursor:nwse-resize;touch-action:none}
+.thumb.is-sel{box-shadow:0 0 0 2px var(--focus)}
+.txa.sm{min-height:56px}
 .spl{position:absolute;left:50%;bottom:16px;z-index:3;transform:translateX(-50%);display:flex;align-items:center;gap:6px;color:#FFFFFF}
 .spl-slab{display:flex;padding:14px;border-radius:18px;background:rgba(30,30,32,.74);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%)}
 .spl-track{position:relative;height:8px}
@@ -502,8 +578,20 @@ html.is-row-drag .sec.is-empty.is-drop .adder::after{background:color-mix(in srg
 .row.is-editing .slot.is-active-slot{outline:2px solid var(--focus);outline-offset:4px}
 .row.is-editing .fs-media.is-active-slot{outline-offset:-8px}
 .tb[contenteditable]{outline:none;border-radius:6px;cursor:text;transition:background-color 160ms ease,box-shadow 160ms ease;min-height:1em}
-.tb[contenteditable]:hover{background:color-mix(in srgb,currentColor 5%,transparent)}
-.tb[contenteditable].is-active{background:color-mix(in srgb,currentColor 7%,transparent);box-shadow:0 0 0 6px color-mix(in srgb,currentColor 7%,transparent)}
+.tb[contenteditable]:not(.has-fill):hover{background:color-mix(in srgb,currentColor 5%,transparent)}
+.tb[contenteditable].is-active{box-shadow:0 0 0 6px color-mix(in srgb,currentColor 7%,transparent)}
+.tb[contenteditable].is-active:not(.has-fill){background:color-mix(in srgb,currentColor 7%,transparent)}
+.tb[contenteditable].has-fill.is-active{box-shadow:0 0 0 2px color-mix(in srgb,currentColor 40%,transparent)}
+/* Groups and dividers being edited: a group shows its bounds; a divider gets a taller area to click; the selected one is outlined */
+.row.is-editing .tgroup{outline:1px dashed color-mix(in srgb,currentColor 32%,transparent);outline-offset:4px;cursor:pointer}
+.row.is-editing .tgroup > *{cursor:auto}
+.row.is-editing .tgroup.is-sel{outline:2px solid var(--focus);outline-offset:4px}
+.row.is-editing .tdiv{position:relative;cursor:pointer;outline:none}
+.row.is-editing .tdiv::after{content:"";position:absolute;inset:-9px -2px}
+.row.is-editing .tgroup[data-dir="h"] > .tdiv::after{inset:-2px -9px}
+.row.is-editing .tdiv.is-sel{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--focus);border-radius:2px}
+.row.is-editing .lx.is-range{box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 45%,transparent);border-radius:6px}
+.tdiv.is-new{animation:blockIn 220ms var(--ease-out) both}
 .tb[contenteditable]:empty::before{content:attr(data-placeholder);opacity:.32;pointer-events:none}
 .tb.is-new{animation:blockIn 220ms var(--ease-out) both}
 .ed-add-block{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;margin-top:16px;padding:7px 14px 7px 10px;border-radius:999px;font-family:var(--font);font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;opacity:.55;transition:opacity 160ms ease,background-color 160ms ease,transform 140ms var(--ease-out)}
@@ -554,13 +642,24 @@ html.is-row-drag .sec.is-empty.is-drop .adder::after{background:color-mix(in srg
 .thumb-hint{padding:0 14px 12px;margin:0;font-size:12px;color:var(--muted)}
 .slot-carousel.is-edit .carousel{border-radius:var(--radius) var(--radius) 0 0}
 
+/* Width of a block in its column (--rw, aligned by --ra) and the split of a half row (--gtc); a phone uses the full width */
+.sec .row.has-w:not([data-layout="fullscreen"]){width:calc((100% - var(--col-l) - var(--col-r)) * var(--rw,1));margin-left:calc(var(--col-l) + (100% - var(--col-l) - var(--col-r)) * (1 - var(--rw,1)) * var(--ra,0));margin-right:0}
+.row[data-layout="half"] .row-grid{grid-template-columns:var(--gtc,minmax(0,1fr) minmax(0,1fr))}
+.rzw,.rzs{position:absolute;z-index:7;display:grid;place-items:center;touch-action:none}
+.rzw{top:50%;right:-17px;width:28px;height:96px;margin-top:-48px;cursor:ew-resize}
+.row[data-wa="r"] > .rzw{right:auto;left:-17px}
+.rzs{top:0;bottom:0;left:calc((100% - var(--gap)) * var(--sp,.5) + var(--gap) / 2);width:28px;margin-left:-14px;cursor:col-resize}
+.rzw i,.rzs i{width:5px;height:44px;border-radius:3px;background:var(--ink);opacity:.3;box-shadow:0 0 0 3px var(--bg);transition:opacity 160ms ease,transform 220ms var(--ease-out)}
+.rzw:hover i,.rzs:hover i,.row.is-resizing-w :is(.rzw,.rzs) i{opacity:.85;transform:scaleY(1.15)}
+.rzw .rz-val,.rzs .rz-val{bottom:auto;top:calc(50% - 60px)}
+.row.is-resizing-w :is(.rzw,.rzs) .rz-val{opacity:1;transform:none}
 .rz{position:absolute;left:50%;bottom:-18px;z-index:7;width:96px;height:28px;margin-left:-48px;display:grid;place-items:center;cursor:ns-resize;touch-action:none}
 .rz i{width:44px;height:5px;border-radius:3px;background:var(--ink);opacity:.3;box-shadow:0 0 0 3px var(--bg);transition:opacity 160ms ease,transform 220ms var(--ease-out)}
 .rz:hover i,.row.is-resizing .rz i{opacity:.85;transform:scaleX(1.15)}
 .row[data-layout="fullscreen"] .rz{bottom:6px}
 .row[data-layout="fullscreen"] .rz i{background:#FFFFFF;box-shadow:0 1px 6px rgba(0,0,0,.35)}
 .rz-val{position:absolute;bottom:30px;padding:4px 8px;border-radius:8px;background:var(--chip);color:var(--on-chip);font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;opacity:0;transform:translateY(4px);transition:opacity 140ms ease,transform 200ms var(--ease-out);pointer-events:none}
-.row.is-resizing .rz-val{opacity:1;transform:none}
+.row.is-resizing .rz .rz-val{opacity:1;transform:none}
 
 /* Adder */
 .adder{position:relative;border-radius:var(--radius);background:var(--surface);color:var(--muted);overflow:clip}
@@ -609,7 +708,8 @@ html.is-row-drag .sec.is-empty.is-drop .adder::after{background:color-mix(in srg
 .insp-title .dot{width:7px;height:7px;border-radius:50%;background:var(--warn)}
 .insp-sub{margin-left:auto;font-size:11.5px;font-weight:500;color:var(--muted)}
 .insp-tabs{flex:1;min-width:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;border-radius:999px;background:var(--field)}
-.insp-tabs button{height:28px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background-color 160ms ease,color 160ms ease}
+.insp-tabs button{height:28px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background-color 160ms ease,color 160ms ease}
+.insp-tabs button:hover{color:var(--ink)}
 .insp-tabs button[aria-selected="true"]{background:var(--seg-on);color:var(--ink);box-shadow:var(--shadow-soft)}
 .insp-body{overflow-y:auto;display:flex;flex-direction:column;gap:18px;padding:10px 14px 16px;scrollbar-width:thin}
 .insp-sec{display:flex;flex-direction:column;gap:8px}
@@ -770,8 +870,12 @@ html.is-row-drag .sec.is-empty.is-drop .adder::after{background:color-mix(in srg
 .ov-list > :first-child{margin-top:auto}
 .ov-list > :last-child{max-width:calc(100% - var(--ob-w,0px) - 24px)}
 .ov-item{display:flex;align-items:center;gap:10px;max-width:100%}
-.ov-cat{font-family:var(--display);font-weight:900;text-transform:uppercase;text-align:left;font-size:clamp(40px,min(8.4vw,calc((100dvh - 300px) / var(--n,4) / .98)),176px);line-height:.98;letter-spacing:-.02em;overflow-wrap:anywhere;transition:opacity 240ms ease}
+.ov-cat{display:inline-flex;align-items:center;gap:.16em;max-width:100%;font-family:var(--display);font-weight:900;text-transform:uppercase;text-align:left;font-size:clamp(40px,min(8.4vw,calc((100dvh - 300px) / var(--n,4) / .98)),176px);line-height:.98;letter-spacing:-.02em;overflow-wrap:anywhere;transition:opacity 240ms ease}
+.ov-cat-t{min-width:0}
 @media (hover:hover) and (pointer:fine){.ov-list:hover .ov-cat:not(:hover){opacity:.38}}
+/* A locked category: the lock beside its name; in viewer mode it is dimmed and cannot be opened */
+.ov-lock{width:.84em;height:.84em;margin:-.02em 0 0 -.04em}
+.ov-cat[aria-disabled="true"]{opacity:.34;cursor:default}
 .ov-item .more{width:40px;height:40px;border-radius:12px}
 .ov-item .more svg.i{width:22px;height:22px}
 .ov-input{font-family:var(--display);font-weight:900;text-transform:uppercase;font-size:clamp(40px,min(8.4vw,calc((100dvh - 300px) / var(--n,4) / .98)),176px);line-height:.98;letter-spacing:-.02em;padding:0;border-radius:0;width:min(100%,1100px)}
@@ -1011,10 +1115,11 @@ html.is-row-drag .page-mode{visibility:hidden}
   .rail-top::before{content:"";position:absolute;inset:0 0 -28px;z-index:-1;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent);mask-image:linear-gradient(to bottom,#000 55%,transparent);opacity:0;transition:opacity 220ms ease;pointer-events:none}
   html.is-scrolled .rail-top::before{opacity:1}
   .rail-nav{overflow:visible;-webkit-mask-image:none;mask-image:none;padding:calc(92px + env(safe-area-inset-top,0px)) 16px 12px}
-  .rail-title{font-size:clamp(34px,10vw,48px)}
   .stage{padding-top:calc(var(--nav-h,300px) + 8px)}
   .stage.starts-full{padding-top:0}
   .row[data-layout="half"] .row-grid{grid-template-columns:minmax(0,1fr)}
+  .sec .row.has-w:not([data-layout="fullscreen"]){width:auto;margin-left:var(--col-l);margin-right:var(--col-r)}
+  .rzw,.rzs{display:none}
   .fs-overlay{padding-left:var(--ov-pl,16px);padding-right:var(--ov-pr,16px)}
   .fs-scrim{background:linear-gradient(180deg,rgba(0,0,0,.46) 0%,rgba(0,0,0,.2) 34%,rgba(0,0,0,0) 56%)}
   .fs-overlay[data-w="half"] > .slot{width:100%}
@@ -1201,9 +1306,20 @@ const ICONS = {
   arrX: '<path d="M4 12h16M7.5 8.5L4 12l3.5 3.5M16.5 8.5L20 12l-3.5 3.5"/>',
   arrY: '<path d="M12 4v16M8.5 7.5L12 4l3.5 3.5M8.5 16.5L12 20l3.5-3.5"/>',
   none: '<circle cx="12" cy="12" r="8"/><path d="M6.6 17.4L17.4 6.6"/>',
-  scaleI: '<rect x="4" y="4" width="16" height="16" rx="3" opacity=".45"/><rect x="8" y="8" width="8" height="8" rx="1.6"/>'
+  scaleI: '<rect x="4" y="4" width="16" height="16" rx="3" opacity=".45"/><rect x="8" y="8" width="8" height="8" rx="1.6"/>',
+  stroke: '<rect x="4.5" y="4.5" width="15" height="15" rx="3.5" stroke-width="2.6"/>',
+  radius: '<path d="M5 19.5V12a7 7 0 0 1 7-7h7.5"/>',
+  gap: '<rect x="4" y="4" width="16" height="5" rx="1.6"/><rect x="4" y="15" width="16" height="5" rx="1.6"/><path d="M12 10.8v2.4"/>',
+  divider: '<path d="M3.5 12h17"/><path d="M7 6.5h10M7 17.5h10" opacity=".4"/>',
+  group: '<rect x="3.5" y="3.5" width="17" height="17" rx="3.5" stroke-dasharray="3 2.4"/><rect x="7.5" y="7.5" width="9" height="3" rx="1"/><rect x="7.5" y="13.5" width="9" height="3" rx="1"/>',
+  arrR: '<path d="M4 12h16M15 7l5 5-5 5"/>',
+  jsH: '<path d="M4 4v16M20 4v16"/><rect x="7.5" y="8" width="3" height="8" rx="1"/><rect x="13.5" y="8" width="3" height="8" rx="1"/>',
+  lock: '<rect x="5" y="10.5" width="14" height="10" rx="2.6"/><path d="M8.5 10.5V7.8a3.5 3.5 0 0 1 7 0v2.7M12 14.5v2.2"/>',
+  unlock: '<rect x="5" y="10.5" width="14" height="10" rx="2.6"/><path d="M8.5 10.5V7.8a3.5 3.5 0 0 1 6.9-.9M12 14.5v2.2"/>'
 };
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n].replace(/class="f"/g, 'fill="currentColor" stroke="none"')}</svg>`;
+/* The lock of a category closed to viewers (Paisanos' own drawing, filled): beside its name in the menu and the rail */
+const lockMark = (cls = '') => `<svg class="lock-i ${cls}" viewBox="0 0 69 69" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M34.125 6.39844C26.2722 6.39844 19.9062 12.7644 19.9062 20.6172V25.5938H19.1953C14.8763 25.5938 11.375 29.095 11.375 33.4141V54.7422C11.375 59.0612 14.8763 62.5625 19.1953 62.5625H49.0547C53.3737 62.5625 56.875 59.0612 56.875 54.7422V33.4141C56.875 29.095 53.3737 25.5938 49.0547 25.5938H48.3438V20.6172C48.3438 12.7644 41.9778 6.39844 34.125 6.39844ZM44.0781 25.5938V20.6172C44.0781 15.1202 39.622 10.6641 34.125 10.6641C28.628 10.6641 24.1719 15.1202 24.1719 20.6172V25.5938H44.0781ZM34.125 37.6797C35.3029 37.6797 36.2578 38.6346 36.2578 39.8125V48.3438C36.2578 49.5217 35.3029 50.4766 34.125 50.4766C32.9471 50.4766 31.9922 49.5217 31.9922 48.3438V39.8125C31.9922 38.6346 32.9471 37.6797 34.125 37.6797Z"/></svg>`;
 
 /* ================= Type system ================= */
 const FONTS = {
@@ -1238,8 +1354,29 @@ const FIELD = {
   fy: { min: 0, max: 100, step: 1, px: 2, dec: 0 },
   sscale: { min: 5, max: 100, step: 1, px: 2, dec: 0 },
   sdx: { min: -50, max: 50, step: 1, px: 3, dec: 0 },
-  sdy: { min: -50, max: 50, step: 1, px: 3, dec: 0 }
+  sdy: { min: -50, max: 50, step: 1, px: 3, dec: 0 },
+  ibwv: { min: 8, max: 4000, step: 1, px: 1, dec: 0 },
+  ibhv: { min: 8, max: 4000, step: 1, px: 1, dec: 0 },
+  ibsw: { min: 0, max: 24, step: .5, px: 4, dec: 1 },
+  ibr: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  ibpx: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  ibpy: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  igap: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  divt: { min: .5, max: 24, step: .5, px: 4, dec: 1 },
+  divlen: { min: 8, max: 4000, step: 1, px: 1, dec: 0 },
+  divm: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  tgap: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  mstw: { min: 0, max: 24, step: .5, px: 4, dec: 1 },
+  rw: { min: 20, max: 100, step: 1, px: 3, dec: 0 },
+  sgap: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  ciw: { min: 40, max: 4000, step: 1, px: 1, dec: 0 },
+  cih: { min: 40, max: 4000, step: 1, px: 1, dec: 0 },
+  cfx: { min: 0, max: 100, step: 1, px: 2, dec: 1 },
+  cfy: { min: 0, max: 100, step: 1, px: 2, dec: 1 },
+  rsplit: { min: 20, max: 80, step: 1, px: 3, dec: 0 }
 };
+/* Fields that may be left empty: empty means automatic (or none) */
+const NULLABLE = new Set(['pt', 'pr', 'pb', 'pl', 'ibwv', 'ibhv', 'ibsw', 'ibr', 'ibpx', 'ibpy', 'igap', 'divlen', 'divm', 'tgap', 'mstw', 'rw', 'rsplit', 'sgap']);
 /* Text styles (tree.textStyles): the typography a block takes when it is linked. Color and alignment are not part of
    a style. The seeds have fixed ids, so two people opening a catalog saved before styles existed create the same ones. */
 const TYPE_KEYS = ['font', 'size', 'weight', 'lh', 'ls', 'upper'];
@@ -1410,7 +1547,71 @@ function normBlock(b) {
   if (typeof b.ts === 'string' && b.ts) { o.ts = b.ts; if (b.tsOver) o.tsOver = true; }
   if (typeof b.color === 'string' && b.color) o.color = b.color;
   if (b.anim) o.anim = normAnim(b.anim, 'text');
+  { const bx = normBox(b.box); if (bx) o.box = bx; }
+  if (typeof b.g === 'string' && b.g) o.g = b.g;
   return o;
+}
+/* ---------- Inside a text module ----------
+   Its items (slot.blocks) are text blocks and dividers ({ kind: 'div' }), in order. Items next to each other can share an
+   auto-layout group (item.g → slot.groups[id]: direction, gap, alignment). Text blocks and groups have a container (box):
+   width (fill the row, hug the content or a fixed size), a minimum height, fill, stroke, corner radius and inner
+   spacing, all in design px that scale with the module like its text. A module without any of this renders as before. */
+const isText = (b) => !!b && !b.kind;
+const textBlocks = (s) => ((s && s.blocks) || []).filter(isText);
+const pxIn = (v, lo, hi) => isNum(v) ? Math.round(clamp(v, lo, hi)) : undefined;
+const posPx = (v, hi = 400) => isNum(v) && v >= .5 ? Math.round(clamp(v, 1, hi)) : undefined; /* 0 or less: not set */
+const strokeW = (v) => isNum(v) && v > 0 ? clamp(Math.round(v * 2) / 2, .5, 24) : undefined;
+const hexIn = (v) => typeof v === 'string' && hexOk(v) ? v.toLowerCase() : undefined;
+const compact = (o) => { Object.keys(o).forEach(k => o[k] === undefined && delete o[k]); return Object.keys(o).length ? o : undefined; };
+function normBox(x) {
+  if (!x || typeof x !== 'object') return undefined;
+  const sw = strokeW(x.sw);
+  return compact({
+    w: x.w === 'hug' ? 'hug' : pxIn(x.w, 8, 4000), h: pxIn(x.h, 8, 4000), fill: hexIn(x.fill),
+    sw, sc: sw ? hexIn(x.sc) : undefined, r: posPx(x.r), px: posPx(x.px), py: posPx(x.py)
+  });
+}
+function normDivider(d) {
+  return { id: d.id || uid('d'), kind: 'div', t: strokeW(d.t) || 1, ...compact({ c: hexIn(d.c), len: pxIn(d.len, 8, 4000), m: posPx(d.m), g: typeof d.g === 'string' && d.g ? d.g : undefined }) };
+}
+const G_AL = ['start', 'center', 'end', 'stretch'], G_JU = ['start', 'center', 'end', 'between'];
+function normGroup(g) {
+  g = g && typeof g === 'object' ? g : {};
+  return { dir: g.dir === 'h' ? 'h' : 'v', al: G_AL.includes(g.al) ? g.al : 'start', ju: G_JU.includes(g.ju) ? g.ju : 'start', ...compact({ gap: pxIn(g.gap, 0, 400), wrap: g.dir === 'h' && g.wrap ? true : undefined, box: normBox(g.box) }) };
+}
+/* Groups are runs of items: a group without items is dropped, and an item pointing to a missing group leaves it. A group
+   split in two runs (concurrent edits) becomes two groups with the same settings. */
+function tidyGroups(s) {
+  const src = s.groups && typeof s.groups === 'object' && !Array.isArray(s.groups) ? s.groups : {};
+  const out = {}, seen = new Map();
+  let run = null, runId = null;
+  (s.blocks || []).forEach(b => {
+    if (!b.g || !src[b.g]) { delete b.g; run = runId = null; return; }
+    if (b.g !== run) { run = b.g; const n = seen.get(b.g) || 0; seen.set(b.g, n + 1); runId = n ? b.g + '_' + n : b.g; out[runId] = normGroup(src[b.g]); }
+    b.g = runId;
+  });
+  if (Object.keys(out).length) s.groups = out; else delete s.groups;
+  return s;
+}
+/* An image of a carousel. In the strip (slot.mode 'strip') each one has its own box (bw × bh design px; by default 480
+   high in the image's proportion), its framing inside it (focal point fx/fy %, zoom fz %) and an optional caption. */
+const pct1 = (v) => Math.round(clamp(v, 0, 100) * 10) / 10;
+function normCarImage(im) {
+  const o = { id: im.id };
+  if (isNum(im.w) && im.w > 0) o.w = im.w;
+  if (isNum(im.h) && im.h > 0) o.h = im.h;
+  if (typeof im.name === 'string' && im.name) o.name = im.name;
+  if (isNum(im.size)) o.size = im.size;
+  return Object.assign(o, compact({
+    bw: pxIn(im.bw, 40, 4000), bh: pxIn(im.bh, 40, 4000),
+    fx: isNum(im.fx) && pct1(im.fx) !== 50 ? pct1(im.fx) : undefined, fy: isNum(im.fy) && pct1(im.fy) !== 50 ? pct1(im.fy) : undefined,
+    fz: isNum(im.fz) && Math.round(im.fz) > 100 ? Math.round(clamp(im.fz, 100, 400)) : undefined,
+    cap: typeof im.cap === 'string' && im.cap.trim() ? im.cap.slice(0, 300) : undefined
+  }) || {});
+}
+function normStroke(x) {
+  const w = x && typeof x === 'object' ? strokeW(x.w) : undefined;
+  return w ? compact({ w, c: hexIn(x.c) }) : undefined;
 }
 function normPad(p) {
   if (!p || typeof p !== 'object') return undefined;
@@ -1454,6 +1655,7 @@ function normSlot(s) {
   { const pad = normPad(s.pad); if (pad) s.pad = pad; else delete s.pad; }
   { const a = normAction(s.action); if (a) s.action = a; else delete s.action; }
   { const f = normFiles(s.files); if (f) s.files = f; else delete s.files; }
+  { const st = normStroke(s.stroke); if (st) s.stroke = st; else delete s.stroke; }
   if (s.type === 'image') { const f = normFrame(s.frame); if (f) s.frame = f; else delete s.frame; }
   if (s.type === 'svg') {
     if (!RATIOS.some(r => r[0] === s.ratio)) s.ratio = '16/9';
@@ -1463,12 +1665,20 @@ function normSlot(s) {
   }
   if (s.type === 'color' && s.ratio !== undefined && !RATIOS.some(r => r[0] === s.ratio && r[0] !== 'auto')) s.ratio = '1/1';
   if (s.type === 'text') {
-    s.blocks = (s.blocks || []).map(normBlock);
-    if (!s.blocks.length) s.blocks = [mkBlock('jakarta', 18, 400, 150, 0)];
+    s.blocks = (s.blocks || []).filter(b => b && typeof b === 'object').map(b => b.kind === 'div' ? normDivider(b) : normBlock(b));
+    if (!s.blocks.some(isText)) s.blocks.push(mkBlock('jakarta', 18, 400, 150, 0));
+    tidyGroups(s);
+    if (isNum(s.gap)) s.gap = Math.round(clamp(s.gap, 0, 400)); else delete s.gap;
     s.bg = s.bg && s.bg.kind ? s.bg : { kind: 'none' };
     s.align = s.align || 'start'; s.ink = s.ink || 'auto';
   }
-  if (s.type === 'carousel') { s.images = s.images || []; if (!isNum(s.pace)) s.pace = 5; if (typeof s.autoplay !== 'boolean') s.autoplay = true; }
+  if (s.type === 'carousel') {
+    s.images = (s.images || []).filter(im => im && typeof im.id === 'string' && im.id).map(normCarImage);
+    if (!isNum(s.pace)) s.pace = 5; if (typeof s.autoplay !== 'boolean') s.autoplay = true;
+    if (s.mode !== 'strip') delete s.mode;
+    { const g = pxIn(s.sgap, 0, 400); if (g !== undefined) s.sgap = g; else delete s.sgap; }
+    if (!['center', 'end'].includes(s.sal)) delete s.sal;
+  }
   if (s.anim) s.anim = normAnim(s.anim, 'mod'); else delete s.anim;
   return s;
 }
@@ -1482,13 +1692,26 @@ function normRow(r) {
     else r.overlay = null;
   }
   if (!isNum(r.h)) r.h = null;
+  /* Width of the block (% of the content column) and its alignment there; in a half row, the share of the left module */
+  if (r.layout !== 'fullscreen' && isNum(r.w) && r.w < 100) r.w = Math.round(clamp(r.w, 20, 100)); else delete r.w;
+  if (r.layout === 'fullscreen' || !['c', 'r'].includes(r.wa)) delete r.wa;
+  if (r.layout === 'half' && isNum(r.split) && Math.round(r.split) !== 50) r.split = Math.round(clamp(r.split, 20, 80)); else delete r.split;
   if (r.anim) r.anim = normAnim(r.anim, 'row'); else delete r.anim;
   return r;
+}
+/* The design width each module of a row is drawn at (--ref): its text and sizes scale against it, so a narrower block or
+   module keeps its type size instead of shrinking with it */
+function rowRefs(row) {
+  if (row.layout === 'fullscreen') return [1114];
+  const base = 1114 * (row.w || 100) / 100;
+  if (row.layout !== 'half') return [base];
+  const inner = base - 20, sp = (row.split || 50) / 100;
+  return [inner * sp, inner * (1 - sp)];
 }
 function normTree(t) {
   t = t || {};
   t.categories = Array.isArray(t.categories) ? t.categories : [];
-  t.categories.forEach(c => { if (!Array.isArray(c.subs)) c.subs = []; });
+  t.categories.forEach(c => { if (!Array.isArray(c.subs)) c.subs = []; if (c.locked !== true) delete c.locked; });
   t.menu = t.menu && t.menu.bg ? t.menu : { bg: { kind: 'color', color: BRAND } };
   t.logo = t.logo || null;
   t.animStyles = (Array.isArray(t.animStyles) ? t.animStyles : []).filter(x => x && x.id && (x.kind === 'mod' || x.kind === 'text'))
@@ -1553,6 +1776,7 @@ const S = {
   started: false, user: null, peers: [], importing: false,
   view: ROOT.dataset.view === 'home' ? 'home' : 'cat' /* 'home' (the opening globe) or 'cat' (a category page); set by the head script */
 };
+S.boxOpen = ls.get('box') === '1'; /* the container section of a text block, folded by default */
 const B = { db: null, assets: null, user: null };
 let lenis = null;
 
@@ -1716,7 +1940,10 @@ function supabaseBackend(sb, cfg) {
       leave() { sb.removeChannel(ch); }
     };
   }
-  return { db, assets, auth, presence, assetUrl: publicUrl };
+  /* Reads every watched document again: what the database lets this visitor read changed (signing in or out shows or
+     hides the pages of locked categories) */
+  function refetch() { watch.forEach((_, path) => refresh(path)); }
+  return { db, assets, auth, presence, refetch, assetUrl: publicUrl };
 }
 
 const assetUrl = (id) => S.backend === 'local' ? (Local.urls.get(id) || '') : S.backend === 'supabase' ? Cloud.assetUrl(id) : '/_blob/' + id;
@@ -1854,6 +2081,10 @@ const currentCat = () => cats().find(c => c.id === S.cat) || null;
 const catOf = (subId) => cats().find(c => c.subs.some(s => s.id === subId)) || null;
 const subById = (id) => { for (const c of cats()) { const s = c.subs.find(x => x.id === id); if (s) return s; } return null; };
 const inCurrent = (subId) => { const c = currentCat(); return !!(c && c.subs.some(s => s.id === subId)); };
+/* A locked category (c.locked) is open in admin mode only. Viewers see its name in the menu, dimmed and with a lock, and
+   cannot enter it; the database also keeps its pages from anyone who is not an editor (see catalog_locked_categories). */
+const catOpen = (c) => !!c && (!c.locked || S.mode === 'admin');
+const openCats = () => cats().filter(catOpen);
 const typeStyles = () => (S.tree && S.tree.textStyles) || [];
 const typeStyleById = (id) => typeStyles().find(x => x.id === id) || null;
 const palColors = () => (S.tree && S.tree.palette) || [];
@@ -1873,13 +2104,14 @@ function mutateTree(fn) {
 /* ================= Theme ================= */
 function themeInk() { return ROOT.dataset.scheme === 'dark' ? 'light' : 'dark'; }
 function setScheme(next, persist = true) {
-  if (persist) ls.set('scheme', next);
+  if (persist) { try { sessionStorage.setItem('bc.scheme', next); } catch {} }
   if (ROOT.dataset.scheme === next) return;
   const apply = () => { ROOT.dataset.scheme = next; Ink.run(); if (S.overlay === 'menu') renderMenuBottom(); };
   if (!RM && document.startViewTransition && persist) { try { document.startViewTransition(apply); return; } catch {} }
   apply();
 }
-/* The page starts light (head script) and only the theme switch changes it: the OS and host themes are not followed. */
+/* Every visit starts light (head script) and only the theme switch changes it, for that visit: the OS and host themes
+   are not followed. */
 
 /* ================= Boot ================= */
 async function boot() {
@@ -1967,7 +2199,12 @@ async function setUser(session, why) {
   if (u) { try { can = await Cloud.auth.canEdit(); } catch {} }
   const was = S.canEdit;
   S.canEdit = can;
-  if (S.started && can !== was) applyMode(can ? (ls.get('mode') === 'viewer' ? 'viewer' : 'admin') : 'viewer');
+  if (S.started && can !== was) {
+    /* Sections read under the other rights may be missing (or showing) locked pages: read them again */
+    S.pages.forEach((_, id) => { if (!S.subsc.has(id)) S.pages.delete(id); });
+    Cloud.refetch();
+    applyMode(can ? (ls.get('mode') === 'viewer' ? 'viewer' : 'admin') : 'viewer');
+  }
   if (u && u.id !== prev && why === 'signin') toast(can ? `Hola, ${firstName(S.user.name)}. Ya puedes editar el catálogo.` : `La cuenta ${u.email} no tiene permiso de edición.`);
   if (!u && prev) toast('Cerraste sesión.');
   syncPresence();
@@ -2005,12 +2242,14 @@ function renderPeers() { updateRailState(); refreshRowTools(); }
 function onTree() {
   renderLogos();
   { const sig = JSON.stringify(animStyles()); if (sig !== Motion.stSig) { const first = Motion.stSig == null; Motion.stSig = sig; if (!first) Motion.resetAll(); } }
-  if (!currentCat()) {
+  const cur = currentCat();
+  if (cur && !catOpen(cur)) { closedCategory(cur); }
+  else if (!cur) {
     const hashSub = decodeURIComponent((location.hash || '').slice(1));
     const hc = hashSub && catOf(hashSub);
     const last = ls.get('cat');
-    const pick = (hc && hc.id) || (last && cats().some(c => c.id === last) ? last : null) || (cats()[0] && cats()[0].id) || null;
-    openCategory(pick, { to: hc ? hashSub : null, instant: true });
+    const pick = (catOpen(hc) && hc.id) || (last && catOpen(cats().find(c => c.id === last)) ? last : null) || (openCats()[0] && openCats()[0].id) || null;
+    openCategory(pick, { to: catOpen(hc) ? hashSub : null, instant: true });
   } else {
     syncSubscriptions(); renderRail(); renderStage();
   }
@@ -2020,6 +2259,13 @@ function onTree() {
      re-checked (it shows as modified, or loses a link to a removed style) before the panel renders it again */
   { const sig = JSON.stringify(typeStyles()); if (sig !== LOOK.ts) { LOOK.ts = sig; if (S.edit) { syncTypeLinks(S.edit.draft); renderInspector(); } } }
   renderPalPop();
+}
+
+/* The category on screen was locked by an editor, or the view switched to Viewer inside a locked one: the page moves
+   to the first category a viewer can open (Home has no category, so it stays as it is) */
+function closedCategory(c) {
+  openCategory(null, { instant: true });
+  if (S.view === 'cat') toast(`«${c.name}» está en preparación`);
 }
 
 /* ================= Mode ================= */
@@ -2033,6 +2279,7 @@ function applyMode(m, animate = true) {
     closePop(true);
     renderAll();
     if (S.overlay === 'menu') renderMenu();
+    const c = currentCat(); if (c && !catOpen(c)) closedCategory(c);
   };
   if (m === 'viewer' && animate && !RM) {
     const els = $$('.admin-only').filter(el => el.getClientRects().length && !el.closest('.ov'));
@@ -2082,7 +2329,7 @@ function renderRail() {
   const cat = currentCat();
   if (!cat) { nav.innerHTML = `<p class="rail-empty" data-adapt="rail">${S.mode === 'admin' ? 'Crea una categoría desde el menú.' : ''}</p>`; Ink.schedule(); return; }
   const inl = S.inline;
-  let html = `<h2 class="rail-title" data-adapt="rail">${esc(cat.name)}</h2><ul class="subs">`;
+  let html = `<h2 class="rail-title" data-adapt="rail"><button type="button" class="rail-cat" data-action="cat-menu" aria-haspopup="menu" aria-expanded="false" title="Ver todas las categorías"><span class="rail-cat-t">${esc(cat.name)}</span>${cat.locked ? lockMark('rail-lock') : ''}${icon('down', 'rail-chev')}</button></h2><ul class="subs">`;
   cat.subs.forEach(s => {
     const ren = inl && inl.kind === 'rename-sub' && inl.id === s.id;
     html += `<li class="sub-item${S.justAdded.has(s.id) ? ' is-new' : ''}" data-adapt="rail" data-sub="${s.id}">${ren ? inlineInput(s.name, 'Nombre de la subcategoría') :
@@ -2192,7 +2439,9 @@ function whenLoaded(cat) {
 }
 function openCategory(catId, { to = null, row = null, instant = false } = {}) {
   closePop(true);
-  const cat = cats().find(c => c.id === catId) || cats()[0] || null;
+  let cat = cats().find(c => c.id === catId) || null;
+  if (!catOpen(cat)) cat = openCats()[0] || null; /* a viewer never lands in a locked category */
+  if (to && !(cat && cat.subs.some(s => s.id === to))) to = null;
   const changed = !cat || S.cat !== cat.id;
   S.cat = cat ? cat.id : null;
   if (cat) ls.set('cat', cat.id);
@@ -2428,12 +2677,15 @@ function buildRow(item, sig, subId) {
   if (row.layout === 'fullscreen') el.append(buildFs(row, editing));
   else {
     const g = document.createElement('div'); g.className = 'row-grid';
-    const ref = row.layout === 'half' ? 547 : 1114;
-    row.slots.forEach(s => g.append(editing ? buildSlotEdit(s, row, ref) : buildSlotView(s, ref)));
+    const refs = rowRefs(row);
+    row.slots.forEach((s, i) => { const ref = Math.round(refs[i] ?? refs[0]); g.append(editing ? buildSlotEdit(s, row, ref) : buildSlotView(s, ref)); });
     el.append(g);
+    applyRowW(row, el);
   }
   if (editing) {
     el.insertAdjacentHTML('beforeend', `<div class="rz" data-rz title="Arrastra para cambiar el alto. Doble clic para volver a automático."><i></i><span class="rz-val"></span></div>`);
+    if (row.layout !== 'fullscreen') el.insertAdjacentHTML('beforeend', `<div class="rzw" data-rzw title="Arrastra para cambiar el ancho del bloque. Doble clic para volver al 100 %."><i></i><span class="rz-val"></span></div>`);
+    if (row.layout === 'half') el.insertAdjacentHTML('beforeend', `<div class="rzs" data-rzs title="Arrastra para repartir el ancho entre los dos módulos. Doble clic: mitad y mitad."><i></i><span class="rz-val"></span></div>`);
     const a = activeSlotId(); const s = el.querySelector(`[data-slot="${a}"]`); if (s) s.classList.add('is-active-slot');
   } else {
     const t = document.createElement('div'); t.className = 'row-tools admin-only'; t.setAttribute('role', 'toolbar'); t.setAttribute('aria-label', 'Acciones del bloque');
@@ -2457,6 +2709,33 @@ function applyBlockStyle(el, b) {
   if (b.color) el.dataset.color = b.color; else delete el.dataset.color;
   el.dataset.align = b.align;
   el.classList.toggle('is-copy', b.size <= 28);
+  paintBox(el, b.box);
+}
+const setVar = (el, k, v) => { if (v === undefined || v === null || v === '') el.style.removeProperty(k); else el.style.setProperty(k, v); };
+/* The container of a text block or a group (see normBox), as data attributes and custom properties the CSS reads */
+function paintBox(el, box) {
+  const b = box || {};
+  el.dataset.bw = isNum(b.w) ? 'fix' : b.w === 'hug' ? 'hug' : 'fill';
+  if (isNum(b.h)) el.dataset.bh = 'fix'; else delete el.dataset.bh;
+  setVar(el, '--bw', isNum(b.w) ? b.w : null); setVar(el, '--bh', b.h);
+  setVar(el, '--bf', b.fill); el.classList.toggle('has-fill', !!b.fill);
+  setVar(el, '--bsw', b.sw); setVar(el, '--bsc', b.sc); el.classList.toggle('has-bst', !!b.sw);
+  setVar(el, '--br', b.r); el.classList.toggle('has-r', !!b.r);
+  setVar(el, '--bpx', b.px); setVar(el, '--bpy', b.py); el.classList.toggle('has-pad', !!(b.px || b.py));
+}
+/* The stroke of a module (slot.stroke), drawn over its content so images and colors keep it */
+function paintStroke(el, s) {
+  const st = s && s.stroke;
+  el.classList.toggle('has-stroke', !!st); setVar(el, '--stw', st ? st.w : null); setVar(el, '--stc', st && st.c);
+}
+function paintDivider(el, d) {
+  setVar(el, '--dt', d.t); setVar(el, '--dc', d.c); setVar(el, '--dl', isNum(d.len) ? d.len : null); setVar(el, '--dm', d.m);
+  if (isNum(d.len)) el.dataset.len = 'fix'; else delete el.dataset.len;
+}
+function paintGroup(el, g) {
+  el.dataset.dir = g.dir; el.dataset.al = g.al; el.dataset.ju = g.ju;
+  if (g.wrap) el.dataset.wrap = ''; else delete el.dataset.wrap;
+  setVar(el, '--gg', g.gap); paintBox(el, g.box);
 }
 /* Inner spacing as custom properties: only the sides that were set, in design px scaled by `unit` (--k scales with
    the module like its text, --u with the screen like the block height). The CSS keeps the automatic value otherwise. */
@@ -2478,6 +2757,8 @@ function paintTextSlot(el, s, overlay) {
   ['none', 'surface', 'color'].forEach(k => el.classList.toggle('bg-' + k, kind === k));
   ['start', 'center', 'end', 'spread'].forEach(a => el.classList.toggle('align-' + a, (s.align || 'start') === a));
   if (kind === 'color') el.style.setProperty('--slot-bg', s.bg.color); else el.style.removeProperty('--slot-bg');
+  setVar(el, '--tg', isNum(s.gap) ? s.gap : null); el.classList.toggle('has-gap', isNum(s.gap));
+  paintStroke(el, s);
   const a = textInk(s, overlay);
   if (a.adapt) { el.dataset.adapt = a.adapt; }
   else { delete el.dataset.adapt; delete el.dataset.photo; if (a.ink) el.dataset.ink = a.ink; else delete el.dataset.ink; }
@@ -2494,22 +2775,48 @@ function textShell(s, ref, overlay) {
 }
 function buildTextView(s, ref, overlay) {
   const { el, w } = textShell(s, ref, overlay);
-  (s.blocks || []).filter(b => b.text && b.text.trim()).forEach(b => { const t = document.createElement(tagFor(b.size)); t.className = 'tb'; t.dataset.block = b.id; applyBlockStyle(t, b); t.textContent = b.text; w.append(t); });
+  fillItems(s, w, false);
+  return el;
+}
+/* The items of a text module, each run of a group inside its own auto-layout box. A viewer does not get empty texts
+   (nor a group left with nothing in it). */
+function fillItems(s, w, editing) {
+  const groups = s.groups || {}, act = editing ? activeItemOf(s) : null, on = (id) => !!act && act.id === id;
+  let gid = null, host = w;
+  (s.blocks || []).forEach(b => {
+    const txt = isText(b);
+    if (!editing && txt && !(b.text && b.text.trim())) return;
+    if (b.g && groups[b.g]) {
+      if (b.g !== gid) { gid = b.g; host = groupEl(s, gid, groups[gid], editing, on(gid)); w.append(host); }
+    } else { gid = null; host = w; }
+    host.append(txt ? (editing ? textEditEl(s, b, on(b.id)) : textViewEl(b)) : dividerEl(s, b, editing, on(b.id)));
+  });
+}
+function textViewEl(b) { const t = document.createElement(tagFor(b.size)); t.className = 'tb lx'; t.dataset.block = b.id; applyBlockStyle(t, b); t.textContent = b.text; return t; }
+function textEditEl(s, b, on) {
+  const t = document.createElement('div');
+  t.className = 'tb lx' + (on ? ' is-active' : '') + (S.newBlock === b.id ? ' is-new' : '');
+  applyBlockStyle(t, b);
+  t.contentEditable = CE; t.spellcheck = true;
+  t.setAttribute('role', 'textbox'); t.setAttribute('aria-multiline', 'true'); t.setAttribute('aria-label', 'Bloque de texto');
+  t.dataset.slot = s.id; t.dataset.block = b.id; t.dataset.focusKey = 'b:' + b.id; t.dataset.placeholder = placeholderFor(b);
+  t.textContent = b.text;
+  return t;
+}
+function dividerEl(s, d, editing, on) {
+  const el = document.createElement('div'); el.className = 'tdiv lx' + (on ? ' is-sel' : '') + (S.newBlock === d.id ? ' is-new' : '');
+  el.setAttribute('role', 'separator'); el.dataset.item = d.id; paintDivider(el, d);
+  if (editing) { el.dataset.slot = s.id; el.tabIndex = 0; el.setAttribute('aria-label', 'Divisor'); el.dataset.focusKey = 'd:' + d.id; }
+  return el;
+}
+function groupEl(s, gid, g, editing, on) {
+  const el = document.createElement('div'); el.className = 'tgroup lx' + (on ? ' is-sel' : ''); el.dataset.group = gid; paintGroup(el, g);
+  if (editing) el.dataset.slot = s.id;
   return el;
 }
 function buildTextEdit(s, ref, overlay) {
   const { el, pad, w } = textShell(s, ref, overlay);
-  const ab = activeBlockOf(s);
-  s.blocks.forEach(b => {
-    const t = document.createElement('div');
-    t.className = 'tb' + (ab && ab.id === b.id ? ' is-active' : '') + (S.newBlock === b.id ? ' is-new' : '');
-    applyBlockStyle(t, b);
-    t.contentEditable = CE; t.spellcheck = true;
-    t.setAttribute('role', 'textbox'); t.setAttribute('aria-multiline', 'true'); t.setAttribute('aria-label', 'Bloque de texto');
-    t.dataset.slot = s.id; t.dataset.block = b.id; t.dataset.focusKey = 'b:' + b.id; t.dataset.placeholder = placeholderFor(b);
-    t.textContent = b.text;
-    w.append(t);
-  });
+  fillItems(s, w, true);
   pad.insertAdjacentHTML('beforeend', `<button type="button" class="ed-add-block" data-action="add-block" data-slot="${s.id}">${icon('plus')}Añadir bloque de texto</button>`);
   if (S.animSlot === s.id) el.classList.add('is-swapped');
   return el;
@@ -2521,10 +2828,11 @@ function buildSlotView(s, ref) {
   if (s.type === 'text') el = buildTextView(s, ref, false);
   else if (s.type === 'image') el = buildImage(s);
   else if (s.type === 'video') el = buildVideo(s);
-  else if (s.type === 'carousel') { el = document.createElement('div'); el.className = 'slot slot-carousel'; el.dataset.slot = s.id; el.append(buildCarousel(s, false)); }
+  else if (s.type === 'carousel') { el = document.createElement('div'); el.className = 'slot slot-carousel' + (s.mode === 'strip' ? ' is-strip' : ''); el.dataset.slot = s.id; el.append(buildCarousel(s, false)); }
   else if (s.type === 'svg') el = buildSvg(s, ref);
   else if (s.type === 'color') el = buildColor(s);
   else { el = document.createElement('div'); el.className = 'slot'; return el; }
+  if (s.type !== 'text') paintStroke(el, s);
   return decorateAct(el, s);
 }
 function mediaFrame(s, tag) {
@@ -2658,7 +2966,7 @@ function copyValue(s) {
   const a = s.action || {};
   if (a.value && a.value.trim()) return a.value.trim();
   if (s.type === 'color') return String(s.color || BRAND).toUpperCase();
-  if (s.type === 'text') return (s.blocks || []).map(b => (b.text || '').trim()).filter(Boolean).join('\n');
+  if (s.type === 'text') return textBlocks(s).map(b => (b.text || '').trim()).filter(Boolean).join('\n');
   return '';
 }
 /* The action a module offers right now, or null (no action, or nothing to copy, show or download) */
@@ -2688,7 +2996,7 @@ function buildFs(row, editing) {
   const m = row.slots[0];
   fs.append(editing ? buildFsMediaEdit(m) : decorateAct(buildFsMedia(m), m));
   const ov = row.overlay;
-  if (ov && ov.slot && (editing || (ov.slot.blocks || []).some(b => b.text.trim()))) {
+  if (ov && ov.slot && (editing || textBlocks(ov.slot).some(b => (b.text || '').trim()))) {
     const o = document.createElement('div'); o.className = 'fs-overlay'; o.dataset.pos = ov.pos; o.dataset.w = ov.width;
     padVars(o, ov.slot.pad, '--ov-p', '--u');
     o.append(editing ? buildTextEdit(ov.slot, OW_REF[ov.width], true) : decorateAct(buildTextView(ov.slot, OW_REF[ov.width], true), ov.slot));
@@ -2726,6 +3034,7 @@ const CIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es
 document.addEventListener('visibilitychange', () => $$('.carousel').forEach(r => { const c = CAR.get(r); c && c.syncAuto(); }));
 
 function buildCarousel(s, editing) {
+  if (s.mode === 'strip') return buildStrip(s, editing);
   const imgs = s.images || [];
   const root = document.createElement('div');
   root.className = 'carousel'; root.tabIndex = 0;
@@ -2836,6 +3145,145 @@ class Carousel {
     if (Math.abs(this.wheelAcc) > 40) { this.go(this.i + (this.wheelAcc > 0 ? 1 : -1)); this.wheelAcc = 0; this.wheelLock = now + 450; }
   }
 }
+
+/* ---------- Strip: images of any size side by side ---------- */
+/* Each image keeps the box its editor gave it (see normCarImage); they line up at the top (or center, or bottom) and the
+   strip scrolls sideways: trackpad and touch natively, a mouse by dragging (with a little inertia), and the arrows. */
+const STRIP_H = 480;
+function stripSize(im) {
+  const h = isNum(im.bh) ? im.bh : STRIP_H, r = im.w && im.h ? im.w / im.h : .8;
+  return { w: isNum(im.bw) ? im.bw : Math.round((isNum(im.bh) ? im.bh : STRIP_H) * r), h };
+}
+function paintStripItem(fig, im) {
+  const z = stripSize(im);
+  fig.style.setProperty('--iw', z.w); fig.style.setProperty('--ih', z.h);
+  setVar(fig, '--fx', im.fx); setVar(fig, '--fy', im.fy); setVar(fig, '--fz', isNum(im.fz) ? im.fz / 100 : null);
+  let cap = $(':scope > .cs-cap', fig);
+  if (im.cap) { if (!cap) { cap = document.createElement('figcaption'); cap.className = 'cs-cap'; fig.append(cap); } if (cap.textContent !== im.cap) cap.textContent = im.cap; }
+  else if (cap) cap.remove();
+}
+const carSel = (s) => { const e = S.edit, i = e && e.car ? e.car[s.id] : null; return isNum(i) && s.images && i < s.images.length ? i : -1; };
+function buildStrip(s, editing) {
+  const imgs = s.images || [], sel = editing ? carSel(s) : -1;
+  const root = document.createElement('div');
+  root.className = 'carousel is-strip'; root.tabIndex = 0;
+  root.setAttribute('role', 'region'); root.setAttribute('aria-roledescription', 'carrusel'); root.setAttribute('aria-label', `Tira de ${imgs.length} imágenes`);
+  if (s.sal) root.dataset.sal = s.sal;
+  setVar(root, '--sg', s.sgap);
+  root.innerHTML = `<div class="car-strip" data-lenis-prevent-horizontal>${imgs.map((im, i) => `<figure class="cs-item${i === sel ? ' is-sel' : ''}" data-i="${i}"${editing ? ` data-action="cs-item" data-slot="${s.id}"` : ''} role="group" aria-roledescription="imagen" aria-label="${i + 1} de ${imgs.length}"><div class="cs-frame"><img src="${esc(assetUrl(im.id))}" alt="" draggable="false" decoding="async"${XO()}${i > 2 ? ' loading="lazy"' : ''}></div>${i === sel ? '<span class="cs-rz" data-csrz title="Arrastra para cambiar el tamaño (Shift mantiene la proporción)"></span>' : ''}</figure>`).join('')}</div>
+    ${imgs.length > 1 ? `<button type="button" class="car-arrow prev" aria-label="Anterior">${icon('left')}</button><button type="button" class="car-arrow next" aria-label="Siguiente">${icon('right')}</button>` : ''}`;
+  $$('.cs-item', root).forEach((f, i) => paintStripItem(f, imgs[i]));
+  $$('img', root).forEach(watchMedia);
+  const c = new Strip(root);
+  CAR.set(root, c); CRO && CRO.observe(root);
+  return root;
+}
+class Strip {
+  constructor(root) {
+    this.root = root; this.sc = $('.car-strip', root); this.player = null; this.dragT = 0; this.drag = null;
+    this.prev = $('.car-arrow.prev', root); this.next = $('.car-arrow.next', root);
+    this.prev && this.prev.addEventListener('click', () => this.page(-1));
+    this.next && this.next.addEventListener('click', () => this.page(1));
+    this.sc.addEventListener('scroll', () => { this.sync(); Ink.schedule(); }, { passive: true });
+    this.sc.addEventListener('pointerdown', (e) => this.down(e));
+    this.sc.addEventListener('pointermove', (e) => this.move(e));
+    this.sc.addEventListener('pointerup', (e) => this.up(e));
+    this.sc.addEventListener('pointercancel', (e) => this.up(e));
+    root.addEventListener('keydown', (e) => { if (e.target !== root) return; if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); this.page(e.key === 'ArrowRight' ? 1 : -1); } });
+    requestAnimationFrame(() => this.sync());
+  }
+  layout() { this.sync(); }
+  syncAuto() {}
+  sync() {
+    const sc = this.sc, max = sc.scrollWidth - sc.clientWidth;
+    if (this.prev) this.prev.disabled = sc.scrollLeft <= 2;
+    if (this.next) this.next.disabled = sc.scrollLeft >= max - 2;
+  }
+  page(dir) { this.sc.scrollBy({ left: dir * this.sc.clientWidth * .8, behavior: RM ? 'auto' : 'smooth' }); }
+  reveal(i) { const f = $$('.cs-item', this.sc)[i]; if (!f) return; const a = this.sc.getBoundingClientRect(), b = f.getBoundingClientRect(); if (b.left < a.left || b.right > a.right) this.sc.scrollBy({ left: b.left < a.left ? b.left - a.left - 8 : b.right - a.right + 8, behavior: RM ? 'auto' : 'smooth' }); }
+  currentImg() { const r = this.sc.getBoundingClientRect(); return $$('.cs-item img', this.sc).find(im => im.getBoundingClientRect().right > r.left + 8) || null; }
+  down(e) {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || (e.target.closest && e.target.closest('[data-csrz], .cs-item.is-sel .cs-frame'))) return;
+    this.drag = { id: e.pointerId, x0: e.clientX, s0: this.sc.scrollLeft, active: false, hist: [{ x: e.clientX, t: e.timeStamp }] };
+  }
+  move(e) {
+    const d = this.drag; if (!d || e.pointerId !== d.id) return;
+    const dx = e.clientX - d.x0;
+    if (!d.active) { if (Math.abs(dx) < 6) return; d.active = true; try { this.sc.setPointerCapture(e.pointerId); } catch {} this.root.classList.add('is-dragging'); }
+    this.sc.scrollLeft = d.s0 - dx;
+    d.hist.push({ x: e.clientX, t: e.timeStamp }); while (d.hist.length > 2 && e.timeStamp - d.hist[0].t > 100) d.hist.shift();
+  }
+  up(e) {
+    const d = this.drag; if (!d || e.pointerId !== d.id) return;
+    this.drag = null; if (!d.active) return;
+    this.dragT = performance.now(); this.root.classList.remove('is-dragging');
+    const a = d.hist[0], b = d.hist[d.hist.length - 1], v = (b.x - a.x) / Math.max(1, b.t - a.t) * 1000;
+    if (!RM && Math.abs(v) > 60) this.sc.scrollTo({ left: this.sc.scrollLeft - project(v, .996), behavior: 'smooth' });
+  }
+}
+/* Editing the strip: a click picks an image; the picked one is framed by dragging it, and resized by its corner */
+let csd = null;
+const slotScale = (el) => Math.min(1, el.clientWidth / (parseFloat(el.style.getPropertyValue('--ref')) || 1114)) || 1;
+const stripFig = (slotId, i) => { const el = slotEl(slotId); return el ? $$('.cs-item', el)[i] || null : null; };
+function selectCarItem(s, i) {
+  const e = S.edit; if (!e || !s) return;
+  e.car = { ...(e.car || {}), [s.id]: i };
+  if (e.slot !== s.id) setActiveSlot(s.id);
+  const el = slotEl(s.id), car = el && $('.carousel', el), c = car && CAR.get(car);
+  if (s.mode === 'strip' && el) {
+    $$('.cs-item', el).forEach(f => { const on = +f.dataset.i === i; f.classList.toggle('is-sel', on); const h = $(':scope > [data-csrz]', f); if (on && !h) f.insertAdjacentHTML('beforeend', '<span class="cs-rz" data-csrz title="Arrastra para cambiar el tamaño (Shift mantiene la proporción)"></span>'); if (!on && h) h.remove(); });
+    c && c.reveal && c.reveal(i);
+  } else if (c && c.go) c.go(i);
+  $$(`.thumbs[data-slot="${s.id}"] .thumb[data-index]`).forEach(t => t.classList.toggle('is-sel', +t.dataset.index === i));
+  renderInspector();
+}
+function csDown(ev) {
+  if (!S.edit || ev.button !== 0 || !ev.target.closest) return;
+  const rzh = ev.target.closest('#stage .row.is-editing [data-csrz]'), fr = !rzh && ev.target.closest('#stage .row.is-editing .cs-item.is-sel .cs-frame');
+  if (!rzh && !fr) return;
+  const fig = (rzh || fr).closest('.cs-item'), node = fig.closest('.slot'), s = node && findSlot(S.edit.draft, node.dataset.slot), i = +fig.dataset.i, im = s && s.images[i];
+  if (!im) return;
+  ev.preventDefault(); ev.stopPropagation();
+  blurPanel(); record(null);
+  const z = stripSize(im);
+  csd = { kind: rzh ? 'size' : 'pan', fig, s, i, id: ev.pointerId, x0: ev.clientX, y0: ev.clientY, k: slotScale(node), w0: z.w, h0: z.h, fx: isNum(im.fx) ? im.fx : 50, fy: isNum(im.fy) ? im.fy : 50 };
+  try { (rzh || fr).setPointerCapture(ev.pointerId); } catch {}
+  fig.classList.add(rzh ? 'is-sizing' : 'is-panning');
+}
+function csMove(ev) {
+  const d = csd; if (!d || ev.pointerId !== d.id) return;
+  const im = d.s.images[d.i]; if (!im) return;
+  if (d.kind === 'size') {
+    const dx = (ev.clientX - d.x0) / d.k, dy = (ev.clientY - d.y0) / d.k;
+    let w = d.w0 + dx, h = d.h0 + dy;
+    if (ev.shiftKey) { const r = d.w0 / d.h0; if (Math.abs(dx) > Math.abs(dy)) h = w / r; else w = h * r; }
+    im.bw = Math.round(clamp(w, 40, 4000)); im.bh = Math.round(clamp(h, 40, 4000));
+  } else {
+    const fr = $('.cs-frame', d.fig).getBoundingClientRect(), img = $('img', d.fig);
+    const nw = (img && img.naturalWidth) || im.w || fr.width, nh = (img && img.naturalHeight) || im.h || fr.height;
+    const kk = Math.max(fr.width / nw, fr.height / nh) * (isNum(im.fz) ? im.fz / 100 : 1), cw = nw * kk, ch = nh * kk;
+    if (Math.abs(fr.width - cw) > .5) im.fx = pct1(d.fx + (ev.clientX - d.x0) / (fr.width - cw) * 100);
+    if (Math.abs(fr.height - ch) > .5) im.fy = pct1(d.fy + (ev.clientY - d.y0) / (fr.height - ch) * 100);
+  }
+  paintStripItem(d.fig, im); paintStripUi(im);
+}
+function csUp(ev) {
+  const d = csd; if (!d || ev.pointerId !== d.id) return;
+  csd = null; d.fig.classList.remove('is-sizing', 'is-panning');
+  const car = d.fig.closest('.carousel'), c = car && CAR.get(car); c && c.layout();
+  Ink.schedule();
+}
+function paintStripUi(im) {
+  const z = stripSize(im);
+  setFieldValue('ciw', z.w); setFieldValue('cih', z.h); setFieldValue('cfx', isNum(im.fx) ? im.fx : 50); setFieldValue('cfy', isNum(im.fy) ? im.fy : 50);
+  const r = $('#insp select[data-f="ciratio"]'); if (r) r.value = stripRatio(im);
+  setPressed('cpos', framePos({ x: isNum(im.fx) ? im.fx : 50, y: isNum(im.fy) ? im.fy : 50 }));
+  const zi = $('#insp input[data-f="cfz"]'); if (zi && document.activeElement !== zi) zi.value = im.fz || 100;
+  const o = $('#cfz-out'); if (o) o.textContent = (im.fz || 100) + '%';
+}
+const CS_RATIOS = [['orig', 'Original'], ['1/1', '1:1'], ['4/5', '4:5'], ['3/4', '3:4'], ['2/3', '2:3'], ['9/16', '9:16'], ['16/9', '16:9'], ['3/2', '3:2'], ['4/3', '4:3']];
+const ratioOf = (k, im) => k === 'orig' ? (im.w && im.h ? im.w / im.h : null) : (([a, b]) => a / b)(k.split('/').map(Number));
+function stripRatio(im) { const z = stripSize(im), r = z.w / z.h; const hit = CS_RATIOS.find(([k]) => { const v = ratioOf(k, im); return v && Math.abs(v - r) / v < .01; }); return hit ? hit[0] : ''; }
 
 /* Step player: dots that stretch into a filling bar; the bar eases to the next dot and the dots it crossed ripple. */
 const SP = { DOT: 8, BAR: 36, GAP: 8, MOVE: 520, LEAD: 60, RISE: 300, AMP: .34, LAND: .3, STAG: 55, REACH: 8 };
@@ -2952,6 +3400,7 @@ function buildSlotEdit(s, row, ref) {
   else if (s.type === 'carousel') el = buildCarouselEdit(s);
   else if (s.type === 'color') el = buildColor(s);
   else el = buildPicker(s, ROW_TYPES, false);
+  if (s.type) paintStroke(el, s);
   if (S.animSlot === s.id) el.classList.add('is-swapped');
   return el;
 }
@@ -2983,14 +3432,15 @@ function buildMediaEdit(s, ref) {
 }
 function buildCarouselEdit(s) {
   if (!s.images || !s.images.length) return buildDropzone(s);
-  const el = document.createElement('div'); el.className = 'slot slot-carousel is-edit'; el.dataset.drop = s.id; el.dataset.slot = s.id;
+  const el = document.createElement('div'); el.className = 'slot slot-carousel is-edit' + (s.mode === 'strip' ? ' is-strip' : ''); el.dataset.drop = s.id; el.dataset.slot = s.id;
   el.append(buildCarousel(s, true));
   const strip = document.createElement('div'); strip.className = 'thumbs'; strip.dataset.slot = s.id; strip.setAttribute('role', 'list');
   const up = S.uploading.get(s.id);
-  strip.innerHTML = s.images.map((im, i) => `<div class="thumb" tabindex="0" data-index="${i}" role="listitem" aria-label="Imagen ${i + 1}. Arrastra o usa Alt y las flechas para reordenar."><img src="${esc(assetUrl(im.id))}" alt="" draggable="false"><span class="thumb-n">${i + 1}</span><button type="button" class="thumb-x" data-action="thumb-remove" data-slot="${s.id}" data-index="${i}" aria-label="Quitar imagen ${i + 1}">${icon('x')}</button></div>`).join('')
+  const csel = carSel(s);
+  strip.innerHTML = s.images.map((im, i) => `<div class="thumb${i === csel ? ' is-sel' : ''}" tabindex="0" data-index="${i}" role="listitem" aria-label="Imagen ${i + 1}. Arrastra o usa Alt y las flechas para reordenar."><img src="${esc(assetUrl(im.id))}" alt="" draggable="false"><span class="thumb-n">${i + 1}</span><button type="button" class="thumb-x" data-action="thumb-remove" data-slot="${s.id}" data-index="${i}" aria-label="Quitar imagen ${i + 1}">${icon('x')}</button></div>`).join('')
     + (up ? Array.from({ length: up.count || 1 }, () => `<div class="thumb is-pending"><span class="spinner"></span></div>`).join('') : '')
     + `<label class="thumb thumb-add" title="Añadir imágenes">${icon('plus')}<span class="sr-only">Añadir imágenes</span><input type="file" class="sr-only" data-upload="${s.id}" accept="${ACCEPT.carousel}" multiple></label>`;
-  const hint = document.createElement('p'); hint.className = 'thumb-hint'; hint.textContent = 'Arrastra las miniaturas para cambiar el orden.';
+  const hint = document.createElement('p'); hint.className = 'thumb-hint'; hint.textContent = s.mode === 'strip' ? 'Toca una imagen para ajustarla. Arrastra las miniaturas para cambiar el orden.' : 'Arrastra las miniaturas para cambiar el orden.';
   el.append(strip, hint);
   return el;
 }
@@ -3002,7 +3452,16 @@ function findSlot(row, id) { return allSlots(row).find(s => s.id === id) || null
 function activeSlotId() { const e = S.edit; if (!e) return null; const s = findSlot(e.draft, e.slot); return s ? s.id : (e.draft.slots[0] && e.draft.slots[0].id); }
 function activeSlot() { const e = S.edit; return e ? findSlot(e.draft, activeSlotId()) : null; }
 function isOverlaySlot(s) { const r = editRow(); return !!(r && r.overlay && r.overlay.slot && r.overlay.slot.id === s.id); }
-function activeBlockOf(s) { const e = S.edit; const id = e && e.blocks && e.blocks[s.id]; return (s.blocks || []).find(b => b.id === id) || (s.blocks || [])[0] || null; }
+/* The selected item of a text module (e.blocks[slot id]): a text block, a divider or a group; the first text by default */
+function activeItemOf(s) {
+  const e = S.edit, id = e && e.blocks && e.blocks[s.id];
+  if (id && s.groups && s.groups[id]) return { kind: 'group', id, g: s.groups[id] };
+  const b = id && (s.blocks || []).find(x => x.id === id);
+  if (b) return { kind: isText(b) ? 'text' : 'div', id: b.id, b };
+  const t = textBlocks(s)[0]; return t ? { kind: 'text', id: t.id, b: t } : null;
+}
+/* The text block the typography and the text animation refer to: the selected one, else the first */
+function activeBlockOf(s) { const a = activeItemOf(s); return a && a.kind === 'text' ? a.b : textBlocks(s)[0] || null; }
 function activeBlock() { const s = activeSlot(); return s && s.type === 'text' ? activeBlockOf(s) : null; }
 
 function newSlot() { return { id: uid('m'), type: null }; }
@@ -3064,7 +3523,7 @@ function record(kind) {
 function restoreEdit(sn) {
   const e = S.edit;
   const a = document.activeElement; const fb = a && a.dataset && a.dataset.block;
-  e.draft = sn.draft; e.slot = sn.slot; e.blocks = sn.blocks; e.lastKind = null;
+  e.draft = sn.draft; e.slot = sn.slot; e.blocks = sn.blocks; e.lastKind = null; e.range = null;
   syncTypeLinks(e.draft); S.typeStyleUi = null;
   if (fb && allSlots(e.draft).some(s => s.type === 'text' && s.blocks.some(b => b.id === fb))) S.focusKey = 'b:' + fb;
   bump();
@@ -3123,9 +3582,10 @@ function invalidHint(r) {
 }
 function cleanRow(r) {
   const c = clone(r);
-  const tidy = (s) => { if (s && s.type === 'text') s.blocks = s.blocks.filter(b => b.text && b.text.trim()).map(b => ({ ...b, text: b.text.replace(/\n+$/, '') })); };
+  /* Empty texts go; dividers stay; a group left empty goes with them */
+  const tidy = (s) => { if (s && s.type === 'text') { s.blocks = s.blocks.filter(b => !isText(b) || (b.text && b.text.trim())).map(b => isText(b) ? { ...b, text: b.text.replace(/\n+$/, '') } : b); tidyGroups(s); } };
   c.slots.forEach(tidy);
-  if (c.overlay) { tidy(c.overlay.slot); if (!c.overlay.slot.blocks.length) c.overlay = null; }
+  if (c.overlay) { tidy(c.overlay.slot); if (!textBlocks(c.overlay.slot).length) c.overlay = null; }
   return c;
 }
 function syncTextFromDom() { Motion.idle(); const e = S.edit; if (!e) return; allSlots(e.draft).forEach(s => { if (s.type === 'text') $$(`.tb[data-slot="${s.id}"]`).forEach(el => { const b = s.blocks.find(x => x.id === el.dataset.block); if (b) b.text = readText(el); }); }); }
@@ -3230,7 +3690,11 @@ const rowEl = (id) => $(`#stage .row[data-id="${id}"]`);
 /* A copy gets its own ids everywhere (block, modules, text blocks); content, settings and style links stay the same. */
 function freshIds(row) {
   row.id = uid('r');
-  allSlots(row).forEach(s => { s.id = uid('m'); (s.blocks || []).forEach(b => { b.id = uid('b'); }); });
+  allSlots(row).forEach(s => {
+    s.id = uid('m');
+    (s.blocks || []).forEach(b => { b.id = uid(isText(b) ? 'b' : 'd'); });
+    if (s.groups) { const map = {}; Object.keys(s.groups).forEach(g => { map[g] = uid('g'); }); s.groups = Object.fromEntries(Object.entries(s.groups).map(([g, v]) => [map[g], v])); (s.blocks || []).forEach(b => { if (b.g) b.g = map[b.g]; }); }
+  });
   return row;
 }
 function dupRow(subId, id) {
@@ -3494,6 +3958,95 @@ function padNow(k) {
   return Math.round(parseFloat(getComputedStyle(box)['padding' + side]) / scale);
 }
 
+/* ---------- Items of a text module: selection, adding, grouping, order ---------- */
+/* Size of the selected item (a text block, a divider or a group) in design px of its module */
+function measureItem(s, dim) {
+  const sl = s && slotEl(s.id), a = s && s.type === 'text' ? activeItemOf(s) : null; if (!sl || !a) return 0;
+  const n = a.kind === 'group' ? $(`.tgroup[data-group="${a.id}"]`, sl) : a.kind === 'div' ? $(`.tdiv[data-item="${a.id}"]`, sl) : $(`.tb[data-block="${a.id}"]`, sl);
+  const ref = parseFloat(sl.style.getPropertyValue('--ref')) || 1114, k = Math.min(1, sl.clientWidth / ref) || 1;
+  return n ? n.getBoundingClientRect()[dim] / k : 0;
+}
+/* Draws the items of a module again after a change of their containers, groups or dividers (its box stays) */
+function refreshItems(s) {
+  const el = slotEl(s.id), w = el && $(':scope > .tpad > .tblocks', el); if (!w) return;
+  syncTextFromDom();
+  const f = document.activeElement, keep = f && w.contains(f) ? f.dataset.focusKey : null;
+  w.innerHTML = ''; fillItems(s, w, true);
+  if (keep) { const n = $(`[data-focus-key="${keep}"]`, w); n && n.focus({ preventScroll: true }); }
+  paintItemSel(); Ink.schedule();
+}
+function paintItemSel() {
+  const e = S.edit; if (!e) return;
+  allSlots(e.draft).forEach(s => {
+    if (s.type !== 'text') return;
+    const box = slotEl(s.id); if (!box) return;
+    const a = activeItemOf(s), range = e.range && e.range.slot === s.id && e.range.ids.length > 1 ? e.range.ids : [];
+    $$('.tb[data-block]', box).forEach(n => { n.classList.toggle('is-active', n.dataset.block === a.id); n.classList.toggle('is-range', range.includes(n.dataset.block)); });
+    $$('.tdiv[data-item]', box).forEach(n => { n.classList.toggle('is-sel', n.dataset.item === a.id); n.classList.toggle('is-range', range.includes(n.dataset.item)); });
+    $$('.tgroup[data-group]', box).forEach(n => n.classList.toggle('is-sel', n.dataset.group === a.id));
+  });
+}
+function selectItem(s, id, force = false) {
+  const e = S.edit; if (!e || !s) return;
+  if (e.blocks[s.id] === id && e.slot === s.id && !force) { paintItemSel(); return; }
+  e.blocks[s.id] = id; S.typeStyleUi = null;
+  if (e.slot !== s.id) setActiveSlot(s.id);
+  paintItemSel(); renderInspector();
+}
+/* A new item goes after the selected one, in its group; after a selected group, at its end */
+function insertItem(s, item) {
+  const a = activeItemOf(s), L = s.blocks;
+  let at = L.length;
+  if (a && a.kind === 'group') { at = L.map(b => b.g).lastIndexOf(a.id) + 1; item.g = a.id; }
+  else if (a && a.b) { at = L.indexOf(a.b) + 1; if (a.b.g) item.g = a.b.g; else delete item.g; }
+  L.splice(at, 0, item);
+}
+/* Up / down. Inside a group an item moves among its neighbors; at the edge of its group it steps out of it, and an item
+   next to a group steps into it. A group moves as a whole, over the item or group next to it. */
+function moveItemIn(s, dir) {
+  const a = activeItemOf(s), L = s.blocks; if (!a) return false;
+  if (a.kind === 'group') {
+    const first = L.findIndex(b => b.g === a.id), last = L.map(b => b.g).lastIndexOf(a.id);
+    if (dir < 0 ? first <= 0 : last >= L.length - 1) return false;
+    const run = L.splice(first, last - first + 1);
+    if (dir < 0) { let at = first - 1; const nb = L[at]; if (nb.g) while (at > 0 && L[at - 1].g === nb.g) at--; L.splice(at, 0, ...run); }
+    else { let at = first; const nb = L[at]; if (nb.g) while (at < L.length - 1 && L[at + 1].g === nb.g) at++; L.splice(at + 1, 0, ...run); }
+    return true;
+  }
+  const b = a.b, i = L.indexOf(b), j = i + dir, nb = L[j];
+  if (b.g) { if (nb && nb.g === b.g) { L[i] = nb; L[j] = b; } else delete b.g; return true; }
+  if (!nb) return false;
+  if (nb.g) b.g = nb.g; else { L[i] = nb; L[j] = b; }
+  return true;
+}
+/* Deletes the selected item (a group with what it holds); a module always keeps one text */
+function deleteItemIn(s) {
+  const e = S.edit, a = activeItemOf(s); if (!e || !a) return false;
+  const gone = a.kind === 'group' ? s.blocks.filter(b => b.g === a.id) : [a.b];
+  if (textBlocks(s).length - gone.filter(isText).length < 1) return false;
+  syncTextFromDom(); record(null);
+  const i = s.blocks.indexOf(gone[0]);
+  s.blocks = s.blocks.filter(b => !gone.includes(b)); tidyGroups(s);
+  const nb = s.blocks[Math.max(0, i - 1)] || s.blocks[0];
+  e.blocks[s.id] = nb ? nb.id : null; e.range = null;
+  return true;
+}
+/* Width of a block and the split of a half row, live while editing (and when a row is built) */
+function applyRowW(row, el = editRowEl()) {
+  if (!el || row.layout === 'fullscreen') return;
+  el.classList.toggle('has-w', !!row.w);
+  setVar(el, '--rw', row.w ? row.w / 100 : null); setVar(el, '--ra', { c: .5, r: 1 }[row.wa]);
+  setVar(el, '--sp', row.layout === 'half' ? (row.split || 50) / 100 : null);
+  el.dataset.wa = row.wa || 'l';
+  const g = $(':scope > .row-grid', el);
+  if (g) {
+    setVar(g, '--gtc', row.layout === 'half' && row.split ? `minmax(0,${row.split}fr) minmax(0,${100 - row.split}fr)` : null);
+    const refs = rowRefs(row); $$(':scope > .slot', g).forEach((n, i) => n.style.setProperty('--ref', +(refs[i] ?? refs[0]).toFixed(2)));
+  }
+  $$('.carousel', el).forEach(r => { const c = CAR.get(r); c && c.layout(); });
+  if (S.edit) { ghostSoon(); Ink.schedule(); }
+}
+
 /* ---------- Image framing: live updates and the "Encuadrar" mode ---------- */
 function setFrame(s, f) {
   const n = normFrame(f); if (n) s.frame = n; else delete s.frame;
@@ -3650,14 +4203,14 @@ const INSP_VIEWS = [
 ];
 const inspViewOf = (v) => INSP_VIEWS.find(x => x.v === v) || INSP_VIEWS[0];
 const DESIGN_SECTIONS = {
-  text: [secTypography, secTextColor, secTextBlocks, secTextModule, secPadding],
+  text: [secItemMain, secTextColor, secItemBox, secLayers, secTextModule, secPadding],
   image: [secMediaFile, secContainer, secImageFrame, secFsDim],
   video: [secMediaFile, secContainer, secFsDim],
-  carousel: [secCarouselImages, secCarouselPlay, secContainer],
+  carousel: [secCarouselImages, secCarouselPlay, secStripItem, secContainer],
   color: [secFsColor, secContainer],
   svg: [secSvgFile, secContainer, secPadding, secSvgPlace, secSvgDownload]
 };
-const ROW_SECTIONS = [secOverlayAdd, secHeight];
+const ROW_SECTIONS = [secOverlayAdd, secWidth, secHeight];
 const inspCtx = (row, slot) => ({ row, slot, fs: row.layout === 'fullscreen', half: row.layout === 'half', overlay: !!slot && isOverlaySlot(slot) });
 function designView(c) {
   const head = !c.slot || !c.slot.type
@@ -3725,8 +4278,8 @@ function updateFoot() { const f = $('#insp-foot'); if (f && S.edit) f.innerHTML 
 /* Text: the selected text block (typography with its linked style, color), the list of blocks, the module box and its
    inner spacing */
 function secTypography(c) {
-  const s = c.slot, b = activeBlockOf(s), i = s.blocks.indexOf(b);
-  return `<div class="insp-sec"><h4>Tipografía<span>Bloque ${i + 1} de ${s.blocks.length}</span></h4>
+  const s = c.slot, b = activeBlockOf(s), tb = textBlocks(s), i = tb.indexOf(b);
+  return `<div class="insp-sec"><h4>Tipografía<span>Texto ${i + 1} de ${tb.length}</span></h4>
       ${typeStyleRow(b)}
       ${segc('font', [['jakarta', 'Plus Jakarta'], ['phudu', 'Phudu']], b.font, 'Familia tipográfica')}
       <div class="grid2">${fld('weight', 'weight', b.weight, '', { dd: true, title: 'Peso' })}${fld('size', 'size', b.size, 'px', { dd: true, title: 'Tamaño' })}</div>
@@ -3737,6 +4290,7 @@ function secTypography(c) {
 const palSwatch = (k, p, on) => `<button type="button" class="swatch sw-pal" data-action="seg" data-k="${k}" data-v="${esc(p.id)}" aria-pressed="${on}" style="--c:${esc(p.hex)}" title="${esc(p.name)} · ${p.hex.toUpperCase()}" aria-label="${esc(p.name)}"><i></i></button>`;
 const palPopOpen = () => !!(S.pop && S.pop.data && S.pop.data.kind === 'palette');
 function secTextColor(c) {
+  if (activeItemOf(c.slot).kind !== 'text') return '';
   const b = activeBlockOf(c.slot), cur = b.color && palById(b.color) ? b.color : 'auto';
   return `<div class="insp-sec"><h4>Color del texto</h4><div class="swatches" role="group" aria-label="Color del texto">
       <button type="button" class="swatch sw-auto" data-action="seg" data-k="tcolor" data-v="auto" aria-pressed="${cur === 'auto'}" title="Automático: claro u oscuro, según el tono del módulo" aria-label="Automático"><i></i></button>
@@ -3744,14 +4298,101 @@ function secTextColor(c) {
       <button type="button" class="swatch sw-add" data-action="pal-open" aria-haspopup="dialog" aria-expanded="${palPopOpen()}" title="Añadir un color a la paleta" aria-label="Paleta de colores">${icon('plus')}</button>
     </div></div>`;
 }
-function secTextBlocks(c) {
-  const s = c.slot, i = s.blocks.indexOf(activeBlockOf(s));
-  return `<div class="insp-sec"><h4>Bloques de texto</h4><div class="insp-row">
-      <button type="button" class="btn ghost sm grow" data-action="add-block" data-slot="${s.id}">${icon('plus')}Añadir bloque</button>
-      <button type="button" class="icon-btn" data-action="block-up" data-slot="${s.id}" aria-label="Subir bloque de texto"${i <= 0 ? ' disabled' : ''}>${icon('up')}</button>
-      <button type="button" class="icon-btn" data-action="block-down" data-slot="${s.id}" aria-label="Bajar bloque de texto"${i >= s.blocks.length - 1 ? ' disabled' : ''}>${icon('dn')}</button>
-      <button type="button" class="icon-btn danger" data-action="block-delete" data-slot="${s.id}" aria-label="Eliminar bloque de texto"${s.blocks.length < 2 ? ' disabled' : ''}>${icon('trash')}</button>
-    </div></div>`;
+/* The selected item of a text module decides the first section: typography for a text, the line for a divider, the
+   auto layout for a group */
+function secItemMain(c) {
+  const a = activeItemOf(c.slot);
+  return a.kind === 'div' ? secDivider(c, a.b) : a.kind === 'group' ? secGroup(c, a.id, a.g) : secTypography(c);
+}
+/* Color swatches for a property that stores a hex (or nothing): the "none" swatch (no color, or automatic), the palette
+   and any other color. The palette swatches carry the hex itself, so they show as chosen whenever the color matches. */
+function colorRow(k, cur, { none = 'Sin color', cls = 'sw-none', label = 'Color' } = {}) {
+  const hit = cur ? palByHex(cur) : null, custom = !!cur && !hit;
+  return `<div class="swatches" role="group" aria-label="${esc(label)}">
+      <button type="button" class="swatch ${cls}" data-action="seg" data-k="${k}" data-v="" aria-pressed="${!cur}" title="${esc(none)}" aria-label="${esc(none)}"><i></i></button>
+      ${palColors().map(p => `<button type="button" class="swatch sw-pal" data-action="seg" data-k="${k}" data-v="${esc(p.hex)}" aria-pressed="${!!hit && hit.id === p.id}" style="--c:${esc(p.hex)}" title="${esc(p.name)} · ${p.hex.toUpperCase()}" aria-label="${esc(p.name)}"><i></i></button>`).join('')}
+      <label class="swatch sw-color${custom ? ' is-set' : ''}" style="--c:${custom ? esc(cur) : 'transparent'}" aria-pressed="${custom}" title="Otro color"><i></i><input type="color" data-f="${k}" value="${esc(cur || BRAND)}" aria-label="Otro color"></label>
+    </div>`;
+}
+function paintColorRow(k, cur) {
+  const hit = cur ? palByHex(cur) : null, custom = !!cur && !hit;
+  $$(`#insp [data-action="seg"][data-k="${k}"]`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === '' ? !cur : !!hit && b.dataset.v === hit.hex)));
+  const inp = $(`#insp input[type="color"][data-f="${k}"]`), lab = inp && inp.closest('.sw-color');
+  if (lab) { lab.classList.toggle('is-set', custom); lab.style.setProperty('--c', custom ? cur : 'transparent'); lab.setAttribute('aria-pressed', String(custom)); }
+}
+/* Container of the selected text block or group: size, fill, stroke, corners and inner spacing */
+function boxOwner(s) { const a = s && s.type === 'text' ? activeItemOf(s) : null; return !a ? null : a.kind === 'group' ? a.g : a.kind === 'text' ? a.b : null; }
+function secItemBox(c) {
+  const a = activeItemOf(c.slot); if (a.kind === 'div') return '';
+  const own = a.kind === 'group' ? a.g : a.b, b = own.box || {}, open = a.kind === 'group' || !!S.boxOpen;
+  const title = a.kind === 'group' ? 'Contenedor del grupo' : 'Contenedor del texto';
+  const head = a.kind === 'group' ? `<h4>${title}<button type="button" class="h4-act" data-action="box-reset"${own.box ? '' : ' disabled'}>Restablecer</button></h4>`
+    : `<h4><button type="button" class="h4-fold" data-action="box-fold" aria-expanded="${open}">${title}${icon('down')}</button>${own.box ? `<button type="button" class="h4-act" data-action="box-reset">Restablecer</button>` : '<span>Ancho, alto, relleno, borde</span>'}</h4>`;
+  if (!open) return `<div class="insp-sec">${head}</div>`;
+  const w = b.w ?? 'fill', wfix = isNum(w), hfix = isNum(b.h);
+  return `<div class="insp-sec">${head}
+      <div class="insp-line"><span class="lbl">Ancho</span>${segc('ibw', [['fill', 'Llenar'], ['hug', 'Ajustar'], ['fix', 'Fijo']], wfix ? 'fix' : w, 'Ancho del contenedor')}</div>
+      ${wfix ? `<div class="insp-line"><span class="lbl"></span>${fld('ibwv', 'arrX', w, 'px', { title: 'Ancho fijo' })}</div>` : ''}
+      <div class="insp-line"><span class="lbl">Alto</span>${segc('ibh', [['auto', 'Auto'], ['fix', 'Fijo']], hfix ? 'fix' : 'auto', 'Alto del contenedor')}</div>
+      ${hfix ? `<div class="insp-line"><span class="lbl"></span>${fld('ibhv', 'arrY', b.h, 'px', { title: 'Alto fijo (mínimo: el contenido nunca se recorta)' })}</div>` : ''}
+      <div class="insp-line wrap"><span class="lbl">Relleno</span>${colorRow('ibfill', b.fill || '', { none: 'Sin relleno', label: 'Relleno' })}</div>
+      <div class="insp-line"><span class="lbl">Borde</span>${fld('ibsw', 'stroke', b.sw || '', 'px', { title: 'Grosor del borde', ph: 'Sin borde' })}</div>
+      ${b.sw ? `<div class="insp-line wrap"><span class="lbl">Color</span>${colorRow('ibsc', b.sc || '', { none: 'Automático: el color del texto', cls: 'sw-auto', label: 'Color del borde' })}</div>` : ''}
+      <div class="grid2">${fld('ibpx', 'padL', b.px || '', 'px', { title: 'Espaciado interno a los lados', ph: '0' })}${fld('ibpy', 'padT', b.py || '', 'px', { title: 'Espaciado interno arriba y abajo', ph: '0' })}</div>
+      <div class="grid2">${fld('ibr', 'radius', b.r || '', 'px', { title: 'Radio de las esquinas', ph: '0' })}</div>
+      ${hfix ? '<p class="insp-hint">El alto es un mínimo: si el contenido no entra, el contenedor crece.</p>' : ''}
+    </div>`;
+}
+function secDivider(c, d) {
+  return `<div class="insp-sec"><h4>Divisor<span>Una línea entre elementos</span></h4>
+      <div class="insp-line"><span class="lbl">Grosor</span>${fld('divt', 'stroke', d.t, 'px', { title: 'Grosor de la línea' })}</div>
+      <div class="insp-line wrap"><span class="lbl">Color</span>${colorRow('divc', d.c || '', { none: 'Automático: el color del texto, suave', cls: 'sw-auto', label: 'Color del divisor' })}</div>
+      <div class="insp-line"><span class="lbl">Largo</span>${segc('divl', [['fill', 'Llenar'], ['fix', 'Fijo']], isNum(d.len) ? 'fix' : 'fill', 'Largo del divisor')}</div>
+      ${isNum(d.len) ? `<div class="insp-line"><span class="lbl"></span>${fld('divlen', 'arrX', d.len, 'px', { title: 'Largo del divisor' })}</div>` : ''}
+      <div class="insp-line"><span class="lbl">Margen</span>${fld('divm', 'height', d.m || '', 'px', { title: 'Espacio extra a cada lado de la línea', ph: '0' })}</div>
+    </div>`;
+}
+function secGroup(c, id, g) {
+  const h = g.dir === 'h';
+  const al = h ? [['start', 'Arriba', 'vaT'], ['center', 'Centro', 'vaM'], ['end', 'Abajo', 'vaB'], ['stretch', 'Estirar', 'arrY']] : [['start', 'Izquierda', 'alL'], ['center', 'Centro', 'alC'], ['end', 'Derecha', 'alR'], ['stretch', 'Estirar', 'arrX']];
+  const ju = h ? [['start', 'Al inicio', 'alL'], ['center', 'Al centro', 'alC'], ['end', 'Al final', 'alR'], ['between', 'Repartido', 'jsH']] : [['start', 'Arriba', 'vaT'], ['center', 'Centro', 'vaM'], ['end', 'Abajo', 'vaB'], ['between', 'Repartido', 'vaS']];
+  return `<div class="insp-sec"><h4>Auto layout<span>Grupo</span></h4>
+      <div class="insp-line"><span class="lbl">Dirección</span>${segc('gdir', [['v', 'Vertical', 'dn'], ['h', 'Horizontal', 'arrR']], g.dir, 'Dirección del grupo')}</div>
+      <div class="insp-line"><span class="lbl">Espacio</span>${fld('igap', 'gap', g.gap ?? '', 'px', { title: 'Espacio entre los elementos del grupo', ph: '16' })}</div>
+      <div class="insp-line"><span class="lbl">Alinear</span>${segc('gal', al, g.al, 'Alineación de los elementos')}</div>
+      <div class="insp-line"><span class="lbl">Distribuir</span>${segc('gju', ju, g.ju, 'Distribución de los elementos')}</div>
+      ${h ? `<button type="button" class="insp-switch" role="switch" aria-checked="${!!g.wrap}" data-action="seg" data-k="gwrap" data-v="${!g.wrap}"><span>Pasar a otra línea si no entra</span><span class="tog" aria-hidden="true"></span></button>` : ''}
+      <p class="insp-hint">${h ? 'Los elementos van uno al lado del otro.' : 'Los elementos van uno debajo del otro.'} «Llenar» ocupa el espacio libre; «Ajustar» toma el tamaño del contenido.</p>
+    </div>`;
+}
+/* The items of the module as layers: select one (Shift selects a run to group), add, group, move and delete */
+const layerName = (b) => isText(b) ? blockName(b, 0) : 'Divisor';
+function secLayers(c) {
+  const s = c.slot, a = activeItemOf(s), groups = s.groups || {}, e = S.edit, range = e && e.range && e.range.slot === s.id ? e.range.ids : [];
+  let gid = null, h = '';
+  s.blocks.forEach(b => {
+    if (b.g && b.g !== gid) { const g = groups[b.g]; h += `<button type="button" data-action="layer" data-slot="${s.id}" data-id="${b.g}" aria-pressed="${a.id === b.g}"><span class="alist-i">${icon('group')}</span><span class="alist-t">Grupo</span><span class="alist-v">${g.dir === 'h' ? 'Horizontal' : 'Vertical'}</span></button>`; }
+    gid = b.g || null;
+    const meta = isText(b) ? `${b.font === 'phudu' ? 'Phudu' : 'Jakarta'} ${b.size}` : `${b.t} px`;
+    h += `<button type="button" class="${b.g ? 'is-in' : ''}${range.includes(b.id) ? ' is-range' : ''}" data-action="layer" data-slot="${s.id}" data-id="${b.id}" aria-pressed="${a.id === b.id}"><span class="alist-i">${icon(isText(b) ? 'text' : 'divider')}</span><span class="alist-t">${esc(layerName(b))}</span><span class="alist-v">${esc(meta)}</span></button>`;
+  });
+  const inGroup = a.kind === 'group' || !!(a.b && a.b.g);
+  const L = s.blocks, idx = a.kind === 'group' ? L.findIndex(b => b.g === a.id) : L.indexOf(a.b);
+  const lastIdx = a.kind === 'group' ? L.map(b => b.g).lastIndexOf(a.id) : idx;
+  const canUp = idx > 0 || (a.kind !== 'group' && !!(a.b && a.b.g));
+  const canDown = lastIdx < L.length - 1 || (a.kind !== 'group' && !!(a.b && a.b.g));
+  const texts = textBlocks(s).length, own = a.kind === 'group' ? L.filter(b => b.g === a.id && isText(b)).length : a.kind === 'text' ? 1 : 0;
+  const canGroup = !inGroup && (range.length ? range.every(id => { const b = L.find(x => x.id === id); return b && !b.g; }) : true);
+  return `<div class="insp-sec"><h4>Contenido<span>${L.length} ${L.length === 1 ? 'elemento' : 'elementos'}</span></h4>
+      <div class="alist layers" role="group" aria-label="Elementos del módulo">${h}</div>
+      <div class="insp-row"><button type="button" class="btn ghost sm grow" data-action="add-block" data-slot="${s.id}">${icon('plus')}Texto</button><button type="button" class="btn ghost sm grow" data-action="add-div" data-slot="${s.id}">${icon('plus')}Divisor</button>
+        ${inGroup ? `<button type="button" class="btn ghost sm grow" data-action="ungroup" data-slot="${s.id}">${icon('group')}Desagrupar</button>` : `<button type="button" class="btn ghost sm grow" data-action="group" data-slot="${s.id}"${canGroup ? '' : ' disabled'}>${icon('group')}Agrupar</button>`}</div>
+      <div class="insp-row layer-tools"><span class="insp-hint">Ordenar</span>
+        <button type="button" class="icon-btn" data-action="block-up" data-slot="${s.id}" aria-label="Subir"${canUp ? '' : ' disabled'}>${icon('up')}</button>
+        <button type="button" class="icon-btn" data-action="block-down" data-slot="${s.id}" aria-label="Bajar"${canDown ? '' : ' disabled'}>${icon('dn')}</button>
+        <button type="button" class="icon-btn danger" data-action="block-delete" data-slot="${s.id}" aria-label="${a.kind === 'group' ? 'Eliminar el grupo y su contenido' : 'Eliminar'}"${texts - own < 1 ? ' disabled' : ''}>${icon('trash')}</button></div>
+      <p class="insp-hint">${range.length > 1 ? `${range.length} elementos seleccionados: «Agrupar» los une en un auto layout.` : 'Shift + clic elige varios para agruparlos. Las flechas en el borde de un grupo sacan o suman un elemento.'}</p>
+    </div>`;
 }
 /* Background swatches: none, gray, the palette and any other color. The background stores the hex itself, so a
    palette swatch shows as chosen whenever the color matches it. */
@@ -3779,7 +4420,15 @@ function secTextModule(c) {
         <div class="insp-line"><span class="lbl">Ancho</span>${segc('ow', [['half', 'Mitad'], ['content', 'Columna'], ['screen', 'Pantalla']], row.overlay.width, 'Ancho del texto')}</div>
         <button type="button" class="btn ghost sm danger-text" data-action="ov-remove">${icon('trash')}Quitar texto encima</button>`
       : `<div class="insp-line"><span class="lbl">Distribución</span>${segc('valign', [['start', 'Arriba', 'vaT'], ['center', 'Centro', 'vaM'], ['end', 'Abajo', 'vaB'], ['spread', 'Repartido', 'vaS']], s.align || 'start', 'Distribución vertical')}</div>`}
+      <div class="insp-line"><span class="lbl">Espacio</span>${fld('tgap', 'gap', isNum(s.gap) ? s.gap : '', 'px', { title: 'Espacio entre los elementos del módulo', ph: 'Auto' })}</div>
+      ${strokeLines(s)}
     </div>`;
+}
+/* Stroke of a module (any type): width, and its color once there is one */
+function strokeLines(s) {
+  const st = s.stroke;
+  return `<div class="insp-line"><span class="lbl">Borde</span>${fld('mstw', 'stroke', st ? st.w : '', 'px', { title: 'Grosor del borde del módulo', ph: 'Sin borde' })}</div>
+      ${st ? `<div class="insp-line wrap"><span class="lbl">Color</span>${colorRow('msc', st.c || '', { none: 'Automático: el color del texto', cls: 'sw-auto', label: 'Color del borde' })}</div>` : ''}`;
 }
 const posLabel = (p) => ({ t: 'Arriba', m: 'Centro', b: 'Abajo' }[p[0]] + ' ' + ({ l: 'izquierda', c: 'centro', r: 'derecha' }[p[1]]));
 /* Inner spacing: four sides, linked by default while they are all equal. Empty is the automatic spacing. */
@@ -3810,6 +4459,7 @@ function secMediaFile(c) {
    block has one; SVG modules add their background, color swatches their label */
 function secContainer(c) {
   if (c.fs) return '';
+  if (c.slot.type === 'carousel' && c.slot.mode === 'strip') return `<div class="insp-sec"><h4>Contenedor</h4>${strokeLines(c.slot)}</div>`;
   const s = c.slot, t = s.type, opts = t === 'color' ? RATIOS.filter(r => r[0] !== 'auto') : RATIOS;
   const val = s.ratio || (t === 'color' ? '1/1' : t === 'svg' ? '16/9' : 'auto');
   return `<div class="insp-sec"><h4>Contenedor${t === 'image' ? '<span>El tamaño del recuadro</span>' : ''}</h4>
@@ -3817,6 +4467,7 @@ function secContainer(c) {
       ${c.row.h ? '<p class="insp-hint">El alto personalizado del bloque define el contenedor.</p>' : ''}
       ${t === 'svg' ? `<div class="insp-line wrap"><span class="lbl">Fondo</span>${bgSwatches(s.bg || { kind: 'surface' })}</div>` : ''}
       ${t === 'color' ? `<button type="button" class="insp-switch" role="switch" aria-checked="${s.label !== false}" data-action="seg" data-k="clabel" data-v="${s.label === false}"><span>Mostrar nombre y HEX</span><span class="tog" aria-hidden="true"></span></button>` : ''}
+      ${strokeLines(s)}
     </div>`;
 }
 /* Image inside its box: fit, scale and focal point, plus the on-canvas "Encuadrar" mode */
@@ -3875,12 +4526,32 @@ function secCarouselImages(c) {
   const s = c.slot;
   return `<div class="insp-sec"><h4>Carrusel<span>${s.images.length} ${s.images.length === 1 ? 'imagen' : 'imágenes'}</span></h4>
       <div class="insp-row"><label class="btn ghost sm grow">${icon('plus')}Añadir imágenes<input type="file" class="sr-only" data-upload="${s.id}" accept="${ACCEPT.carousel}" multiple></label></div>
-      <p class="insp-hint">Reordena arrastrando las miniaturas debajo del carrusel.</p></div>`;
+      <p class="insp-hint">Reordena arrastrando las miniaturas debajo del carrusel${s.mode === 'strip' ? '; tócalas para elegir una' : ''}.</p></div>`;
 }
+/* Format: slides (one image at a time, the width of the module) or a strip (images of any size side by side) */
 function secCarouselPlay(c) {
-  const s = c.slot;
-  return `<div class="insp-sec"><h4>Reproducción</h4>${segc('autoplay', [['true', 'Automática'], ['false', 'Manual']], String(s.autoplay !== false), 'Reproducción')}
-      ${fld('pace', 'clock', s.pace || 5, 's por imagen', { title: 'Duración de cada imagen' })}</div>`;
+  const s = c.slot, strip = s.mode === 'strip';
+  return `<div class="insp-sec"><h4>Formato</h4>${segc('cmode', [['slides', 'Diapositivas'], ['strip', 'Tira']], strip ? 'strip' : 'slides', 'Formato del carrusel')}
+      <p class="insp-hint">${strip ? 'Las imágenes van una al lado de la otra, cada una con su tamaño y su encuadre. Se recorren deslizando.' : 'Una imagen a la vez, del ancho del módulo.'}</p></div>`
+    + (strip ? `<div class="insp-sec"><h4>Tira</h4>
+      <div class="insp-line"><span class="lbl">Espacio</span>${fld('sgap', 'gap', s.sgap ?? '', 'px', { title: 'Espacio entre las imágenes', ph: '24' })}</div>
+      <div class="insp-line"><span class="lbl">Alinear</span>${segc('sal', [['start', 'Arriba', 'vaT'], ['center', 'Centro', 'vaM'], ['end', 'Abajo', 'vaB']], s.sal || 'start', 'Alineación de las imágenes')}</div></div>`
+    : `<div class="insp-sec"><h4>Reproducción</h4>${segc('autoplay', [['true', 'Automática'], ['false', 'Manual']], String(s.autoplay !== false), 'Reproducción')}
+      ${fld('pace', 'clock', s.pace || 5, 's por imagen', { title: 'Duración de cada imagen' })}</div>`);
+}
+/* The image picked in a strip: its size, framing and caption */
+function secStripItem(c) {
+  const s = c.slot; if (s.mode !== 'strip') return '';
+  const i = carSel(s), im = s.images[i];
+  if (!im) return `<div class="insp-sec"><h4>Imagen</h4><p class="insp-hint">Toca una imagen de la tira, o su miniatura, para ajustar su tamaño, su encuadre y el texto que va debajo.</p></div>`;
+  const z = stripSize(im), fx = isNum(im.fx) ? im.fx : 50, fy = isNum(im.fy) ? im.fy : 50, set = im.bw || im.bh || isNum(im.fx) || isNum(im.fy) || im.fz;
+  return `<div class="insp-sec"><h4>Imagen ${i + 1} de ${s.images.length}<button type="button" class="h4-act" data-action="cs-reset"${set ? '' : ' disabled'}>Restablecer</button></h4>
+      <div class="grid2">${fld('ciw', 'arrX', z.w, 'px', { title: 'Ancho de la imagen' })}${fld('cih', 'arrY', z.h, 'px', { title: 'Alto de la imagen' })}</div>
+      <div class="insp-line"><span class="lbl">Proporción</span>${selc('ciratio', [['', 'Libre'], ...CS_RATIOS.filter(([k]) => k !== 'orig' || (im.w && im.h))], stripRatio(im), 'Proporción de la imagen')}</div>
+      <div class="insp-line"><span class="lbl">Escala</span><div class="rng"><input type="range" min="100" max="400" step="1" data-f="cfz" value="${im.fz || 100}" aria-label="Escala de la imagen"><output id="cfz-out">${im.fz || 100}%</output></div></div>
+      <div class="insp-line top"><span class="lbl">Encuadre</span><div class="pos-row">${matrixHTML('cpos', framePos({ x: fx, y: fy }), 'Punto focal de la imagen')}<div class="pos-xy">${fld('cfx', 'arrX', fx, '%', { title: 'Posición horizontal' })}${fld('cfy', 'arrY', fy, '%', { title: 'Posición vertical' })}</div></div></div>
+      <div class="insp-line top"><span class="lbl">Texto</span><textarea id="f-ccap" class="txa sm" data-f="ccap" rows="2" maxlength="300" placeholder="Texto debajo de la imagen (opcional)" aria-label="Texto debajo de la imagen">${esc(im.cap || '')}</textarea></div>
+      <p class="insp-hint">En el bloque: arrastra la imagen para encuadrarla y su esquina para cambiar el tamaño (con Shift mantiene la proporción).</p></div>`;
 }
 /* Full-screen color: the palette, plus any other color by picker or hex */
 function secFsColor(c) {
@@ -3928,6 +4599,15 @@ function secOverlayAdd(c) {
 }
 /* The text over a full-screen background is not the block: its height is on the Fondo tab */
 function secHeight(c) { return c.overlay ? '' : inspHeight(c.row); }
+/* Width of the block in the content column, its alignment there and, in a half row, the share of each module */
+function secWidth(c) {
+  if (c.fs) return '';
+  const r = c.row;
+  return `<div class="insp-sec"><h4>Ancho del bloque<button type="button" class="h4-act" data-action="rw-reset"${r.w || r.wa || r.split ? '' : ' disabled'}>Restablecer</button></h4>
+      <div class="grid2">${fld('rw', 'arrX', r.w || '', '%', { title: 'Ancho del bloque, en % de la columna', ph: '100' })}${segc('rwa', [['l', 'Alinear a la izquierda', 'alL'], ['c', 'Centrar', 'alC'], ['r', 'Alinear a la derecha', 'alR']], r.wa || 'l', 'Alineación del bloque')}</div>
+      ${c.half ? `<div class="insp-line"><span class="lbl">División</span>${fld('rsplit', 'arrX', r.split || '', '% izq.', { title: 'Ancho del módulo izquierdo, en % del bloque', ph: '50' })}</div>` : ''}
+      <p class="insp-hint">También puedes arrastrar ${c.half ? 'el borde del bloque o la línea entre los dos módulos' : 'el borde del bloque'}. En el teléfono el bloque usa todo el ancho.</p></div>`;
+}
 
 /* ---------- Text styles: named typography shared by the whole catalog ---------- */
 /* Linking a text block copies the style's typography into it: the block always keeps concrete values, so it renders
@@ -4092,7 +4772,7 @@ function forEachTarget(fn, withStored = false) {
   const visit = (row, subId) => allSlots(row).forEach(s => {
     if (!s.type) return;
     if (fn({ kind: 'mod', item: s, type: s.type })) mark(subId, s.id);
-    if (s.type === 'text') (s.blocks || []).forEach(b => { if (fn({ kind: 'text', item: b, type: textRole(b) })) mark(subId, b.id); });
+    if (s.type === 'text') textBlocks(s).forEach(b => { if (fn({ kind: 'text', item: b, type: textRole(b) })) mark(subId, b.id); });
   });
   S.pages.forEach((rows, subId) => rows.forEach(r => { if (withStored || !(S.edit && S.edit.rowId === r.id)) visit(r, subId); }));
   if (S.edit) visit(S.edit.draft, null);
@@ -4272,10 +4952,10 @@ function inspAnimView(row, slot) {
       <div class="insp-line"><span class="lbl">Con scroll</span>${selAnim('mscroll', SCROLL, ANIM_KEYS.modScroll(t), ma.scroll, 'Animación del módulo con scroll')}</div>
       ${typed.length > 1 ? `<button type="button" class="btn ghost sm" data-action="anim-copy">${icon('swap')}Aplicar a los demás módulos</button>` : ''}</div>`;
   if (t === 'text') {
-    const b = activeBlockOf(slot), i = slot.blocks.indexOf(b), ta = txtAnim(b), P = ENTER[ta.enter];
-    const list = slot.blocks.map((x, k) => { const xa = txtAnim(x), l = animTag(xa, animLabel(xa)); return `<button type="button" data-action="anim-block" data-slot="${slot.id}" data-block="${x.id}" aria-pressed="${x === b}"><span class="alist-t">${esc(blockName(x, k))}</span><span class="alist-v${l ? ' is-on' : ''}">${esc(l || 'Sin animación')}</span></button>`; }).join('');
+    const tbs = textBlocks(slot), b = activeBlockOf(slot), i = tbs.indexOf(b), ta = txtAnim(b), P = ENTER[ta.enter];
+    const list = tbs.map((x, k) => { const xa = txtAnim(x), l = animTag(xa, animLabel(xa)); return `<button type="button" data-action="anim-block" data-slot="${slot.id}" data-block="${x.id}" aria-pressed="${x === b}"><span class="alist-t">${esc(blockName(x, k))}</span><span class="alist-v${l ? ' is-on' : ''}">${esc(l || 'Sin animación')}</span></button>`; }).join('');
     const reading = ta.scroll === 'split-read';
-    h += `<div class="insp-sec"><h4>Texto<span>Bloque ${i + 1} de ${slot.blocks.length}</span></h4>
+    h += `<div class="insp-sec"><h4>Texto<span>Texto ${i + 1} de ${tbs.length}</span></h4>
       <div class="alist" role="group" aria-label="Bloques de texto">${list}</div>
       <p class="insp-hint">Cada bloque de texto tiene su propia animación. Elige uno en la lista o tocándolo en el módulo.</p>
       ${styleRow('text', b)}
@@ -4291,7 +4971,7 @@ function inspAnimView(row, slot) {
       ${reading ? '<p class="insp-hint">Con la lectura palabra por palabra, la entrada solo puede ser de bloque entero.</p>' : ''}
       <div class="insp-row split-view"><button type="button" class="btn ghost sm" data-action="split-view" aria-pressed="${!!S.splitView}">${icon('text')}${S.splitView ? 'Ocultar división' : 'Ver división'}</button><span class="insp-hint" id="split-info"></span></div></div>`;
   }
-  const Q = seqAnim(row), texts = typed.some(s => s.type === 'text' && s.blocks.length > 1);
+  const Q = seqAnim(row), texts = typed.some(s => s.type === 'text' && textBlocks(s).length > 1);
   if (typed.length > 1 || texts) {
     h += `<div class="insp-sec"><h4>Secuencia<span>Bloque completo</span></h4>
       ${typed.length > 1 ? `<div class="insp-line"><span class="lbl">Entre módulos</span>${fld('rstag', 'stagger', Q.stagger, 's', { title: 'Espera entre módulos' })}</div>` : ''}
@@ -4487,6 +5167,36 @@ function onField(k, v) {
       setPressed('scrim', v); break;
     }
     case 'pace': if (slot && slot.type === 'carousel') slot.pace = v; break;
+    case 'cmode': {
+      if (!slot || slot.type !== 'carousel') return;
+      if (v === 'strip') slot.mode = 'strip'; else delete slot.mode;
+      bump(); break;
+    }
+    case 'sgap': case 'sal': {
+      if (!slot || slot.type !== 'carousel') return;
+      if (k === 'sgap') { if (v == null) delete slot.sgap; else slot.sgap = v; } else { if (v === 'center' || v === 'end') slot.sal = v; else delete slot.sal; setPressed('sal', v); }
+      const car = $('.carousel', slotEl(slot.id) || document.createElement('i'));
+      if (car) { setVar(car, '--sg', slot.sgap); if (slot.sal) car.dataset.sal = slot.sal; else delete car.dataset.sal; const c = CAR.get(car); c && c.layout(); }
+      break;
+    }
+    case 'ciw': case 'cih': case 'ciratio': case 'cfz': case 'cfx': case 'cfy': case 'cpos': case 'ccap': {
+      const i = slot && slot.type === 'carousel' ? carSel(slot) : -1, im = i >= 0 ? slot.images[i] : null; if (!im) return;
+      const z = stripSize(im);
+      if (k === 'ciw') { im.bw = v; im.bh = z.h; }
+      else if (k === 'cih') { im.bh = v; im.bw = z.w; }
+      else if (k === 'ciratio') { if (!v) return; const r = ratioOf(v, im); if (!r) return; im.bw = z.w; im.bh = Math.round(clamp(z.w / r, 40, 4000)); }
+      else if (k === 'cfz') { im.fz = v; const o = $('#cfz-out'); if (o) o.textContent = v + '%'; }
+      else if (k === 'cfx') im.fx = v;
+      else if (k === 'cfy') im.fy = v;
+      else if (k === 'cpos') { if (!POS9.includes(v)) return; im.fx = AXY[v[1]] * 100; im.fy = AXY[v[0]] * 100; }
+      else { const t = String(v).slice(0, 300); if (t.trim()) im.cap = t; else delete im.cap; }
+      const n = normCarImage(im); Object.keys(im).forEach(x => delete im[x]); Object.assign(im, n);
+      const f = stripFig(slot.id, i); if (f) paintStripItem(f, im);
+      if (k !== 'ccap') paintStripUi(im);
+      { const r = $('#insp [data-action="cs-reset"]'); if (r) r.disabled = !(im.bw || im.bh || isNum(im.fx) || isNum(im.fy) || im.fz); }
+      const car = f && f.closest('.carousel'), c = car && CAR.get(car); c && c.layout();
+      break;
+    }
     case 'autoplay': if (slot && slot.type === 'carousel') { slot.autoplay = v === 'true'; setPressed(k, v); } break;
     case 'hmode': {
       if (v === 'auto') row.h = null;
@@ -4527,9 +5237,87 @@ function onField(k, v) {
       break;
     }
     case 'rstag': case 'tstag': row.anim = normAnim({ ...seqAnim(row), [ANIM_FIELD[k]]: v }, 'row'); Motion.previewSoon(); break;
+    case 'ibw': case 'ibwv': case 'ibh': case 'ibhv': case 'ibfill': case 'ibsw': case 'ibsc': case 'ibr': case 'ibpx': case 'ibpy': {
+      const own = boxOwner(slot); if (!own) return;
+      const shape = (x) => x ? [isNum(x.w) ? 'f' : x.w || '', isNum(x.h), !!x.sw, 1].join() : '';
+      const was = shape(own.box), b = { ...(own.box || {}) };
+      if (k === 'ibw') { if (v === 'fix') b.w = Math.round(measureItem(slot, 'width')); else if (v === 'hug') b.w = 'hug'; else delete b.w; }
+      else if (k === 'ibwv') { if (v == null) delete b.w; else b.w = v; }
+      else if (k === 'ibh') { if (v === 'fix') b.h = Math.round(measureItem(slot, 'height')); else delete b.h; }
+      else if (k === 'ibhv') { if (v == null) delete b.h; else b.h = v; }
+      else if (k === 'ibfill') { if (v) b.fill = v; else delete b.fill; }
+      else if (k === 'ibsc') { if (v) { b.sc = v; if (!b.sw) b.sw = 1; } else delete b.sc; }
+      else { const f = { ibsw: 'sw', ibr: 'r', ibpx: 'px', ibpy: 'py' }[k]; if (!v) delete b[f]; else b[f] = v; }
+      const nb = normBox(b); if (nb) own.box = nb; else delete own.box;
+      refreshItems(slot);
+      if (shape(own.box) !== was) renderInspector();
+      else { if (k === 'ibfill' || k === 'ibsc') paintColorRow(k, v); if (k === 'ibw' || k === 'ibh') setPressed(k, v); }
+      break;
+    }
+    case 'divt': case 'divc': case 'divl': case 'divlen': case 'divm': {
+      const a = slot && slot.type === 'text' ? activeItemOf(slot) : null; if (!a || a.kind !== 'div') return;
+      const d = { ...a.b };
+      if (k === 'divt') d.t = v || 1;
+      else if (k === 'divc') { if (v) d.c = v; else delete d.c; }
+      else if (k === 'divl') { if (v === 'fix') d.len = Math.round(measureItem(slot, 'width')) || 200; else delete d.len; }
+      else if (k === 'divlen') { if (v == null) delete d.len; else d.len = v; }
+      else { if (v) d.m = v; else delete d.m; }
+      const n = normDivider(d); Object.keys(a.b).forEach(x => delete a.b[x]); Object.assign(a.b, n);
+      refreshItems(slot);
+      if (k === 'divl') renderInspector(); else if (k === 'divc') paintColorRow(k, v);
+      break;
+    }
+    case 'gdir': case 'igap': case 'gal': case 'gju': case 'gwrap': {
+      const a = slot && slot.type === 'text' ? activeItemOf(slot) : null; if (!a || a.kind !== 'group') return;
+      const g = { ...a.g };
+      if (k === 'gdir') g.dir = v; else if (k === 'gal') g.al = v; else if (k === 'gju') g.ju = v;
+      else if (k === 'igap') { if (v == null) delete g.gap; else g.gap = v; }
+      else { if (v === 'true' || v === true) g.wrap = true; else delete g.wrap; }
+      slot.groups[a.id] = normGroup(g);
+      refreshItems(slot);
+      if (k === 'gdir' || k === 'gwrap') renderInspector(); else if (k !== 'igap') setPressed(k, v);
+      break;
+    }
+    case 'tgap': {
+      if (!slot || slot.type !== 'text') return;
+      if (v == null) delete slot.gap; else slot.gap = v;
+      const n = slotEl(slot.id); n && paintTextSlot(n, slot, isOverlaySlot(slot));
+      break;
+    }
+    case 'mstw': case 'msc': {
+      if (!slot || !slot.type) return;
+      const had = !!slot.stroke, st = { ...(slot.stroke || {}) };
+      if (k === 'mstw') st.w = v || 0;
+      else { if (!st.w) st.w = 1; if (v) st.c = v; else delete st.c; }
+      const ns = normStroke(st); if (ns) slot.stroke = ns; else delete slot.stroke;
+      const n = slotEl(slot.id); n && paintStroke(n, slot);
+      if (had !== !!slot.stroke) renderInspector(); else if (k === 'msc') paintColorRow(k, v);
+      break;
+    }
+    case 'rw': case 'rwa': case 'rsplit': {
+      if (row.layout === 'fullscreen') return;
+      if (k === 'rw') { if (v == null || v >= 100) delete row.w; else row.w = v; }
+      else if (k === 'rwa') { if (v === 'c' || v === 'r') row.wa = v; else delete row.wa; setPressed('rwa', v); }
+      else { if (v == null || v === 50) delete row.split; else row.split = v; }
+      applyRowW(row);
+      const r = $('#insp [data-action="rw-reset"]'); if (r) r.disabled = !(row.w || row.wa || row.split);
+      break;
+    }
     case 'h': row.h = v || null; applyRowH(row); setPressed('hmode', row.h ? 'custom' : 'auto'); { const r = $('#insp select[data-f="ratio"]'); if (r) r.disabled = !!row.h; } break;
   }
   Ink.schedule();
+}
+/* What a field that may be empty stores right now (null: automatic or none) */
+function storedField(k) {
+  const s = activeSlot(), row = editRow(); if (!row) return null;
+  if (isPadKey(k)) { const p = s && s.pad; return p && isNum(p[k[1]]) ? p[k[1]] : null; }
+  const a = s && s.type === 'text' ? activeItemOf(s) : null, own = boxOwner(s), b = (own && own.box) || {};
+  const v = {
+    ibwv: isNum(b.w) ? b.w : null, ibhv: b.h, ibsw: b.sw, ibr: b.r, ibpx: b.px, ibpy: b.py,
+    igap: a && a.kind === 'group' ? a.g.gap : null, divlen: a && a.kind === 'div' ? a.b.len : null, divm: a && a.kind === 'div' ? a.b.m : null,
+    tgap: s && s.gap, mstw: s && s.stroke && s.stroke.w, rw: row.w, rsplit: row.split, sgap: s && s.sgap
+  }[k];
+  return isNum(v) ? v : null;
 }
 function parseField(k, raw) {
   const s = String(raw).replace(',', '.').trim(); if (s === '') return k === 'h' ? 0 : null;
@@ -4543,6 +5331,11 @@ function parseField(k, raw) {
 function fieldBase(k) {
   if (k === 'h') return Math.round((editRowEl() ? editRowEl().getBoundingClientRect().height : 480) / uScale());
   if (isPadKey(k)) return padNow(k);
+  if (k === 'rw') return 100;
+  if (k === 'rsplit') return 50;
+  if (k === 'igap') return 16;
+  if (k === 'ibwv' || k === 'divlen') return Math.round(measureItem(activeSlot(), 'width')) || FIELD[k].min;
+  if (k === 'ibhv') return Math.round(measureItem(activeSlot(), 'height')) || FIELD[k].min;
   return FIELD[k].min;
 }
 function stepField(input, dir, big) {
@@ -4689,12 +5482,13 @@ function thumbMove(e) {
 }
 function thumbUp(e) {
   const d = tdrag; if (!d || e.pointerId !== d.id) return;
-  tdrag = null; if (!d.active) return;
+  tdrag = null;
+  if (!d.active) { const s = S.edit && findSlot(S.edit.draft, d.strip.dataset.slot); if (s) selectCarItem(s, d.from); return; }
   d.th.style.transition = 'transform 200ms cubic-bezier(.23,1,.32,1)';
   d.th.style.transform = `translateX(${(d.to - d.from) * d.step}px) scale(1)`;
   setTimeout(() => {
     const s = S.edit && findSlot(S.edit.draft, d.strip.dataset.slot); if (!s) return;
-    if (d.to !== d.from) { record(null); const [m] = s.images.splice(d.from, 1); s.images.splice(d.to, 0, m); }
+    if (d.to !== d.from) { record(null); const [m] = s.images.splice(d.from, 1); s.images.splice(d.to, 0, m); if (carSel(s) === d.from) S.edit.car[s.id] = d.to; }
     bump();
   }, RM ? 0 : 200);
 }
@@ -4703,7 +5497,7 @@ function thumbUp(e) {
 let rz = null;
 function rzDown(e) {
   const h = e.target.closest('[data-rz]'); if (!h || !S.edit || e.button !== 0) return;
-  e.preventDefault();
+  e.preventDefault(); blurPanel();
   const rowEl = h.closest('.row'); const box = rowEl.dataset.layout === 'fullscreen' ? $('.fs', rowEl) : rowEl;
   rz = { el: rowEl, y0: e.clientY, h0: box.getBoundingClientRect().height, u: uScale(), id: e.pointerId, val: $('.rz-val', rowEl) };
   try { h.setPointerCapture(e.pointerId); } catch {}
@@ -4724,6 +5518,45 @@ function rzUp(e) {
   const row = editRow(); if (!row) return;
   setFieldValue('h', row.h || ''); setPressed('hmode', row.h ? 'custom' : 'auto');
   const r = $('#insp select[data-f="ratio"]'); if (r) r.disabled = !!row.h;
+  Ink.schedule();
+}
+
+/* ---------- Width and split handles ---------- */
+/* The side handle sets the width of the block in its column (from the side opposite to its alignment, or both sides when
+   it is centered); the handle between two halves sets the share of each one. Whole %, one undo step per drag. */
+let rzw = null;
+/* A drag on the block takes the focus off the panel, so its fields can show the values being dragged */
+function blurPanel() { const a = document.activeElement; if (a && a.closest && a.closest('#insp')) a.blur(); }
+function rzwDown(e) {
+  const h = e.target.closest && e.target.closest('[data-rzw],[data-rzs]'); if (!h || !S.edit || e.button !== 0) return;
+  e.preventDefault();
+  blurPanel();
+  const el = h.closest('.row'), row = S.edit.draft, r = el.getBoundingClientRect();
+  record(null);
+  if (h.hasAttribute('data-rzs')) rzw = { kind: 'split', el, g: $(':scope > .row-grid', el).getBoundingClientRect(), id: e.pointerId, val: $('.rz-val', h) };
+  else { const f = (row.w || 100) / 100, ra = { c: .5, r: 1 }[row.wa] || 0, colW = r.width / f; rzw = { kind: 'w', el, colW, colL: r.left - (colW - r.width) * ra, ra, id: e.pointerId, val: $('.rz-val', h) }; }
+  try { h.setPointerCapture(e.pointerId); } catch {}
+  el.classList.add('is-resizing-w');
+  rzwLabel(row);
+}
+const rzwLabel = (row) => { if (rzw) rzw.val.textContent = rzw.kind === 'split' ? `${row.split || 50} / ${100 - (row.split || 50)}` : `${row.w || 100} %`; };
+function rzwMove(e) {
+  if (!rzw || e.pointerId !== rzw.id || !S.edit) return;
+  const row = S.edit.draft;
+  if (rzw.kind === 'split') { const v = Math.round(clamp((e.clientX - rzw.g.left) / rzw.g.width * 100, 20, 80)); if (v === 50) delete row.split; else row.split = v; }
+  else {
+    const { colW, colL, ra } = rzw;
+    const f = ra === 0 ? (e.clientX - colL) / colW : ra === 1 ? (colL + colW - e.clientX) / colW : 2 * Math.abs(e.clientX - (colL + colW / 2)) / colW;
+    const v = Math.round(clamp(f * 100, 20, 100)); if (v >= 100) delete row.w; else row.w = v;
+  }
+  applyRowW(row); rzwLabel(row);
+}
+function rzwUp(e) {
+  if (!rzw || e.pointerId !== rzw.id) return;
+  rzw.el.classList.remove('is-resizing-w'); rzw = null;
+  const row = editRow(); if (!row) return;
+  setFieldValue('rw', row.w || ''); setFieldValue('rsplit', row.split || '');
+  const r = $('#insp [data-action="rw-reset"]'); if (r) r.disabled = !(row.w || row.wa || row.split);
   Ink.schedule();
 }
 
@@ -5125,7 +5958,7 @@ addEventListener('popstate', () => {
   if (!h) { showHome({ push: false }); return; }
   const c = catOf(h);
   leaveHome({ push: false });
-  if (!c) return;
+  if (!c || !catOpen(c)) return;
   if (c.id === S.cat) scrollToSub(h, { instant: true }); else openCategory(c.id, { to: h });
 });
 
@@ -5740,9 +6573,9 @@ function renderMenu() {
   list.style.setProperty('--n', Math.max(4, cats().length + (inl && inl.kind === 'cat' ? 1 : 0)));
   let html = '';
   cats().forEach((c, i) => {
-    const ren = inl && inl.kind === 'rename-cat' && inl.id === c.id;
-    html += `<div class="ov-item${S.justAdded.has(c.id) ? ' is-new' : ''}" data-adapt="menu" style="--i:${i}">${ren ? inlineInput(c.name, 'Nombre de la categoría', 'inline-input ov-input') :
-      `<button type="button" class="ov-cat" data-action="menu-cat" data-id="${c.id}"${c.id === S.cat ? ' aria-current="page"' : ''}>${esc(c.name)}</button><button type="button" class="more admin-only" data-action="item-menu" data-kind="cat" data-id="${c.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Opciones de ${esc(c.name)}">${icon('more')}</button>`}</div>`;
+    const ren = inl && inl.kind === 'rename-cat' && inl.id === c.id, shut = !catOpen(c);
+    html += `<div class="ov-item${S.justAdded.has(c.id) ? ' is-new' : ''}${c.locked ? ' is-locked' : ''}" data-adapt="menu" style="--i:${i}">${ren ? inlineInput(c.name, 'Nombre de la categoría', 'inline-input ov-input') :
+      `<button type="button" class="ov-cat" data-action="menu-cat" data-id="${c.id}"${c.id === S.cat && !shut ? ' aria-current="page"' : ''}${shut ? ' aria-disabled="true" title="En preparación"' : c.locked ? ' title="Bloqueada: en modo Viewer no se puede abrir"' : ''}><span class="ov-cat-t">${esc(c.name)}</span>${c.locked ? lockMark('ov-lock') : ''}${c.locked ? `<span class="sr-only">${shut ? ' (en preparación)' : ' (bloqueada para Viewer)'}</span>` : ''}</button><button type="button" class="more admin-only" data-action="item-menu" data-kind="cat" data-id="${c.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Opciones de ${esc(c.name)}">${icon('more')}</button>`}</div>`;
   });
   if (inl && inl.kind === 'cat') html += `<div class="ov-item is-new" data-adapt="menu">${inlineInput('', 'Nueva categoría', 'inline-input ov-input')}</div>`;
   html += `<button type="button" class="ov-add admin-only" data-adapt="menu" data-action="add-cat">${icon('plus')}<span>Añadir categoría</span></button>`;
@@ -5857,7 +6690,7 @@ function closeOverlay(instant = false) {
 
 /* ---------- Search ---------- */
 async function ensureAllPages() {
-  const ids = cats().flatMap(c => c.subs.map(s => s.id)).filter(id => !S.pages.has(id));
+  const ids = openCats().flatMap(c => c.subs.map(s => s.id)).filter(id => !S.pages.has(id));
   await Promise.all(ids.map(async id => {
     try { const snap = await B.db.doc('pages/' + id).get(); const d = snap.exists ? snap.data() : null; S.pages.set(id, d && Array.isArray(d.rows) ? d.rows.map(r => normRow(clone(r))) : []); } catch {}
   }));
@@ -5879,7 +6712,7 @@ function textsOfRow(r) {
 function searchIndex(q) {
   const nq = fold(q.trim()); if (!nq) return [];
   const out = [];
-  cats().forEach(c => {
+  openCats().forEach(c => {
     if (fold(c.name).includes(nq)) out.push({ score: 0, title: c.name, crumb: 'Categoría', cat: c.id, sub: c.subs[0] && c.subs[0].id, text: '' });
     c.subs.forEach(s => {
       if (fold(s.name).includes(nq)) out.push({ score: 1, title: s.name, crumb: c.name, cat: c.id, sub: s.id, text: '' });
@@ -5900,7 +6733,7 @@ function renderSearch(q) {
   if (!q.trim()) {
     lastResults = [];
     $('#search-input').removeAttribute('aria-activedescendant');
-    box.innerHTML = `<p class="sr-hint">Explora el catálogo</p><div class="qi">${cats().map(c => `<div><h3>${esc(c.name)}</h3>${c.subs.length ? `<ul>${c.subs.map(s => `<li><button type="button" data-action="sr-go" data-cat="${c.id}" data-sub="${s.id}">${esc(s.name)}</button></li>`).join('')}</ul>` : '<p>En preparación</p>'}</div>`).join('')}</div>`;
+    box.innerHTML = `<p class="sr-hint">Explora el catálogo</p><div class="qi">${openCats().map(c => `<div><h3>${esc(c.name)}</h3>${c.subs.length ? `<ul>${c.subs.map(s => `<li><button type="button" data-action="sr-go" data-cat="${c.id}" data-sub="${s.id}">${esc(s.name)}</button></li>`).join('')}</ul>` : '<p>En preparación</p>'}</div>`).join('')}</div>`;
     return;
   }
   lastResults = searchIndex(q);
@@ -5999,11 +6832,41 @@ function placePop(trigger) {
 }
 function itemMenu(trigger, kind, id) {
   const list = kind === 'cat' ? cats() : (catOf(id) || { subs: [] }).subs;
-  const i = list.findIndex(x => x.id === id);
+  const i = list.findIndex(x => x.id === id), c = kind === 'cat' ? list[i] : null;
   openPop(trigger, `<button type="button" class="mi" role="menuitem" data-action="pop-rename">${icon('rename')}Renombrar</button>
     <button type="button" class="mi" role="menuitem" data-action="pop-move" data-dir="-1"${i <= 0 ? ' disabled' : ''}>${icon('up')}Subir</button>
     <button type="button" class="mi" role="menuitem" data-action="pop-move" data-dir="1"${i >= list.length - 1 ? ' disabled' : ''}>${icon('dn')}Bajar</button>
+    ${kind === 'sub' && cats().length > 1 ? `<button type="button" class="mi" role="menuitem" data-action="pop-move-cat">${icon('moveTo')}Mover a otra categoría</button>` : ''}
+    ${c ? `<button type="button" class="mi" role="menuitem" data-action="pop-lock">${icon(c.locked ? 'unlock' : 'lock')}${c.locked ? 'Desbloquear' : 'Bloquear para Viewer'}</button>` : ''}
     <button type="button" class="mi danger" role="menuitem" data-action="pop-delete">${icon('trash')}Eliminar</button>`, { data: { kind, id } });
+}
+/* The categories, from the chevron of the rail title: the current one checked, locked ones with their lock (closed to
+   viewers) */
+function catMenuPop(trigger) {
+  openPop(trigger, `<p class="pal-h">Categorías</p>` + cats().map(c => {
+    const open = catOpen(c);
+    return `<button type="button" class="mi" role="menuitemradio" aria-checked="${c.id === S.cat}" data-action="cat-go" data-id="${c.id}"${open ? '' : ' disabled'}><span class="mi-t">${esc(c.name)}</span>${c.locked ? `<span class="mi-v" title="${open ? 'Bloqueada para Viewer' : 'En preparación'}">${icon('lock')}</span>` : ''}</button>`;
+  }).join(''), { data: { kind: 'cats' } });
+}
+/* "Mover a otra categoría": the subcategory and its page go to the end of the category picked */
+function subCatPop(trigger, subId) {
+  const here = catOf(subId);
+  openPop(trigger, `<p class="pal-h">Mover a</p>` + cats().map(c => `<button type="button" class="mi" role="menuitem" data-action="sub-move-to" data-cat="${c.id}"${c === here ? ' aria-current="location" disabled' : ''}><span class="mi-t">${esc(c.name)}</span>${c === here ? '<span class="mi-v">Aquí</span>' : c.locked ? `<span class="mi-v">${icon('lock')}</span>` : ''}</button>`).join(''), { data: { kind: 'sub-move', id: subId } });
+  if (S.pop && S.pop.trigger === trigger) { const f = $$('#pop .mi').find(b => !b.disabled); f && f.focus({ preventScroll: true }); }
+}
+function moveSubTo(subId, catId) {
+  const from = catOf(subId), to = cats().find(c => c.id === catId), sub = subById(subId);
+  if (!from || !to || !sub || from.id === to.id) return;
+  if (S.edit && S.edit.subId === subId) { toast('Termina de editar el bloque antes de mover la subcategoría.'); return; }
+  /* Pure, so it can be applied again over someone else's change: nothing moves if the target category is gone */
+  mutateTree(t => {
+    const dst = t.categories.find(c => c.id === catId); if (!dst) return;
+    let item = null;
+    t.categories.forEach(c => { const i = c.subs.findIndex(x => x.id === subId); if (i >= 0) [item] = c.subs.splice(i, 1); });
+    if (item) dst.subs.push(item);
+  });
+  if (S.active === subId) { const c = currentCat(); S.active = c && c.subs[0] ? c.subs[0].id : null; setHash(S.active); renderRail(); }
+  toast(`«${sub.name}» se movió a «${to.name}»`, { label: 'Ver', action: 'sub-follow', data: { sub: subId } });
 }
 function confirmDeletePop() {
   const P = S.pop; if (!P || !P.data) return;
@@ -6172,7 +7035,7 @@ function rowSubOf(a) {
 
 /* ================= Events ================= */
 /* Buttons that open (and close again) their own popover: an outside click does not close it first */
-const POP_TRIGGERS = ['item-menu', 'dd', 'pal-open', 'slot-act', 'row-move', 'row-more'];
+const POP_TRIGGERS = ['item-menu', 'dd', 'pal-open', 'slot-act', 'row-move', 'row-more', 'cat-menu'];
 document.addEventListener('click', (ev) => {
   const a = ev.target.closest('[data-action]');
   if (S.pop && !ev.target.closest('#pop') && !(a && POP_TRIGGERS.includes(a.dataset.action))) closePop();
@@ -6190,7 +7053,11 @@ document.addEventListener('click', (ev) => {
     case 'menu-close': closeOverlay(); break;
     case 'search-open': openOverlay('search'); break;
     case 'search-close': closeOverlay(); break;
-    case 'menu-cat': { const same0 = id === S.cat; closeOverlay(); leaveHome(); if (!same0) openCategory(id); else scrollTop(); break; }
+    case 'menu-cat': {
+      const c = cats().find(x => x.id === id);
+      if (!catOpen(c)) { toast(c ? `«${c.name}» está en preparación` : 'Esa categoría ya no existe'); break; }
+      const same0 = id === S.cat; closeOverlay(); leaveHome(); if (!same0) openCategory(id); else scrollTop(); break;
+    }
     case 'mode': applyMode(a.dataset.mode); ls.set('mode', a.dataset.mode); break;
     case 'scheme': setScheme(a.dataset.scheme); break;
     case 'signin': signIn(); break;
@@ -6207,6 +7074,19 @@ document.addEventListener('click', (ev) => {
     case 'pop-rename': { const P = S.pop; closePop(true); if (P && P.data) beginInline({ kind: P.data.kind === 'cat' ? 'rename-cat' : 'rename-sub', id: P.data.id }); break; }
     case 'pop-move': { const P = S.pop; closePop(true); if (P && P.data) moveItem(P.data.kind, P.data.id, +a.dataset.dir); break; }
     case 'pop-delete': confirmDeletePop(); break;
+    case 'pop-lock': {
+      const P = S.pop; closePop(true); if (!P || !P.data) break;
+      const c = cats().find(x => x.id === P.data.id); if (!c) break;
+      const lock = !c.locked;
+      mutateTree(t => { const x = t.categories.find(y => y.id === c.id); if (x) { if (lock) x.locked = true; else delete x.locked; } });
+      toast(lock ? `«${c.name}» bloqueada: en modo Viewer no se puede abrir` : `«${c.name}» desbloqueada`);
+      break;
+    }
+    case 'pop-move-cat': { const P = S.pop; closePop(true); if (P && P.data && P.trigger && P.trigger.isConnected) subCatPop(P.trigger, P.data.id); break; }
+    case 'sub-move-to': { const P = S.pop; closePop(true); if (P && P.data && P.data.id) moveSubTo(P.data.id, a.dataset.cat); break; }
+    case 'sub-follow': { const c = catOf(a.dataset.sub); const t = a.closest('.toast'); if (t) t.remove(); if (c && catOpen(c)) { closeOverlay(true); leaveHome(); openCategory(c.id, { to: a.dataset.sub }); } break; }
+    case 'cat-menu': ev.stopPropagation(); catMenuPop(a); break;
+    case 'cat-go': { closePop(true); const c = cats().find(x => x.id === id); if (!catOpen(c)) break; if (id !== S.cat) openCategory(id); else scrollTop(); break; }
     case 'pop-cancel': closePop(); break;
     case 'pop-delete-confirm': { const P = S.pop; closePop(true); if (P && P.data) deleteItem(P.data.kind, P.data.id); break; }
     case 'dd': ev.stopPropagation(); ddPop(a, a.dataset.k); break;
@@ -6330,32 +7210,78 @@ document.addEventListener('click', (ev) => {
     case 'tab': setActiveSlot(slotId); break;
     case 'ov-add': { const e = S.edit; if (!e) break; record(null); const s = fillType({ id: uid('m') }, 'text', 'overlay'); e.draft.overlay = { pos: 'bl', width: 'half', slot: s }; e.slot = s.id; e.blocks[s.id] = s.blocks[0].id; S.focusKey = 'b:' + s.blocks[0].id; S.animSlot = s.id; bump(); break; }
     case 'ov-remove': { const e = S.edit; if (!e) break; record(null); e.draft.overlay = null; e.slot = e.draft.slots[0].id; bump(); break; }
-    case 'add-block': {
+    case 'add-block': case 'add-div': {
       const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
       syncTextFromDom(); record(null);
-      const ab = activeBlockOf(s); const i = s.blocks.indexOf(ab);
-      const nb = mkBlock('jakarta', 18, 400, 150, 0);
-      s.blocks.splice(i < 0 ? s.blocks.length : i + 1, 0, nb);
-      e.slot = s.id; e.blocks[s.id] = nb.id; S.focusKey = 'b:' + nb.id; S.newBlock = nb.id; bump(); break;
+      const nb = act === 'add-div' ? normDivider({}) : mkBlock('jakarta', 18, 400, 150, 0);
+      insertItem(s, nb); tidyGroups(s);
+      e.slot = s.id; e.blocks[s.id] = nb.id; e.range = null; S.newBlock = nb.id;
+      if (act === 'add-block') S.focusKey = 'b:' + nb.id;
+      bump(); break;
     }
     case 'block-up': case 'block-down': {
       const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
-      syncTextFromDom();
-      const ab = activeBlockOf(s); const i = s.blocks.indexOf(ab); const j = i + (act === 'block-up' ? -1 : 1);
-      if (i < 0 || j < 0 || j >= s.blocks.length) break;
-      record(null);
-      [s.blocks[i], s.blocks[j]] = [s.blocks[j], s.blocks[i]];
+      const dir = act === 'block-up' ? -1 : 1;
+      if (!moveItemIn(clone(s), dir)) break;
+      syncTextFromDom(); record(null);
+      moveItemIn(s, dir); tidyGroups(s); e.range = null;
+      const a = activeItemOf(s); if (a && a.kind === 'text') S.focusKey = 'b:' + a.id;
       bump(); break;
     }
     case 'block-delete': {
-      const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s || s.blocks.length < 2) break;
-      syncTextFromDom(); record(null);
-      const ab = activeBlockOf(s); const i = s.blocks.indexOf(ab);
-      s.blocks.splice(i, 1); const nb = s.blocks[Math.max(0, i - 1)];
-      e.blocks[s.id] = nb.id; bump(); break;
+      const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
+      if (deleteItemIn(s)) bump();
+      break;
     }
+    case 'layer': {
+      const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
+      const lid = a.dataset.id, L = s.blocks;
+      if (ev.shiftKey && !(s.groups && s.groups[lid])) {
+        const anchor = (e.range && e.range.slot === s.id && e.range.anchor) || e.blocks[s.id];
+        const i0 = L.findIndex(b => b.id === anchor), i1 = L.findIndex(b => b.id === lid);
+        if (i0 >= 0 && i1 >= 0) { const lo = Math.min(i0, i1), hi = Math.max(i0, i1); e.range = { slot: s.id, anchor, ids: L.slice(lo, hi + 1).map(b => b.id) }; }
+      } else e.range = null;
+      selectItem(s, lid, true);
+      const t = blockEl(lid); if (t && !ev.shiftKey) t.scrollIntoView({ block: 'nearest' });
+      break;
+    }
+    case 'group': {
+      const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
+      const ids = e.range && e.range.slot === s.id && e.range.ids.length ? e.range.ids : [activeItemOf(s).id];
+      const items = ids.map(id => s.blocks.find(b => b.id === id)).filter(Boolean);
+      if (!items.length || items.some(b => b.g)) break;
+      syncTextFromDom(); record(null);
+      const gid = uid('g');
+      s.groups = { ...(s.groups || {}), [gid]: normGroup({}) }; items.forEach(b => { b.g = gid; });
+      tidyGroups(s); e.blocks[s.id] = gid; e.range = null; bump();
+      toast(items.length > 1 ? `${items.length} elementos agrupados en un auto layout` : 'Grupo creado: suma elementos con las flechas o con Shift + clic');
+      break;
+    }
+    case 'ungroup': {
+      const e = S.edit, s = e && findSlot(e.draft, slotId); if (!s) break;
+      const it = activeItemOf(s), gid = it.kind === 'group' ? it.id : it.b && it.b.g; if (!gid) break;
+      syncTextFromDom(); record(null);
+      const first = s.blocks.find(b => b.g === gid);
+      s.blocks.forEach(b => { if (b.g === gid) delete b.g; }); tidyGroups(s);
+      e.blocks[s.id] = first ? first.id : null; e.range = null; bump(); break;
+    }
+    case 'box-fold': S.boxOpen = !S.boxOpen; ls.set('box', S.boxOpen ? '1' : '0'); renderInspector(); break;
+    case 'box-reset': { const s = activeSlot(), own = boxOwner(s); if (!own || !own.box) break; record(null); delete own.box; refreshItems(s); renderInspector(); break; }
+    case 'rw-reset': { const r = editRow(); if (!r) break; record(null); delete r.w; delete r.wa; delete r.split; applyRowW(r); renderInspector(); break; }
     case 'seg': onField(a.dataset.k, a.dataset.v); break;
-    case 'thumb-remove': { const s = S.edit && findSlot(S.edit.draft, slotId); if (!s) break; record(null); s.images.splice(+a.dataset.index, 1); bump(); break; }
+    case 'thumb-remove': { const s = S.edit && findSlot(S.edit.draft, slotId); if (!s) break; record(null); s.images.splice(+a.dataset.index, 1); if (S.edit.car) delete S.edit.car[s.id]; bump(); break; }
+    case 'cs-item': {
+      const s = S.edit && findSlot(S.edit.draft, slotId); if (!s) break;
+      const car = a.closest('.carousel'), c = car && CAR.get(car); if (c && performance.now() - (c.dragT || 0) < 400) break;
+      if (carSel(s) !== +a.dataset.i) selectCarItem(s, +a.dataset.i);
+      break;
+    }
+    case 'cs-reset': {
+      const s = activeSlot(), i = s && s.type === 'carousel' ? carSel(s) : -1, im = i >= 0 ? s.images[i] : null; if (!im) break;
+      record(null); ['bw', 'bh', 'fx', 'fy', 'fz'].forEach(x => delete im[x]);
+      const f = stripFig(s.id, i); if (f) paintStripItem(f, im);
+      renderInspector(); Ink.schedule(); break;
+    }
     case 'confirm-edit': confirmEdit(); break;
     case 'cancel-edit': cancelEdit(); break;
     case 'row-edit': { const r = a.closest('.row'); startEdit(r.dataset.sub, id); break; }
@@ -6393,11 +7319,14 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('pointerdown', (ev) => {
   const s = ev.target.closest && ev.target.closest('#stage .row.is-editing [data-slot]');
   if (s && !ev.target.closest('.spl, .thumbs')) setActiveSlot(s.dataset.slot);
-  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev); rowDragDown(ev); frameDown(ev); Globe.down(ev); galDown(ev);
+  /* A divider, or the frame of a group (not the items in it), selects that item of the module */
+  const it = ev.target.closest && ev.target.closest('#stage .row.is-editing .tdiv[data-item], #stage .row.is-editing .tgroup[data-group]');
+  if (it && (it.classList.contains('tdiv') || ev.target === it)) { const e = S.edit, sl = e && findSlot(e.draft, it.dataset.slot); if (sl) { e.range = null; selectItem(sl, it.dataset.item || it.dataset.group); } }
+  csDown(ev); rzDown(ev); rzwDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev); rowDragDown(ev); frameDown(ev); Globe.down(ev); galDown(ev);
 });
-document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); rowDragMove(ev); frameMove(ev); Globe.track(ev); Globe.move(ev); galMove(ev); });
-document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); rowDragUp(ev); frameUp(ev); Globe.up(ev); galUp(ev); });
-document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); frameUp(ev); if (rdrag && ev.pointerId === rdrag.pid) rowDragCancel(); Globe.up(ev); galUp(ev); });
+document.addEventListener('pointermove', (ev) => { csMove(ev); rzMove(ev); rzwMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); rowDragMove(ev); frameMove(ev); Globe.track(ev); Globe.move(ev); galMove(ev); });
+document.addEventListener('pointerup', (ev) => { csUp(ev); rzUp(ev); rzwUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); rowDragUp(ev); frameUp(ev); Globe.up(ev); galUp(ev); });
+document.addEventListener('pointercancel', (ev) => { csUp(ev); rzUp(ev); rzwUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); frameUp(ev); if (rdrag && ev.pointerId === rdrag.pid) rowDragCancel(); Globe.up(ev); galUp(ev); });
 /* While a block is dragged Lenis is paused (it swallows the wheel), so the wheel scrolls the page directly; the
    panels Lenis leaves alone (the rail list) keep scrolling on their own */
 addEventListener('wheel', (ev) => {
@@ -6405,7 +7334,12 @@ addEventListener('wheel', (ev) => {
   window.scrollBy(0, ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY);
 }, { passive: true });
 addEventListener('blur', () => rowDragCancel());
-document.addEventListener('dblclick', (ev) => { if (ev.target.closest('[data-rz]') && S.edit) onField('hmode', 'auto'); });
+document.addEventListener('dblclick', (ev) => {
+  if (!S.edit || !ev.target.closest) return;
+  if (ev.target.closest('[data-rz]')) onField('hmode', 'auto');
+  else if (ev.target.closest('[data-rzw]')) { onField('rw', null); setFieldValue('rw', ''); }
+  else if (ev.target.closest('[data-rzs]')) { onField('rsplit', null); setFieldValue('rsplit', ''); }
+});
 
 /* Scrub numeric fields by dragging their icon */
 let scrub = null;
@@ -6433,14 +7367,15 @@ function onBlockFocus(el) {
   const changed = e.blocks[s.id] !== el.dataset.block || e.slot !== s.id;
   if (changed) S.typeStyleUi = null;
   e.blocks[s.id] = el.dataset.block;
-  const box = el.closest('.slot');
-  $$('.tb.is-active', box).forEach(x => x.classList.remove('is-active')); el.classList.add('is-active');
+  if (changed) e.range = null;
+  paintItemSel();
   if (e.slot !== s.id) { setActiveSlot(s.id); return; }
   if (changed) renderInspector();
 }
 document.addEventListener('focusin', (ev) => {
   const el = ev.target;
   if (el.matches && el.matches('.tb[data-block]')) onBlockFocus(el);
+  else if (el.matches && el.matches('#stage .row.is-editing .tdiv[data-item]')) { const e = S.edit; selectItem(e && findSlot(e.draft, el.dataset.slot), el.dataset.item); }
 });
 document.addEventListener('input', (ev) => {
   const el = ev.target;
@@ -6467,9 +7402,10 @@ document.addEventListener('input', (ev) => {
   if (el.id === 'pal-new-hex') { S.palUi = { ...S.palUi, hex: el.value }; el.parentElement.style.setProperty('--c', el.value); return; }
   if (el.dataset && el.dataset.palHex) { el.parentElement.style.setProperty('--c', el.value); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
-  if (k === 'actvalue' || k === 'acttitle' || k === 'actbody') { onField(k, el.value); return; }
-  if (isPadKey(k) && !el.value.trim()) { onField(k, null); return; } /* an empty side goes back to automatic */
-  if (k === 'bgcolor' || k === 'fscolor') { onField(k, el.value); return; }
+  if (k === 'actvalue' || k === 'acttitle' || k === 'actbody' || k === 'ccap') { onField(k, el.value); return; }
+  if (k === 'cfz') { onField('cfz', +el.value); return; }
+  if (NULLABLE.has(k) && !el.value.trim()) { onField(k, null); return; } /* empty goes back to automatic (or none) */
+  if (k === 'bgcolor' || k === 'fscolor' || el.type === 'color') { onField(k, el.value); return; }
   if (k === 'dim') { onField('dim', +el.value); return; }
   if (k === 'hex') { onField('hex', el.value); return; }
   if (FIELD[k]) { const v = parseField(k, el.value); if (v != null) onField(k, v); }
@@ -6492,9 +7428,9 @@ document.addEventListener('change', (ev) => {
   if (el.dataset.palName) { palEdit(el.dataset.palName, 'name', el.value); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
   if (k === 'ratio') { onField('ratio', el.value); return; }
-  if (['menter', 'mscroll', 'tenter', 'tscroll', 'torder', 'measefam', 'teasefam', 'mstyle', 'tstyle', 'typestyle'].includes(k)) { onField(k, el.value); return; }
+  if (['menter', 'mscroll', 'tenter', 'tscroll', 'torder', 'measefam', 'teasefam', 'mstyle', 'tstyle', 'typestyle', 'ciratio'].includes(k)) { onField(k, el.value); return; }
   /* A side shows what it stores once typing ends: "abc" or "-5" settle on the value in use, empty on automatic */
-  if (isPadKey(k)) { const s = activeSlot(), p = s && s.pad; el.value = p && isNum(p[k[1]]) ? fmt(k, p[k[1]]) : ''; return; }
+  if (NULLABLE.has(k)) { const v = storedField(k); el.value = v == null ? '' : fmt(k, v); return; }
   if (FIELD[k]) { const v = parseField(k, el.value); el.value = v == null || v === 0 ? (k === 'h' ? '' : el.value) : fmt(k, v); }
 });
 document.addEventListener('paste', (ev) => {
@@ -6544,6 +7480,7 @@ document.addEventListener('keydown', (ev) => {
   if (t && t.dataset && t.dataset.f && FIELD[t.dataset.f] && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) { ev.preventDefault(); stepField(t, ev.key === 'ArrowUp' ? 1 : -1, ev.shiftKey); return; }
   if (t && t.dataset && (t.dataset.f || t.dataset.fileName) && ev.key === 'Enter' && t.tagName !== 'TEXTAREA') { t.blur(); return; }
   if (t && t.matches && !S.edit && t.matches('.slot[data-act]') && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); slotAct(t); return; }
+  if (t && t.matches && S.edit && t.matches('#stage .row.is-editing .tdiv[data-item]') && (ev.key === 'Delete' || ev.key === 'Backspace')) { ev.preventDefault(); const s = findSlot(S.edit.draft, t.dataset.slot); if (s && deleteItemIn(s)) bump(); return; }
   if (t && t.id === 'search-input') {
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); if (!lastResults.length) return; S.srSel = clamp(S.srSel + (ev.key === 'ArrowDown' ? 1 : -1), 0, lastResults.length - 1); renderSearch(t.value); const s = $('#sr-' + S.srSel); s && s.scrollIntoView({ block: 'nearest' }); return; }
     if (ev.key === 'Enter') { ev.preventDefault(); const r = lastResults[S.srSel]; if (r) goResult(r.cat, r.sub, r.row); return; }

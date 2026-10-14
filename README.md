@@ -23,14 +23,17 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
   - Al pasar el mouse, el mosaico se levanta y el giro se frena mucho (sin pararse). Al hacer clic, se agranda hasta un lightbox centrado; se cierra con la X, Esc o un clic afuera. También se puede arrastrar para girarlo.
   - En Admin, el botón **Galería** (abajo a la izquierda) abre el panel para sumar imágenes o videos (también soltándolos), quitarlos y ordenarlos arrastrando. Sin contenido, el globo muestra mosaicos de muestra en azul Belo.
   - El logo (o la palabra "belo" si no hay logo cargado) siempre vuelve a la Home. Con `prefers-reduced-motion` el globo queda quieto.
-  - Arranca en modo claro salvo que la persona haya elegido otro tema.
+  - Cada visita arranca en modo claro. El switch claro/oscuro vale solo para esa visita (esa pestaña).
 - Menú de pantalla completa, desde el botón de arriba:
   - Categorías grandes abajo a la izquierda.
+  - **Categorías bloqueadas:** en Admin, el menú «…» de una categoría tiene **Bloquear para Viewer**. Sirve para las que se están armando: se ven en el menú con un candado a la derecha del nombre; en Viewer aparecen atenuadas y no se puede entrar (tampoco desde un link, el buscador o la lista del sidebar). La base de datos tampoco entrega sus secciones a quien no es editor.
   - Arriba a la derecha, junto a la X: los selectores del fondo del menú (solo en Admin) y claro/oscuro con íconos.
   - Abajo a la derecha, viewer/admin con íconos (ojo y lápiz) al lado del usuario, o "Iniciar sesión".
 - **Viewer / admin en las secciones:** quien puede editar tiene el mismo switch del menú abajo a la izquierda de cada sección. Se oculta en la Home, con el menú o el buscador abiertos y mientras se edita un bloque.
 - Buscador. También encuentra SVG y archivos descargables por su nombre, y el texto de los modales.
 - Sidebar sin contenedor, con el título de la categoría y las subcategorías. Hace scroll-spy y auto-scroll dentro de la misma página.
+  - El título de la categoría usa el mismo cuerpo de texto que las subcategorías, con un chevron que despliega todas las categorías para saltar a otra.
+  - **Mover a otra categoría:** el menú «…» de una subcategoría la manda, con todo su contenido, al final de otra categoría.
 - Color de texto adaptativo sobre fondos blancos, azules o fotos, para el sidebar, el menú y el texto sobre imágenes.
 - Editor de texto con Phudu o Plus Jakarta Sans: tamaño, peso, interlineado, tracking, alineación y mayúsculas exactos.
 - Altura de módulo personalizada. Mientras se edita, el resto de la página se atenúa.
@@ -39,6 +42,14 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
   - Duplicar copia todo (contenido, ajustes, estilos, interacciones y archivos) con ids nuevos y lo deja justo abajo.
   - Los archivos se borran del almacén solo cuando ningún bloque, sección ni la Home los usa: un duplicado comparte los archivos del original. Si alguna sección no se puede leer, no se borra nada.
 - **Inspector contextual:** cada tipo de módulo muestra solo las secciones que le corresponden (texto, imagen, video, carrusel, color, SVG y sus variantes de pantalla completa). Tiene tres vistas: Diseño, Animación e Interacción.
+- **Ancho del bloque:** los bloques de ancho completo y de dos mitades pueden ocupar un % de la columna, alineados a la izquierda, al centro o a la derecha (campo en el panel o la manija del costado). En dos mitades también se reparte el ancho entre los módulos (campo o la manija del medio; doble clic vuelve a mitad y mitad). El texto conserva su tamaño. En el teléfono el bloque usa todo el ancho.
+- **Adentro de un módulo de texto** (también el texto sobre pantalla completa):
+  - **Contenido:** la lista de elementos del módulo (textos, divisores y grupos). Clic elige uno; Shift + clic elige varios seguidos.
+  - **Contenedor** de cada texto: ancho (llenar, ajustar al contenido o fijo), alto fijo (es un mínimo: el texto nunca se recorta), relleno, borde, radio y espaciado interno, en px de diseño que escalan con el módulo.
+  - **Auto layout:** **Agrupar** une los elementos elegidos en un grupo vertical u horizontal, con su espacio, alineación, distribución y su propio contenedor. Las flechas en el borde de un grupo sacan o suman un elemento; **Desagrupar** lo deshace.
+  - **Divisores:** una línea en el color del texto (suave) o de la paleta, con grosor, largo y margen; en un grupo horizontal queda vertical.
+  - **Espacio entre elementos** del módulo, además de la distribución vertical.
+- **Borde (stroke)** en cualquier módulo, además del relleno: grosor y color (automático o de la paleta).
 - **Espaciado interno** en textos (también el texto sobre pantalla completa) y SVG: arriba, derecha, abajo e izquierda, con o sin el mismo valor en los cuatro lados, y **Restablecer** para volver al automático.
 - **Estilos de texto** vinculados para todo el catálogo (Headline, Subheadline, Body y Caption de entrada, y los que se creen con **Guardar como estilo**). Cambiar la tipografía de un texto vinculado lo marca como modificado; **Actualizar estilo** lo lleva a todos los textos vinculados sin modificar, en todas las secciones. También se puede restablecer, desvincular, renombrar y eliminar (los textos conservan sus valores).
 - **Paleta de marca** (Azul Belo, Blanco y Negro de entrada, se pueden sumar, renombrar y quitar colores): color de cada bloque de texto ("Automático" sigue la tinta adaptativa) y muestras rápidas en los fondos.
@@ -49,6 +60,7 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 - **Archivos descargables:** cada módulo puede ofrecer sus originales (SVG, PNG, JPG, PDF, ZIP, EPS o AI, hasta 50 MB) con formato, nombre y peso, y un nombre visible editable. Con un archivo descarga directo; con varios abre un menú; sin ninguno descarga el archivo del propio módulo.
 - Barra flotante de tipo de módulo, botón de volver y `Ctrl+Z` / `Ctrl+Shift+Z` para deshacer y rehacer.
 - Carrusel con stepper animado (step player), arrastre con física de resorte y autoplay al entrar en pantalla.
+  - Formato **Tira**: las imágenes van una al lado de la otra, cada una con su tamaño (verticales, horizontales o libres), su encuadre y un texto opcional debajo. Se recorre deslizando (trackpad, dedo, arrastre con el mouse o flechas). En el editor, un clic elige una imagen: se encuadra arrastrándola y se cambia el tamaño desde su esquina (Shift mantiene la proporción), o con los campos del panel.
 - Scroll suave con Lenis.
 - Animaciones preset (GSAP + ScrollTrigger + SplitText), en la vista **Animación** del panel de edición (toggle Diseño / Animación):
   - **Módulo** (imagen, video, color o la caja de un texto): entrada (aparecer, desplazar, escalar, desenfoque, cortina, zoom revelado) y con scroll (parallax, alejar, acercar, desvanecer al salir). Solo se ofrecen los presets que tienen efecto en ese tipo de módulo.
@@ -88,7 +100,8 @@ npm run serve                     # build + vista local en http://localhost:8765
 
 ```bash
 npx playwright install chromium   # la primera vez
-npm test                          # build + flows, panel, menu, motion, collab, blocks, home, editor y media
+npm test                          # build + flows, panel, menu, motion, collab, blocks, home, editor, media y layout
+node tests/run.cjs layout.cjs     # solo algunas suites
 ```
 
 - Las pruebas recorren los flujos principales: crear y editar bloques, panel, deshacer y rehacer, menú, buscador, temas y mobile.
@@ -97,6 +110,7 @@ npm test                          # build + flows, panel, menu, motion, collab, 
 - `home.cjs` prueba la Home: globo, hover, lightbox, galería (subir, ordenar, quitar y deshacer), movimiento reducido, mobile y el switch viewer/admin de las secciones.
 - `editor.cjs` prueba el inspector contextual, el espaciado interno, los estilos de texto (también entre secciones y entre dos editores) y la paleta.
 - `media.cjs` prueba el encuadre, el módulo SVG, el módulo de color, las interacciones (copiar, modal y descarga) y los archivos descargables, también guardados en el Supabase simulado.
+- `layout.cjs` prueba el tema claro por visita, el título del sidebar y su lista de categorías, las categorías bloqueadas (en la página y en la base simulada), mover una subcategoría, los contenedores, grupos y divisores de los textos, los bordes, el ancho de los bloques, la división de dos mitades y la tira del carrusel.
 - Las capturas quedan en `tests/output/`, que está ignorado por git.
 - Las pruebas bloquean Google Fonts y sirven Lenis desde `tests/fixtures/` y supabase-js desde `node_modules`, así que corren sin red. Por eso en el log aparece `Failed to load resource: net::ERR_FAILED`: es esperado.
 - Para cambiar el puerto: `PORT=8790 npm test`.
@@ -105,7 +119,7 @@ npm test                          # build + flows, panel, menu, motion, collab, 
 
 - **Proyecto:** `belo-brandbook` (id `tdrlxenjgfvnjzmuixhy`, región São Paulo).
 - **Base:** una tabla `docs` con un documento JSON por ruta (`catalog/tree` y `pages/{subId}`), el mismo modelo que el artifact. El esquema está en `supabase/migrations/`.
-- **Quién ve:** cualquiera con el link, sin login.
+- **Quién ve:** cualquiera con el link, sin login. Las secciones de una categoría bloqueada solo las leen los editores (`private.page_locked`, en la regla de lectura de `docs`).
 - **Quién edita:** cuentas con email confirmado de `@paisanoscreando.com` o `@paisanos.io`. Se entra con Google desde el menú ("Iniciar sesión"). Una cuenta de otro dominio entra en "Solo lectura".
   - Para sumar a una persona puntual: `insert into private.editors (email) values ('alguien@belo.app');`
   - Para sumar un dominio entero: `insert into private.editor_domains (domain) values ('belo.app');`
@@ -116,6 +130,7 @@ npm test                          # build + flows, panel, menu, motion, collab, 
   - Si dos personas confirman el mismo bloque, gana la última. Para evitarlo, en Admin se ve quién está editando: sus iniciales junto a la sección y un contorno con su nombre sobre el bloque.
   - Abajo a la derecha (en Admin) se ve quién editó la sección que estás mirando y cuándo.
 - **Historial:** cada versión guardada queda en `doc_revisions`. Para volver atrás una sección, hay que copiar `data` de la revisión que corresponda a `docs` desde el editor SQL de Supabase.
+  - El ajuste único de tamaños de texto del 14/10/2026 quedó guardado como «Ajuste de tamaños de texto» (`saved_by_name`): la revisión anterior de cada una de esas 30 secciones es la versión de antes.
 - **Sin conexión:** si un guardado falla, el indicador pasa a "Sin guardar" y se reintenta solo. Si cerrás la pestaña con cambios pendientes, el navegador avisa.
 
 ### Configuración
@@ -142,7 +157,7 @@ Hay dos tipos de documento (en Supabase y en la base del artifact):
     animStyles: [{ id, name, kind: 'mod' | 'text', of, anim }],
     textStyles: [{ id, name, font, size, weight, lh, ls, upper }],    // estilos de texto (ids ts_…)
     palette: [{ id, name, hex }],                                     // paleta de marca (ids pc_…)
-    categories: [{ id, name, subs: [{ id, name }] }]
+    categories: [{ id, name, locked?: true, subs: [{ id, name }] }]   // locked: cerrada para Viewer
   }
   ```
   - `textStyles` y `palette` se crean con los valores de entrada solo si no existen: una lista vacía quiere decir que se borraron todos.
@@ -163,6 +178,10 @@ Hay dos tipos de documento (en Supabase y en la base del artifact):
     - `slot.files`: `[{ id, name, type, size }]`, los archivos descargables (`name` es el nombre visible).
     - SVG: `{ type: 'svg', asset, w, h, name, size, ratio, bg: { kind: 'none' | 'surface' | 'color', color? }, scale, pos, dx, dy }`, con `scale` en % del ancho, `pos` una de las 9 posiciones (`tl` … `br`) y `dx` / `dy` en % del contenedor. Descargable es `action: { kind: 'download' }`.
     - Color en bloques normales: `{ type: 'color', color, ratio: '1/1', label }`; `label: false` oculta el nombre y el HEX.
+    - `slot.stroke`: `{ w, c? }`, el borde del módulo (grosor en px; sin `c` usa el color del texto).
+    - `row.w` (20–100, % de la columna) y `row.wa` (`'c'` o `'r'`; sin él, a la izquierda); en dos mitades, `row.split` (20–80, % del módulo izquierdo).
+    - Textos: `slot.gap` (espacio entre elementos), y en `blocks` también divisores `{ id, kind: 'div', t, c?, len?, m? }`. Los elementos de un grupo llevan `g` (id en `slot.groups: { [id]: { dir: 'v' | 'h', gap?, al, ju, wrap?, box? } }`) y van seguidos. Textos y grupos tienen `box?: { w: 'hug' | px, h, fill, sw, sc, r, px, py }`.
+    - Carrusel: `mode: 'strip'` (la tira), `sgap` y `sal` (`'center'` o `'end'`); cada imagen puede llevar `bw` × `bh` (su tamaño), `fx` / `fy` / `fz` (encuadre) y `cap` (texto debajo).
   - Todos los ids de archivos (`asset`, `images`, `files`, `action.media`, la galería de la Home) mantienen vivo el archivo en el almacén.
   - Animaciones (todas opcionales). Los presets están en `ENTER` y `SCROLL` dentro de `src/catalog.html`, y `ANIM_KEYS` define cuáles ofrece cada tipo:
     - `row.anim`: `{ stagger, tstagger }`, la secuencia del bloque.
@@ -222,4 +241,12 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Organizar bloques: arrastrar, duplicar y mover a cualquier sección, con borrado de archivos que respeta lo que siguen usando otros bloques.
   - Inspector contextual con vista Interacción, espaciado interno, estilos de texto, paleta de marca, encuadre de imágenes, módulos SVG y de color, interacciones y archivos descargables.
   - Arranca en modo claro por defecto: ya no sigue la preferencia del sistema si la persona no eligió un tema.
-  - La migración `supabase/migrations/20261009120000_catalog_assets_sources.sql`, que suma PDF, ZIP, EPS y AI a los tipos permitidos del bucket `assets`, **no está aplicada**. Hasta aplicarla en Supabase, esos archivos se rechazan al subirlos en la versión compartida (SVG, PNG, JPG y video ya funcionan).
+  - La migración `supabase/migrations/20261009120000_catalog_assets_sources.sql` suma PDF, ZIP, EPS y AI a los tipos permitidos del bucket `assets` (aplicada).
+- **v7.0:**
+  - Categorías bloqueadas para Viewer, con candado en el menú y la regla en la base (`20261014120000_catalog_locked_categories.sql` y `20261014120100_catalog_locked_pages_policy.sql`, aplicadas).
+  - Cada visita arranca en modo claro.
+  - Título del sidebar con el cuerpo de las subcategorías y un chevron con todas las categorías; mover una subcategoría a otra categoría.
+  - «Fondo» y «Texto encima» centrados en el panel.
+  - Ancho de los bloques y reparto de las dos mitades; borde en los módulos; contenedores, auto layout y divisores adentro de los textos.
+  - Carrusel en formato tira, con imágenes de tamaño libre, encuadre y texto debajo.
+  - Ajuste único de tamaños en el contenido: textos de 15 a 18 px a 14 px (sobre pantalla completa, los de 18 a 20 px a 20 px); títulos grandes de ancho completo en Plus Jakarta a 72 px; títulos Phudu de pantalla completa y ancho completo a 120 px. Se dejaron igual los ejemplos de la sección Tipografía y los títulos de las tarjetas de dos mitades.

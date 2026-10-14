@@ -1,7 +1,7 @@
 // An in-memory stand-in for the Supabase project, served through Playwright routes so the real supabase-js
 // (installed as a dev dependency) runs against it: Auth (Google PKCE round trip), the Data API (docs, save_doc,
 // can_edit), Storage (assets bucket) and Realtime (postgres_changes on docs, presence) over a mocked WebSocket.
-// The rules mirror supabase/migrations: anyone reads, only confirmed @paisanoscreando.com and @paisanos.io accounts write,
+// The rules mirror supabase/migrations: anyone reads (but the pages of a locked category), only confirmed @paisanoscreando.com and @paisanos.io accounts write,
 // and save_doc refuses a stale version with PT409.
 const crypto = require('crypto');
 
@@ -54,6 +54,12 @@ class FakeSupabase {
     const parts = tok.split('.');
     if (parts.length !== 3) return null;
     try { const p = JSON.parse(Buffer.from(parts[1], 'base64url').toString()); return this.users.get(p.sub) || null; } catch { return null; }
+  }
+
+  // Pages of a locked category are readable by editors only (catalog_locked_categories)
+  pageLocked(path) {
+    const t = this.docs.get('catalog/tree'), m = /^pages\/(.+)$/.exec(path);
+    return !!(t && m && (t.data.categories || []).some(c => c.locked === true && (c.subs || []).some(x => x.id === m[1])));
   }
 
   seed(path, data, by) {
@@ -119,7 +125,7 @@ class FakeSupabase {
     // Data API
     if (p === '/rest/v1/docs' && req.method() === 'GET') {
       const want = (u.searchParams.get('path') || '').replace(/^eq\./, '');
-      const row = this.docs.get(want);
+      const row = this.pageLocked(want) && !this.isEditor(this.userFrom(headers)) ? null : this.docs.get(want);
       const out = row ? [{ data: row.data, version: row.version, updated_at: row.updated_at, updated_by: row.updated_by, updated_by_name: row.updated_by_name }] : [];
       if ((headers['accept'] || '').includes('vnd.pgrst.object')) return out.length ? json(200, out[0]) : json(406, { code: 'PGRST116', message: 'no rows' });
       return json(200, out);

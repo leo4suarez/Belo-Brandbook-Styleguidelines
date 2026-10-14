@@ -1,6 +1,6 @@
 {
   "name": "belo-brandbook-styleguidelines",
-  "version": "5.0.0",
+  "version": "7.0.0",
   "private": true,
   "description": "Catálogo modular de la marca Belo: categorías, secciones y módulos editables. Publicado en Vercel con guardado compartido en Supabase.",
   "scripts": {
