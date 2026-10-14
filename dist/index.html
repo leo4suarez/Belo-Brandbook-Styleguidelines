@@ -56,11 +56,20 @@
   --ease-out:cubic-bezier(.23,1,.32,1);
   --ease-in-out:cubic-bezier(.77,0,.175,1);
   --ease-drawer:cubic-bezier(.32,.72,0,1);
-  /* Placeholder tiles of the Home globe, before any media is uploaded */
+  /* Placeholder cards of the Home slider, before any media is uploaded */
   --ph-0:#F2F3F6; --ph-1:#FFFFFF; --ph-2:#E4EAF8; --ph-3:#C9D5F2; --ph-4:#002FA7; --ph-5:#1D47C4;
+  /* Home: a soft gray page so the white card frames read, and their shadows (resting, lifted, buttons) */
+  --home-bg:#F3F4F6; --hs-card:#FFFFFF;
+  --hs-shadow:0 0 0 .5px rgba(0,16,64,.06),0 1px 2px rgba(0,16,64,.04),0 10px 24px -8px rgba(0,16,64,.12),0 30px 60px -24px rgba(0,16,64,.16);
+  --hs-shadow-up:0 0 0 .5px rgba(0,16,64,.06),0 2px 6px rgba(0,16,64,.06),0 20px 40px -10px rgba(0,16,64,.2),0 50px 90px -30px rgba(0,16,64,.28);
+  --hs-shadow-btn:0 0 0 .5px rgba(0,16,64,.08),0 1px 2px rgba(0,16,64,.05),0 6px 16px -6px rgba(0,16,64,.14);
 }
 :root[data-scheme="dark"]{
   --ph-0:#17181C; --ph-1:#202126; --ph-2:#121A33; --ph-3:#1B2A5A; --ph-4:#002FA7; --ph-5:#2450D6;
+  --home-bg:#000000; --hs-card:#151619;
+  --hs-shadow:0 0 0 .5px rgba(255,255,255,.07),0 10px 24px -8px rgba(0,0,0,.7),0 30px 60px -24px rgba(0,0,0,.8);
+  --hs-shadow-up:0 0 0 .5px rgba(255,255,255,.12),0 20px 40px -10px rgba(0,0,0,.8),0 50px 90px -30px rgba(0,0,0,.9);
+  --hs-shadow-btn:0 0 0 .5px rgba(255,255,255,.1),0 6px 16px -6px rgba(0,0,0,.7);
   --bg:#000000; --ink:#FFFFFF; --muted:rgba(255,255,255,.5); --surface:#111214; --surface-2:#1D1E22;
   --line:rgba(255,255,255,.1); --line-strong:rgba(255,255,255,.24); --focus:#7C95FF; --danger:#FF7A66; --ok:#3DD68C; --warn:#F5C04A;
   --swatch-edge-hi:transparent; --swatch-edge-lo:rgba(255,255,255,.14);
@@ -848,43 +857,55 @@ html.is-row-drag .sec.is-empty.is-drop .adder::after{background:color-mix(in srg
 .qi button:hover{opacity:1}
 .qi p{margin:0;font-size:14px;color:var(--muted)}
 
-/* ---------- Home: the opening view, a globe of the gallery media ---------- */
+/* ---------- Home: the opening view, a spatial slider of the gallery media ---------- */
 /* Home is a view of the page: the top bar stays, the section list, the stage and the page chrome step aside. */
-.home{display:none;position:fixed;inset:0;z-index:1;overflow:hidden;background:var(--bg);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.home{display:none;position:fixed;inset:0;z-index:1;overflow:hidden;background:var(--home-bg);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 html[data-view="home"] .home{display:block}
 html[data-view="home"] #rail-nav,html[data-view="home"] #stage,html[data-view="home"] .status,html[data-view="home"] .page-mode,html[data-view="home"] .insp,html[data-view="home"] .types{display:none!important}
-html[data-view="home"]{overscroll-behavior:none}
-/* The globe: tiles on latitude rings, tangent to the sphere, inside one preserve-3d node that the JS loop turns */
-/* The wrap is a square around the sphere outline (--gm): it holds the camera (perspective, centered) and a round mask
-   that fades the tiles into the page toward the outline, so the ball reads round even where the rings leave gaps */
-.globe-wrap{position:absolute;left:calc(var(--gx) - var(--gm) / 2);top:calc(var(--gy) - var(--gm) / 2);width:var(--gm);height:var(--gm);perspective:var(--gp,1600px);
-  -webkit-mask-image:radial-gradient(closest-side,#000 78%,rgba(0,0,0,.6) 88%,rgba(0,0,0,.15) 94%,transparent 98%);mask-image:radial-gradient(closest-side,#000 78%,rgba(0,0,0,.6) 88%,rgba(0,0,0,.15) 94%,transparent 98%)}
-.globe{position:absolute;left:50%;top:50%;transform-style:preserve-3d;will-change:transform}
-.gt{--w:calc(var(--R) * var(--tw));--h:calc(var(--R) * var(--th));position:absolute;left:calc(var(--w) / -2);top:calc(var(--h) / -2);width:var(--w);height:var(--h);container-type:size;
-  border-radius:calc(var(--R) * .03 + 2px);overflow:hidden;background:var(--ph-0);backface-visibility:hidden;-webkit-backface-visibility:hidden;pointer-events:none;
-  transform:rotateY(var(--lon)) rotateX(var(--lat)) translateZ(var(--R));transition:transform 520ms var(--ease-out),box-shadow 420ms ease}
-.gt img,.gt canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;opacity:0;transition:opacity 600ms ease}
-.gt img.is-loaded,.gt canvas.is-on{opacity:1}
-:is(.gt,.hlb-frame)[data-ph="0"]{background:var(--ph-0)}
-:is(.gt,.hlb-frame)[data-ph="1"]{background:var(--ph-1);box-shadow:inset 0 0 0 1px var(--line)}
-:is(.gt,.hlb-frame)[data-ph="2"]{background:var(--ph-2)}
-:is(.gt,.hlb-frame)[data-ph="3"]{background:var(--ph-3)}
-:is(.gt,.hlb-frame)[data-ph="4"]{background:var(--ph-4);color:#FFFFFF}
-:is(.gt,.hlb-frame)[data-ph="5"]{background:linear-gradient(150deg,var(--ph-5),var(--ph-4) 70%);color:#FFFFFF}
-/* Hover lifts the tile off the sphere (the turn slows down meanwhile). Its shadow is a flat element behind the globe that
-   follows the tile on screen: shadows painted inside the 3D scene get clipped by the browser. */
-.gt.is-hover{transform:rotateY(var(--lon)) rotateX(var(--lat)) translateZ(calc(var(--R) * 1.1)) scale(1.08);transition-duration:360ms}
-.globe-shadow{position:absolute;left:0;top:0;width:0;height:0;border-radius:calc(var(--gr) * .03 + 4px);background:rgba(0,16,64,.06);box-shadow:0 14px 30px rgba(0,16,64,.2),0 4px 10px rgba(0,16,64,.1);opacity:0;pointer-events:none;transition:opacity 240ms ease}
-.globe-shadow.is-on{opacity:1;transition-duration:420ms}
-:root[data-scheme="dark"] .globe-shadow{background:rgba(0,0,0,.3);box-shadow:0 14px 30px rgba(0,0,0,.6),0 4px 10px rgba(0,0,0,.4)}
-.gt.is-out{visibility:hidden}
-.home.is-pointing{cursor:pointer} /* over a tile: see Globe.pick, the tiles themselves take no pointer events */
-.gt-b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font);font-style:normal;font-weight:800;font-size:40cqh;line-height:1;letter-spacing:-.04em;padding-bottom:4cqh;pointer-events:none}
-html.globe-grabbing,html.globe-grabbing *{cursor:grabbing!important}
-.home-vids{position:fixed;left:0;top:0;width:2px;height:2px;overflow:hidden;opacity:.01;pointer-events:none;z-index:-1}
-.home-vids video{width:2px;height:2px}
-/* Admin: the gallery button bottom left, and the gallery panel in the left column (it leaves the globe in view) */
-.home-tools{position:absolute;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:2;display:flex;align-items:center;gap:14px;touch-action:auto}
+html[data-view="home"]{overscroll-behavior:none;background:var(--home-bg)}
+/* The stage is the camera: its perspective is centered on the band of images (--hs-cy). Every card hangs from that
+   point and the JS loop gives each one its own 3D transform: where it sits on the inside of the curve, turned toward
+   the middle, and lifted toward the viewer on hover. Cards take no pointer events (see Slider.pick). */
+.hs{position:absolute;inset:0;outline:none}
+.hs-stage{position:absolute;inset:0;perspective:var(--hs-p,2400px);perspective-origin:50% var(--hs-cy,50%);pointer-events:none}
+.hs-card{position:absolute;left:calc(50% - var(--hs-w) / 2);top:calc(var(--hs-cy) - var(--hs-mh) / 2 - var(--hs-pad));width:var(--hs-w);padding:var(--hs-pad);border-radius:calc(var(--hs-r) + var(--hs-pad));
+  background:var(--hs-card);box-shadow:var(--hs-shadow);transform-origin:50% calc(var(--hs-pad) + var(--hs-mh) / 2);backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform;transition:box-shadow 420ms ease}
+.hs-card.is-hover{box-shadow:var(--hs-shadow-up);transition-duration:300ms}
+.hs:focus-visible .hs-card.is-mid{box-shadow:0 0 0 3px var(--focus),var(--hs-shadow)} /* the keyboard is on the slider: Enter opens this one */
+.hs-card.is-off{visibility:hidden}
+.hs-card.is-out > *{visibility:hidden} /* in the lightbox: the empty frame waits for it to come back */
+.hs-media{position:relative;height:var(--hs-mh);border-radius:var(--hs-r);overflow:hidden;background:var(--ph-0);container-type:size;isolation:isolate}
+.hs-media img,.hs-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;opacity:0;transition:opacity 500ms ease}
+.hs-media .is-loaded{opacity:1}
+/* The label strip under the image: only on cards that have a caption */
+.hs-cap{height:var(--hs-cap);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(var(--hs-pad) * .55) calc(var(--hs-pad) * .45) 0;font-size:var(--hs-fs,11px);font-weight:650;letter-spacing:.09em;line-height:1;text-transform:uppercase;color:var(--ink)}
+.hs-cap-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-n{flex:none;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+:is(.hs-media,.hlb-frame)[data-ph="0"]{background:var(--ph-0)}
+:is(.hs-media,.hlb-frame)[data-ph="1"]{background:var(--ph-1);box-shadow:inset 0 0 0 1px var(--line)}
+:is(.hs-media,.hlb-frame)[data-ph="2"]{background:var(--ph-2)}
+:is(.hs-media,.hlb-frame)[data-ph="3"]{background:var(--ph-3)}
+:is(.hs-media,.hlb-frame)[data-ph="4"]{background:var(--ph-4);color:#FFFFFF}
+:is(.hs-media,.hlb-frame)[data-ph="5"]{background:linear-gradient(150deg,var(--ph-5),var(--ph-4) 70%);color:#FFFFFF}
+.hs-b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font);font-style:normal;font-weight:800;font-size:34cqw;line-height:1;letter-spacing:-.04em;padding-bottom:4cqh;pointer-events:none}
+.home.is-pointing{cursor:pointer}
+html.hs-grabbing,html.hs-grabbing *{cursor:grabbing!important}
+/* Prev / dots / next, centered at the bottom */
+.hs-nav{position:absolute;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:12px;touch-action:auto}
+.hs-btn{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 18px 0 13px;border-radius:999px;background:var(--hs-card);color:var(--ink);box-shadow:var(--hs-shadow-btn);font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;transition:transform 140ms var(--ease-out),box-shadow 200ms ease}
+.hs-btn[data-action="hs-next"]{padding:0 13px 0 18px}
+.hs-btn svg.i{width:17px;height:17px;stroke-width:2}
+.hs-btn:hover{box-shadow:var(--hs-shadow-up)}
+.hs-btn:active{transform:scale(.96)}
+.hs-dots{display:flex;align-items:center;padding:0 2px}
+.hs-dot{display:grid;place-items:center;height:28px;padding:0 3px}
+.hs-dot::before{content:"";width:6px;height:6px;border-radius:3px;background:color-mix(in srgb,var(--ink) 20%,transparent);transition:width 360ms var(--ease-out),background-color 240ms ease}
+.hs-dot:hover::before{background:color-mix(in srgb,var(--ink) 45%,transparent)}
+.hs-dot[aria-current="true"]::before{width:20px;background:var(--ink)}
+.hs-count{min-width:64px;text-align:center;font-size:12.5px;font-weight:650;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:var(--muted)}
+.hs-count b{color:var(--ink);font-weight:650}
+/* Admin: the gallery button bottom left, and the gallery panel in the left column (it leaves the slider in view) */
+.home-tools{position:absolute;left:20px;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:3;display:flex;align-items:center;gap:14px;touch-action:auto}
 .hbtn{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px 0 14px;border-radius:999px;background:var(--material);color:var(--ink);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:inset 0 0 0 .5px var(--material-edge),var(--shadow-float);font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;transition:transform 140ms var(--ease-out),background-color 200ms ease,color 200ms ease}
 .hbtn:active{transform:scale(.97)}
 .hbtn[aria-expanded="true"]{background:var(--ink);color:var(--bg)}
@@ -913,16 +934,23 @@ html.globe-grabbing,html.globe-grabbing *{cursor:grabbing!important}
 .hg-add:active{transform:scale(.97)}
 .hg-add:focus-within{box-shadow:inset 0 0 0 2px var(--focus)}
 .hg-add.is-big{grid-column:1 / -1;aspect-ratio:auto;height:120px;font-size:12.5px}
+.hg-th.is-sel{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--ink)}
+.hg-th.is-sel:focus-visible{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--focus)}
+/* The caption of the selected item: the label strip under its card on the slider (optional) */
+.hgal-cap{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px;border-top:1px solid var(--line)}
+.hgal-cap label{font-size:11.5px;font-weight:600;color:var(--muted)}
+.hgal-cap .fld input{padding:0 14px;font-variant-numeric:normal}
 .hgal-foot{margin:0;padding:10px 16px 14px;border-top:1px solid var(--line);font-size:11.5px;line-height:1.45;color:var(--muted)}
-/* The tile that was clicked grows into a centered view over a light veil */
+/* The card that was clicked grows into a centered view over a light veil */
 .hlb{position:fixed;inset:0;z-index:70;outline:none}
 .hlb[hidden]{display:none}
 .hlb-bg{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 76%,transparent);-webkit-backdrop-filter:blur(22px) saturate(150%);backdrop-filter:blur(22px) saturate(150%)}
 .hlb-frame{position:fixed;overflow:hidden;border-radius:18px;background:var(--ph-0);container-type:size;box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 24px 60px rgba(0,16,64,.16),0 8px 20px rgba(0,0,0,.06)}
 .hlb-frame > img,.hlb-frame > video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .hlb-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6cqh;padding:8cqh;text-align:center}
-.hlb-ph .gt-b{position:static;font-size:30cqh;padding:0}
+.hlb-ph .hs-b{position:static;font-size:30cqh;padding:0}
 .hlb-ph p{margin:0;max-width:30ch;font-size:clamp(13px,4.6cqh,17px);font-weight:500;line-height:1.4;opacity:.62}
+.hlb-cap{position:fixed;left:50%;transform:translateX(-50%);margin:0;max-width:calc(100vw - 32px);font-size:12px;font-weight:650;letter-spacing:.09em;line-height:1.3;text-transform:uppercase;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hlb-x{position:absolute;top:calc(20px + env(safe-area-inset-top,0px));right:20px;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--bg);box-shadow:var(--shadow-float);transition:transform 140ms var(--ease-out)}
 .hlb-x:active{transform:scale(.94)}
 .hlb-x svg.i{width:20px;height:20px;stroke-width:1.9}
@@ -997,13 +1025,15 @@ html.is-row-drag .page-mode{visibility:hidden}
   @keyframes inspIn{from{opacity:0}to{opacity:1}}
   @keyframes popIn{from{opacity:0}to{opacity:1}}
   @keyframes toastIn{from{opacity:0}to{opacity:1}}
-  .pill-ind,.thumb,.drop-line,.sub-item .sub,.hg-th,.gt,.gt img,.gt canvas,.globe-shadow{transition-duration:0ms!important}
+  .pill-ind,.thumb,.drop-line,.sub-item .sub,.hg-th,.hs-card,.hs-media img,.hs-media video,.hs-dot::before{transition-duration:0ms!important}
   .act-chip{transform:none!important}
   .tog::after,.slot-color{transition:none}
   .skel,.status i{animation:none!important}
 }
 
 /* ---------- Narrow screens ---------- */
+/* Home: below this width the hint would reach the slider controls; it goes above the gallery button */
+@media (max-width:1180px){.home-tools{flex-direction:column-reverse;align-items:flex-start;gap:10px}}
 @media (max-width:860px){
   :root{--col-l:16px;--col-r:16px}
   .rail{position:absolute;top:0;right:0;width:auto;height:auto;gap:0;padding:0}
@@ -1030,6 +1060,14 @@ html.is-row-drag .page-mode{visibility:hidden}
   .ov-list > :last-child{max-width:100%}
   .status{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
   .page-mode,.home-tools{left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  /* Home on a phone: the arrows lose their words and the gallery button its label, so both fit the bottom row; the
+     hint goes above the button */
+  .hs-nav{bottom:calc(16px + env(safe-area-inset-bottom,0px));gap:6px}
+  .hs-btn,.hs-btn[data-action="hs-next"]{width:44px;padding:0;justify-content:center}
+  .hs-btn span,.hbtn-t{display:none}
+  .hbtn{padding:0 12px}
+  .home-tools{flex-direction:column-reverse;align-items:flex-start;gap:10px}
+  .home-hint{max-width:150px}
   html.pm-on .rail-nav{padding-bottom:12px} /* the nav flows above the page here: no room to keep for the switch */
   /* the status shares the bottom row with the view switch (92px wide, 50px tall): centered on it, kept clear of it,
      in its short form, and cut with an ellipsis if still too long (the full text is in its tooltip) */
@@ -1058,10 +1096,12 @@ html.is-row-drag .page-mode{visibility:hidden}
 
 <main class="home" id="home" aria-label="Inicio" data-home-drop>
   <h1 class="sr-only">Belo · Catálogo de marca</h1>
-  <div class="globe-shadow" id="globe-shadow" aria-hidden="true"></div>
-  <div class="globe-wrap" id="globe-wrap" aria-hidden="true"><div class="globe" id="globe"></div></div>
+  <section class="hs" id="hs" tabindex="0" aria-roledescription="carrusel" aria-label="Galería">
+    <div class="hs-stage" id="hs-stage" aria-hidden="true"></div>
+    <div class="hs-nav" id="hs-nav"></div>
+    <p class="sr-only" id="hs-live" aria-live="polite"></p>
+  </section>
   <div class="home-tools admin-only" id="home-tools"></div>
-  <div class="home-vids" id="home-vids" aria-hidden="true"></div>
 </main>
 
 <div class="ov ov-menu" id="menu" role="dialog" aria-modal="true" aria-label="Menú" aria-hidden="true">
@@ -1493,7 +1533,7 @@ function normTree(t) {
   t.logo = t.logo || null;
   t.animStyles = (Array.isArray(t.animStyles) ? t.animStyles : []).filter(x => x && x.id && (x.kind === 'mod' || x.kind === 'text'))
     .map(x => ({ id: String(x.id), name: String(x.name || 'Estilo').slice(0, 60), kind: x.kind, of: String(x.of || ''), anim: ownVals(normAnim(x.anim || {}, x.kind)) }));
-  /* Home gallery: the uploaded images and videos of the globe, in the order the editors set (each asset once) */
+  /* Home gallery: the uploaded images and videos of the slider, in the order the editors set (each asset once) */
   const home = t.home && typeof t.home === 'object' && !Array.isArray(t.home) ? t.home : {};
   const seenMedia = new Set();
   t.home = { ...home, media: (Array.isArray(home.media) ? home.media : []).filter(m => {
@@ -1502,6 +1542,8 @@ function normTree(t) {
   }).map(m => {
     const o = { id: m.id, kind: m.kind === 'video' ? 'video' : 'image' };
     if (isNum(m.w) && m.w > 0 && isNum(m.h) && m.h > 0) { o.w = m.w; o.h = m.h; }
+    const label = typeof m.label === 'string' ? m.label.replace(/\s+/g, ' ').trim().slice(0, 60) : '';
+    if (label) o.label = label;
     return o;
   }) };
   /* Seeded only when the key is missing: an empty list means the editors removed them all */
@@ -1551,7 +1593,7 @@ const S = {
   pop: null, confirmDelete: null, uploading: new Map(), justAdded: new Set(),
   overlay: null, inspView: ls.get('insp') || 'design', typeStyleUi: null, palUi: null, frameUi: null, modal: null, easeEd: null, splitView: false, pvSpeed: 1, spyLock: 0, focusKey: null, animSlot: null, newBlock: null, saveError: false, savedAt: 0, srSel: 0,
   started: false, user: null, peers: [], importing: false,
-  view: ROOT.dataset.view === 'home' ? 'home' : 'cat' /* 'home' (the opening globe) or 'cat' (a category page); set by the head script */
+  view: ROOT.dataset.view === 'home' ? 'home' : 'cat' /* 'home' (the opening slider) or 'cat' (a category page); set by the head script */
 };
 const B = { db: null, assets: null, user: null };
 let lenis = null;
@@ -1891,7 +1933,7 @@ async function boot() {
   renderAll();
   initLenis();
   Motion.init();
-  Globe.size();
+  Slider.size();
   const c = window.claude;
   if (!c || typeof c.use !== 'function') return SUPA && SUPA.url && SUPA.key ? startSupabase(SUPA) : startLocal();
   const safe = (p) => Promise.resolve(p).catch(() => null);
@@ -5078,31 +5120,33 @@ function onScroll() {
   if (S.pop && !S.pop.sticky) closePop();
 }
 addEventListener('scroll', onScroll, { passive: true });
-addEventListener('resize', () => { closePop(true); Ink.schedule(); measureNav(); markStartsFull(); ghostSoon(); Globe.size(); Lightbox.fit(); });
+addEventListener('resize', () => { closePop(true); Ink.schedule(); measureNav(); markStartsFull(); ghostSoon(); Slider.size(); Lightbox.fit(); });
 function measureNav() { if (!MOBILE.matches) return; ROOT.style.setProperty('--nav-h', $('#rail').offsetHeight + 'px'); }
 if ('ResizeObserver' in window) new ResizeObserver(() => { measureNav(); Ink.schedule(); }).observe($('#rail-nav'));
-MOBILE.addEventListener('change', () => { measureNav(); renderInspector(); Ink.schedule(); Globe.size(); });
+MOBILE.addEventListener('change', () => { measureNav(); renderInspector(); Ink.schedule(); Slider.size(); });
 
 /* ================= Home ================= */
-/* The opening view: a globe made of the gallery media (tree.home.media) that turns slowly in CSS 3D. Home is a view
-   state (S.view, html[data-view]), not an overlay: the top bar stays, the section list and the stage are hidden and
-   the URL has no hash. The browser back button moves between Home and the category pages. */
+/* The opening view: a spatial slider of the gallery media (tree.home.media), cards on the inside of a curve in CSS 3D.
+   Home is a view state (S.view, html[data-view]), not an overlay: the top bar stays, the section list and the stage are
+   hidden and the URL has no hash. The browser back button moves between Home and the category pages. */
 const homeMedia = () => (S.tree && S.tree.home && S.tree.home.media) || [];
 const HOME_ACCEPT = IMG_TYPES.concat(VID_TYPES).join(',');
 const homeUploads = () => [...S.uploading].reduce((n, [k, v]) => n + (k.startsWith('home:') ? v.count || 1 : 0), 0);
 const rectCss = (r) => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+const mod = (a, n) => ((a % n) + n) % n;
+const pad2 = (n) => String(n).padStart(2, '0');
 
 function showHome({ push = true } = {}) {
   if (S.edit) return; /* a block is open: the top bar is disabled while editing anyway */
   closePop(true);
   if (S.overlay) closeOverlay(true);
-  if (S.view === 'home') { Globe.nudge(); return; }
+  if (S.view === 'home') { Slider.toItem(0); return; } /* the logo on Home goes back to the first card */
   S.view = 'home'; ROOT.dataset.view = 'home';
   if (push) { try { history.pushState(null, '', location.pathname + location.search); } catch {} }
   scrollTop();
-  const built = Globe.built;
+  const built = Slider.built;
   renderHome(); renderPageMode();
-  if (built) Globe.enter();
+  if (built) Slider.enter();
   Ink.run();
 }
 function leaveHome({ push = true } = {}) {
@@ -5110,7 +5154,7 @@ function leaveHome({ push = true } = {}) {
   Lightbox.close(true); Gallery.close();
   S.view = 'cat'; ROOT.dataset.view = 'cat';
   if (lenis) lenis.resize(); /* the page just got its height back: scrolls to a section right after must not be clamped */
-  Globe.stop();
+  Slider.stop();
   if (push) { try { history.pushState(null, '', location.pathname + location.search + (S.active ? '#' + S.active : '')); } catch {} }
   measureNav(); markStartsFull();
   Motion.resetAll(); /* the enter animations wait until the page shows */
@@ -5133,354 +5177,356 @@ function renderHome() {
   const tools = $('#home-tools'); if (!tools) return;
   if (Gallery.isOpen && (S.mode !== 'admin' || S.view !== 'home')) { Gallery.close(); return; } /* close() renders again */
   const media = homeMedia(), up = homeUploads(), open = Gallery.isOpen;
-  const html = !S.tree ? '' : `<button type="button" class="hbtn" data-action="home-gal" aria-expanded="${open}" aria-controls="home-gal">${up ? '<span class="spinner" aria-hidden="true"></span>' : icon('image')}<span>${up ? `Subiendo ${up}…` : 'Galería'}</span>${media.length && !up ? `<span class="hbtn-n">${media.length}</span>` : ''}</button>`
+  const html = !S.tree ? '' : `<button type="button" class="hbtn" data-action="home-gal" aria-expanded="${open}" aria-controls="home-gal" aria-label="Galería">${up ? '<span class="spinner" aria-hidden="true"></span>' : icon('image')}<span class="hbtn-t">${up ? `Subiendo ${up}…` : 'Galería'}</span>${media.length && !up ? `<span class="hbtn-n">${media.length}</span>` : ''}</button>`
     + (!media.length && !open && !up ? '<p class="home-hint">Añade imágenes o videos a la galería</p>' : '');
   if (tools.dataset.html !== html) { tools.innerHTML = html; tools.dataset.html = html; }
-  if (S.tree && S.view === 'home') Globe.setMedia(media); /* built on the first visit only: links to a section skip it */
+  if (S.tree && S.view === 'home') Slider.setMedia(media); /* built on the first visit only: links to a section skip it */
   Gallery.render();
 }
 
-/* ---------- Globe ---------- */
-/* Placeholder looks (data-ph 0-5, colors in the --ph-* tokens) and how often each one shows: mostly quiet tints, some
-   brand blue. The blue ones carry a small "b". */
-const PH_W = [3, 2.4, 2.4, 1.2, .55, .45];
+/* ---------- Slider ---------- */
+/* Placeholder cards for an empty gallery (data-ph 0-5, colors in the --ph-* tokens), in slider order: the brand blue
+   one with the small "b" opens in the middle, quiet tints and white around it. */
+const PH_SEQ = [4, 2, 1, 3, 0, 5, 2, 1];
 const PH_B = [false, false, false, false, true, false];
-const GLOBE_CAM = 4.4;   /* camera distance in radii: lower = deeper perspective, more foreshortening at the outline */
-const GLOBE_FADE = .2;   /* how far in from the outline (in facing units) a tile takes to reach full opacity: short, so
-                            the foreshortened tiles at the outline still draw the round silhouette */
-const Globe = {
-  geo: null, tiles: [], nb: [], sig: null, built: false, g: null,
-  angle: -18, tilt: -12, tiltOff: 0, vel: 0, boost: 0, base: -7, /* deg/s; negative turns the front to the left */
-  R: 300, P: 1320, edge: 1 / GLOBE_CAM, raf: 0, last: 0, running: false, held: false, covered: false, coverT: 0,
-  cx: 0, cy: 0, mx: 0, my: 0, inside: false, hover: null, press: null, pd: null, drag: null, dragEnd: 0, lastPaint: 0, vids: new Map(),
-  /* 11 latitude rings 15° apart (0° to ±75°). Each ring holds as many tiles as its circumference allows: 20 at the
-     equator, 5 near the poles, 150 in all. Every other ring is offset by half a tile, like bricks. Sizes are in units
-     of the radius, so the sphere scales with one CSS variable (--R). */
-  geometry() {
-    if (this.geo) return this.geo;
-    const RINGS = 11, STEP = 15, EQ = 20, GAP = .05, rad = Math.PI / 180, out = [];
-    for (let i = 0; i < RINGS; i++) {
-      const lat = (i - (RINGS - 1) / 2) * STEP, c = Math.cos(lat * rad);
-      const n = Math.max(5, Math.round(EQ * c));
-      const h = STEP * rad - GAP, w = Math.min(2 * Math.PI * c / n - GAP, h * 1.3);
-      const off = (i % 2) * 180 / n;
-      for (let j = 0; j < n; j++) {
-        const lon = off + j * 360 / n;
-        /* sines and cosines kept per tile: facing() runs for every tile on every frame */
-        out.push({ lat, lon, w, h, sl: Math.sin(lat * rad), cl: Math.cos(lat * rad), sn: Math.sin(lon * rad), cn: Math.cos(lon * rad) });
-      }
+/* The curve. The cards sit on the inside of a cylinder whose axis stands in front of them, so the middle card faces
+   the viewer flat and the ones beside it turn toward the middle; the farther, the more. HS_ARC is the angle between two
+   neighbours on that cylinder (the bend), HS_CAM the camera distance in cylinder radii, HS_SINK how far the side cards
+   step back (in card widths, growing with the square of the offset) so the row recedes a little toward the edges. */
+const HS_ARC = 17;      /* degrees per card */
+const HS_CAM = 1.1;     /* camera distance, in radii of the cylinder */
+const HS_SINK = .2;     /* step back per card², in card widths */
+const HS_GAP = .22;     /* space between cards, in card widths */
+const HS_SPRING = 11;   /* stiffness of the glide between cards (critically damped: no bounce) */
+const HS_THROW = .28;   /* how far a flick carries, in seconds of its speed */
+const HS_LIFT = .1;     /* hover: toward the viewer, in card widths */
+const HS_SIZE = .17;    /* card width on desktop, in viewport widths */
+const HS_MAXA = 1.42;   /* past ~80° around the curve a card is edge-on: it is not drawn */
+const Slider = {
+  built: false, cards: [], items: [], m: 0, N: 0, sig: null, capSig: '', half: 3,
+  pos: 0, vel: 0, target: 0, raf: 0, last: 0, held: false, covered: false, coverT: 0,
+  W: 300, MH: 375, pad: 10, cap: 0, step: 330, dA: .2, R: 1500, P: 1350, cy: 0, vw: 0,
+  mid: null, mx: 0, my: 0, inside: false, hover: null, press: null, pd: null, drag: null, dragEnd: 0, wheelT: 0, wheelDir: 0, wheelAt: 0, cur: -1,
+  /* The list the cards cycle through: the gallery, or the placeholders while it is empty */
+  setMedia(media) {
+    const items = media.length ? media : PH_SEQ.map(ph => ({ ph }));
+    const sig = media.map(m => m.kind + ':' + m.id).join('|');
+    const capSig = items.map(m => m.label || '').join('\u0001');
+    if (sig === this.sig && capSig === this.capSig) { this.media(); return; }
+    const first = this.sig == null, fresh = sig !== this.sig;
+    this.items = items; this.m = items.length; this.sig = sig; this.capSig = capSig;
+    if (fresh) { this.N = 0; if (!first) { this.target = Math.round(this.target); this.pos = this.target; this.vel = 0; } }
+    this.size(); /* builds the cards when their count or the media changed */
+    if (!fresh) this.cards.forEach(c => { c.item = this.items[c.i]; this.fillCap(c); });
+    if (!first) { this.render(); this.media(); return; }
+    this.intro();
+  },
+  cardHTML(k) {
+    const i = k % this.m, it = this.items[i];
+    let body;
+    if (it.ph != null) body = `<div class="hs-media" data-ph="${it.ph}">${PH_B[it.ph] ? '<i class="hs-b" aria-hidden="true">b</i>' : ''}</div>`;
+    else {
+      const url = esc(assetUrl(it.id));
+      body = `<div class="hs-media">${it.kind === 'video' ? `<video src="${url}#t=0.1" muted loop playsinline preload="metadata" disablepictureinpicture></video>` : `<img src="${url}" alt="" decoding="async" draggable="false">`}</div>`;
     }
-    return (this.geo = out);
+    return `<div class="hs-card" data-k="${k}" data-i="${i}">${body}</div>`;
   },
-  /* How much a tile faces the viewer (1 = straight at it, < 0 = far side) for a turn A and a tilt T (degrees). With the
-     camera at GLOBE_CAM radii, the ones below 1 / GLOBE_CAM are past the outline (their back faces the camera). */
-  facing(t, A = this.angle, T = this.tilt + this.tiltOff) {
-    const r = Math.PI / 180, sA = Math.sin(A * r), cA = Math.cos(A * r);
-    return -t.sl * Math.sin(T * r) + t.cl * (t.cn * cA - t.sn * sA) * Math.cos(T * r);
+  fillCap(c) {
+    const it = c.item, el = c.el, cur = $('.hs-cap', el), label = it && it.label;
+    c.capH = label ? this.cap : 0;
+    if (!label) { if (cur) cur.remove(); return; }
+    const html = `<span class="hs-cap-t">${esc(label)}</span><span class="hs-n">${pad2(c.i + 1)}</span>`;
+    if (cur) { if (cur.innerHTML !== html) cur.innerHTML = html; return; }
+    el.insertAdjacentHTML('beforeend', `<div class="hs-cap">${html}</div>`);
   },
-  build() {
-    this.g = $('#globe');
-    const geo = this.geometry(), r = Math.PI / 180;
-    this.g.innerHTML = geo.map((t, i) => `<div class="gt" data-i="${i}" style="--lon:${t.lon.toFixed(3)}deg;--lat:${t.lat}deg;--tw:${t.w.toFixed(4)};--th:${t.h.toFixed(4)}"></div>`).join('');
-    this.tiles = $$('.gt', this.g).map((el, i) => ({ ...geo[i], el, key: '', item: null, o: -1 }));
-    /* Neighbours: tiles closer than ~1.5 rings on the sphere, as [index, weight]. The two beside a tile on its own ring
-       weigh most: the same item next to itself there is what the eye catches first. */
-    const u = geo.map(t => [t.cl * t.sn, t.sl, t.cl * t.cn]);
-    const lim = Math.cos(25 * r);
-    this.nb = u.map((a, i) => u.flatMap((b, j) => j !== i && a[0] * b[0] + a[1] * b[1] + a[2] * b[2] > lim ? [[j, geo[j].lat === geo[i].lat ? 10 : 1]] : []));
+  build(N) {
+    const st = $('#hs-stage');
+    if (this.hover) this.setHover(null);
+    st.innerHTML = Array.from({ length: N }, (_, k) => this.cardHTML(k)).join('');
+    this.mid = null;
+    this.N = N;
+    this.cards = $$('.hs-card', st).map((el, k) => ({ el, k, i: k % this.m, item: this.items[k % this.m], l: 0, o: 0, tf: '', zi: '', off: null, q: null, zc: 0, capH: 0, v: $('video', el), img: $('img', el), playing: false }));
+    this.cards.forEach(c => {
+      this.fillCap(c);
+      if (c.img) { if (c.img.complete && c.img.naturalWidth) c.img.classList.add('is-loaded'); else c.img.addEventListener('load', () => c.img.classList.add('is-loaded'), { once: true }); }
+      if (c.v) { c.v.muted = true; c.v.addEventListener('loadeddata', () => c.v.classList.add('is-loaded'), { once: true }); }
+    });
     this.built = true;
+    this.renderNav();
   },
-  /* Spreads n items over the tiles: kept off their neighbours as far as the count allows (never beside themselves on
-     a ring once there are 3 items), balanced (w weighs how often each one shows), and placed from the tile that faces
-     the viewer outwards, so the first item of the gallery is the one in front. Placeholders get a stable
-     pseudo-random nudge so their pattern doesn't look striped. */
-  assign(n, w, jitter) {
-    const T = this.tiles, out = new Array(T.length).fill(-1), used = new Array(n).fill(0);
-    const order = T.map((t, i) => [i, this.facing(t)]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
-    for (const i of order) {
-      const near = new Array(n).fill(0);
-      for (const [j, wt] of this.nb[i]) if (out[j] >= 0) near[out[j]] += wt;
-      let best = 0, bs = Infinity;
-      for (let k = 0; k < n; k++) {
-        const sc = near[k] * 100 + (used[k] + 1) / (w ? w[k] : 1) + (jitter ? ((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1 * 1.2 : 0);
-        if (sc < bs - 1e-9) { bs = sc; best = k; }
-      }
-      out[i] = best; used[best]++;
+  /* Card size from the room between the top bar and the controls: about a fifth of the width on desktop (a 4:5 image
+     in a card frame, plus the label strip when there are captions), two thirds of it on a phone */
+  size() {
+    const home = $('#home'); if (!home || !this.m) return;
+    const W = innerWidth, H = innerHeight, mob = MOBILE.matches;
+    this.vw = W;
+    const top = ($('.rail-top').getBoundingClientRect().bottom || 64) + (mob ? 8 : 12);
+    const bottom = H - (mob ? 16 : 24) - 44 - (mob ? 18 : 24);
+    const band = Math.max(220, bottom - top);
+    const caps = this.items.some(m => m.label);
+    let w = mob ? W * .58 : clamp(W * HS_SIZE, 220, 380);
+    const capOf = (w) => caps ? Math.round(clamp(w * .12, 30, 42)) : 0;
+    const fit = (w) => w * 1.25 + (w * .028 + 4) * 2 + capOf(w);
+    if (fit(w) > band * .8) w = (band * .8 - (caps ? 36 : 0) - 8) / 1.306;
+    w = Math.round(Math.max(140, w));
+    this.W = w; this.MH = Math.round(w * 1.25); this.pad = Math.round(w * .028 + 4); this.cap = capOf(w);
+    this.cy = Math.round(top + band / 2 - this.cap / 2);
+    this.step = Math.round(w * (1 + HS_GAP));
+    this.dA = HS_ARC * Math.PI / 180; this.R = this.step / this.dA; this.P = Math.round(this.R * HS_CAM);
+    const st = home.style;
+    st.setProperty('--hs-w', w + 'px'); st.setProperty('--hs-mh', this.MH + 'px'); st.setProperty('--hs-pad', this.pad + 'px');
+    st.setProperty('--hs-r', Math.round(w * .035 + 6) + 'px'); st.setProperty('--hs-cap', this.cap + 'px'); st.setProperty('--hs-fs', clamp(w * .034, 10, 12).toFixed(1) + 'px');
+    st.setProperty('--hs-cy', this.cy + 'px'); st.setProperty('--hs-p', this.P + 'px');
+    /* how many cards show on each side at rest: the row runs off both edges */
+    let half = 1;
+    while (half < 12 && (half + .5) * this.dA < HS_MAXA) { const q = this.quad(this.matrix(half + .5, 0), 0); if (!q || Math.min(q[0], q[6]) > W + 8) break; half++; }
+    this.half = half;
+    const need = 2 * half + 4, N = this.m * Math.ceil(need / this.m);
+    if (N !== this.N || !this.built || !this.cards.length) this.build(N); else this.renderNav(); /* dots or a counter: depends on the width */
+    this.render(); this.media();
+  },
+  /* The 3D place of a card at offset o from the middle (in cards, fractional while moving), lifted by l (0-1) */
+  matrix(o, l) {
+    const th = o * this.dA, R = this.R;
+    const x = R * Math.sin(th), z = R * (1 - Math.cos(th)) - HS_SINK * this.W * o * o;
+    const s = 1 + .03 * l;
+    return new DOMMatrix().translateSelf(x, 0, z).rotateSelf(0, -th * 180 / Math.PI, 0).translateSelf(0, 0, HS_LIFT * this.W * l).scaleSelf(s, s, 1);
+  },
+  /* The card's corners on screen [x0,y0, x1,y1, x2,y2, x3,y3] (clockwise from top left), through the stage's
+     perspective; null when a corner would reach the camera */
+  quad(M, capH) {
+    const hw = this.W / 2 + this.pad, t = -(this.MH / 2 + this.pad), b = this.MH / 2 + this.pad + capH, out = [];
+    for (const [x, y] of [[-hw, t], [hw, t], [hw, b], [-hw, b]]) {
+      const p = M.transformPoint(new DOMPoint(x, y, 0)), d = this.P - p.z;
+      if (d < this.P * .15) return null;
+      const f = this.P / d; out.push(this.vw / 2 + p.x * f, this.cy + p.y * f);
     }
     return out;
   },
-  setMedia(media) {
-    if (!this.built) this.build();
-    const sig = media.map(m => m.kind + ':' + m.id).join('|');
-    if (sig === this.sig) { this.kick(); return; }
-    const first = this.sig == null; this.sig = sig;
-    const idx = media.length ? this.assign(media.length) : this.assign(PH_W.length, PH_W, true);
-    this.tiles.forEach((t, i) => this.fill(t, media.length ? media[idx[i]] : { ph: idx[i] }));
-    this.syncVideos(media);
-    this.size(); this.apply();
-    if (first) this.intro(); else this.kick();
-  },
-  fill(t, item) {
-    t.item = item;
-    const key = item.ph != null ? 'ph' + item.ph : item.kind + ':' + item.id;
-    if (t.key === key) return;
-    t.key = key; t.cv = null; t.cx = null; t.vt = -1;
-    const el = t.el; el.textContent = '';
-    if (item.ph != null) { el.dataset.ph = item.ph; if (PH_B[item.ph]) el.innerHTML = '<i class="gt-b" aria-hidden="true">b</i>'; return; }
-    delete el.dataset.ph;
-    if (item.kind === 'video') { const c = document.createElement('canvas'); c.width = c.height = 2; el.append(c); t.cv = c; return; }
-    const img = new Image(); img.alt = ''; img.decoding = 'async'; img.draggable = false;
-    img.addEventListener('load', () => img.classList.add('is-loaded'), { once: true });
-    img.src = assetUrl(item.id); el.append(img);
-  },
-  /* One hidden, muted, looping <video> per video of the gallery; its frames are painted into the tiles' canvases */
-  syncVideos(media) {
-    const want = new Set(media.filter(m => m.kind === 'video').map(m => m.id));
-    this.vids.forEach((v, id) => { if (!want.has(id)) { v.pause(); v.removeAttribute('src'); v.load(); v.remove(); this.vids.delete(id); } });
-    want.forEach(id => {
-      if (this.vids.has(id)) return;
-      const v = document.createElement('video');
-      v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
-      v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-      v.addEventListener('loadeddata', () => this.paint(performance.now(), true));
-      v.src = assetUrl(id);
-      $('#home-vids').append(v); this.vids.set(id, v);
-      if (this.running && !RM) v.play().catch(() => {});
-    });
-  },
-  playVideos(on) { this.vids.forEach(v => { if (on && !RM) v.play().catch(() => {}); else v.pause(); }); },
-  /* Video tiles are redrawn at ~24 fps, and only the ones that face the viewer */
-  paint(now, force = false) {
-    if (!this.vids.size || (!force && now - this.lastPaint < 40)) return;
-    this.lastPaint = now;
-    const dpr = Math.min(2, devicePixelRatio || 1);
-    for (const t of this.tiles) {
-      if (!t.cv || this.facing(t) < this.edge) continue;
-      const v = this.vids.get(t.item.id);
-      if (!v || v.readyState < 2 || !v.videoWidth || (t.vt === v.currentTime && t.cv.width > 2)) continue;
-      const W = Math.round(t.w * this.R * dpr * 1.25), H = Math.round(t.h * this.R * dpr * 1.25);
-      if (t.cv.width !== W || t.cv.height !== H) { t.cv.width = W; t.cv.height = H; t.cx = null; }
-      const cx = t.cx || (t.cx = t.cv.getContext('2d'));
-      const s = Math.max(W / v.videoWidth, H / v.videoHeight), sw = W / s, sh = H / s;
-      try { cx.drawImage(v, (v.videoWidth - sw) / 2, (v.videoHeight - sh) / 2, sw, sh, 0, 0, W, H); } catch { continue; }
-      t.vt = v.currentTime;
-      if (!t.cv.classList.contains('is-on')) t.cv.classList.add('is-on');
-    }
-  },
-  /* Depth: tiles fade into the page toward the outline of the sphere, the way the far side of a lit ball falls off.
-     Opacity moves in 1/20 steps and is written only when a tile changes step, so a slow turn touches a few tiles per
-     frame instead of all of them. */
-  shade() {
+  render() {
     if (!this.built) return;
-    const r = Math.PI / 180, A = this.angle * r, T = (this.tilt + this.tiltOff) * r;
-    const sA = Math.sin(A), cA = Math.cos(A), sT = Math.sin(T), cT = Math.cos(T), e = this.edge;
-    for (const t of this.tiles) {
-      const f = -t.sl * sT + t.cl * (t.cn * cA - t.sn * sA) * cT;
-      let o = 0;
-      if (f > e) { const k = Math.min(1, (f - e) / GLOBE_FADE); o = Math.round(k * (2 - k) * 20) / 20; }
-      if (o !== t.o) { t.o = o; t.el.style.opacity = o; }
+    const N = this.N, lim = this.half + 1;
+    for (const c of this.cards) {
+      let o = mod(c.k - this.pos, N); if (o > N / 2) o -= N;
+      c.o = o;
+      let off = Math.abs(o) > lim || Math.abs(o) * this.dA > HS_MAXA, q = null, M = null;
+      if (!off) { M = this.matrix(o, c.l); q = this.quad(M, c.capH); off = !q || Math.max(q[0], q[2], q[4], q[6]) < -8 || Math.min(q[0], q[2], q[4], q[6]) > this.vw + 8; }
+      if (off !== c.off) { c.off = off; c.el.classList.toggle('is-off', off); }
+      c.q = off ? null : q;
+      if (off) continue;
+      c.zc = c.el === this.hover ? 1e4 : -Math.abs(o); /* the paint order (z-index): what the eye sees on top */
+      const tf = M.toString();
+      if (tf !== c.tf) { c.tf = tf; c.el.style.transform = tf; }
+      const zi = String(c.el === this.hover ? 60 : 40 - Math.round(Math.abs(o) * 2));
+      if (zi !== c.zi) { c.zi = zi; c.el.style.zIndex = zi; }
+    }
+    const cur = mod(Math.round(this.pos), this.m);
+    if (cur !== this.cur) { this.cur = cur; this.paintNav(); }
+    const mid = this.cards[mod(Math.round(this.pos), N)];
+    if (mid !== this.mid) { if (this.mid) this.mid.el.classList.remove('is-mid'); this.mid = mid; if (mid) mid.el.classList.add('is-mid'); }
+  },
+  /* Prev / next and a dot per item (a counter instead once they would not fit) */
+  renderNav() {
+    const nav = $('#hs-nav'); if (!nav) return;
+    const n = this.m, dots = n <= (MOBILE.matches ? 8 : 12);
+    const what = this.items[0] && this.items[0].ph != null ? 'tarjeta' : 'elemento';
+    const mid = dots ? `<div class="hs-dots">${this.items.map((_, i) => `<button type="button" class="hs-dot" data-action="hs-dot" data-i="${i}" tabindex="-1" aria-label="Ir al ${what} ${i + 1}"></button>`).join('')}</div>` : '<div class="hs-count" aria-hidden="true"></div>';
+    const html = `<button type="button" class="hs-btn" data-action="hs-prev" aria-label="Anterior">${icon('left')}<span>Anterior</span></button>${mid}<button type="button" class="hs-btn" data-action="hs-next" aria-label="Siguiente"><span>Siguiente</span>${icon('right')}</button>`;
+    if (nav.dataset.html !== html) { nav.innerHTML = html; nav.dataset.html = html; }
+    this.cur = -1; this.render();
+  },
+  paintNav() {
+    const i = this.cur;
+    $$('#hs-nav .hs-dot').forEach(d => { if (+d.dataset.i === i) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current'); });
+    const cnt = $('#hs-nav .hs-count'); if (cnt) cnt.innerHTML = `<b>${pad2(i + 1)}</b> / ${pad2(this.m)}`;
+  },
+  live() {
+    const it = this.items[this.cur], el = $('#hs-live'); if (!it || !el) return;
+    const t = it.ph != null ? `Tarjeta ${this.cur + 1} de ${this.m}` : `${it.kind === 'video' ? 'Video' : 'Imagen'} ${this.cur + 1} de ${this.m}${it.label ? ': ' + it.label : ''}`;
+    if (el.textContent !== t) el.textContent = t;
+  },
+  /* Videos play (muted, looping) only on the cards in view while Home is shown; the rest hold their first frame */
+  media() {
+    const on = this.built && S.view === 'home' && !document.hidden && !this.held && !this.covered && !RM;
+    for (const c of this.cards) {
+      if (!c.v) continue;
+      const play = on && !c.off;
+      if (play === c.playing) continue;
+      c.playing = play;
+      if (play) c.v.play().catch(() => {}); else c.v.pause();
     }
   },
-  /* Diameter about min(82vh, 80vw), centered in the space under the top bar; the outer rim fades out (mask), so the
-     ball reads a little smaller than that. On phones it spans the width. */
-  size() {
-    const home = $('#home'); if (!home) return;
-    const W = innerWidth, H = innerHeight, mob = MOBILE.matches;
-    const top = ($('.rail-top').getBoundingClientRect().bottom || 64) + (mob ? 8 : 20);
-    const avail = Math.max(200, H - top - (mob ? 16 : 20));
-    const D = Math.max(180, mob ? Math.min(W * 1.02, avail * .9) : Math.min(H * .82, W * .8, avail * .94));
-    this.R = D / 2; this.P = this.R * GLOBE_CAM; this.edge = this.R / this.P;
-    const st = home.style;
-    this.cx = W / 2; this.cy = top + avail / 2;
-    st.setProperty('--gx', this.cx + 'px'); st.setProperty('--gy', this.cy + 'px');
-    const sil = this.R * this.P / Math.sqrt(this.P * this.P - this.R * this.R); /* the outline of the sphere, as projected */
-    st.setProperty('--gr', this.R + 'px'); st.setProperty('--gp', this.P + 'px'); st.setProperty('--gm', Math.ceil(sil * 2.16) + 'px');
-    $('#globe').style.setProperty('--R', this.R + 'px');
-    if (this.built) { this.shade(); this.paint(performance.now(), true); }
-  },
-  apply() {
-    if (this.g) this.g.style.transform = `rotateX(${(this.tilt + this.tiltOff).toFixed(3)}deg) rotateY(${this.angle.toFixed(3)}deg)`;
-    this.shade();
-  },
-  start() {
-    if (this.running || !this.built || S.view !== 'home' || document.hidden || this.held || this.covered) return;
-    this.running = true; this.last = 0;
-    this.playVideos(true);
-    this.raf = requestAnimationFrame(this.tick);
-  },
-  stop() { this.running = false; cancelAnimationFrame(this.raf); this.raf = 0; this.playVideos(false); this.setHover(null); },
-  /* Reduced motion: the loop only runs while the globe is being dragged */
-  kick() { if (!RM || this.drag) this.start(); else this.apply(); },
-  hold(on) { this.held = on; if (on) this.stop(); else { this.vel = 0; this.kick(); } }, /* frozen under the lightbox */
-  /* An overlay (menu, search) covers the whole page: the globe stops once the overlay has finished coming in */
-  cover(on) {
-    clearTimeout(this.coverT);
-    if (!on) { if (this.covered) { this.covered = false; this.kick(); } return; }
-    this.coverT = setTimeout(() => { this.covered = true; this.stop(); }, RM ? 0 : 700);
-  },
+  /* ---- motion: one loop, running only while something moves (a glide, a drag, a hover lift) ---- */
+  kick() { if (!this.raf && this.built && S.view === 'home') { this.last = 0; this.raf = requestAnimationFrame(this.tick); } },
+  stop() { cancelAnimationFrame(this.raf); this.raf = 0; this.setHover(null); this.media(); },
   frame(now) {
     this.raf = 0;
-    if (!this.running) return;
-    const dt = this.last ? Math.min(.05, (now - this.last) / 1000) : 0; this.last = now;
-    if (!this.drag && !RM) {
-      /* constant movement: a hovered tile slows the turn a lot but never stops it; flicks and the wheel add speed
-         that eases back to the slow spin */
-      const target = this.hover ? this.base * .12 : this.base;
-      this.vel += (target - this.vel) * (1 - Math.exp(-dt / (this.hover ? .28 : 1.1)));
-      this.boost *= Math.exp(-dt / .7);
-      this.angle = (this.angle + (this.vel + Math.sign(this.base) * this.boost) * dt) % 360;
-      this.tiltOff *= Math.exp(-dt / .5);
-    }
-    this.apply();
-    /* hover follows the tile under a still pointer as the globe turns (pick() is plain math, cheap every frame) */
-    this.hitTest();
-    this.shadow(); this.paint(now);
-    if (RM && !this.drag) { this.running = false; return; }
-    this.raf = requestAnimationFrame(this.tick);
-  },
-  hitTest() {
-    if (!this.inside || this.drag || Lightbox.on || S.view !== 'home' || S.overlay) { this.setHover(null); return; }
-    const t = this.pick(this.mx, this.my);
-    this.setHover(t ? t.el : null);
-  },
-  /* The tile under a screen point, worked out from the globe's own geometry. The browser's hit test misses a good share
-     of 3D tiles that move every frame (Chromium answers with the wrap behind them), so tiles take no pointer events and
-     hover and clicks come here. Each visible tile's corners are projected the way the CSS places them (tile:
-     rotateY(lon) rotateX(lat) translateZ(R); globe: rotateX(tilt) rotateY(angle); perspective P around the center) and
-     the front-most quad that holds the point wins. The hovered tile counts where it rests and where it is lifted to:
-     lifting moves it outward on screen, and the pointer must not lose it (and flicker) because of that. */
-  pick(x, y) {
-    if (!this.built) return null;
-    const r = Math.PI / 180, A = this.angle * r, T = (this.tilt + this.tiltOff) * r;
-    const sA = Math.sin(A), cA = Math.cos(A), sT = Math.sin(T), cT = Math.cos(T), R = this.R, P = this.P, e = this.edge;
-    const px = x - this.cx, py = y - this.cy, q = [0, 0, 0, 0, 0, 0, 0, 0];
-    /* depth of the tile's center when the point lies on it (projected quad, scaled by s and pushed out to Z), else null */
-    const hit = (t, Z, s) => {
-      const hw = t.w * R * s / 2, hh = t.h * R * s / 2;
-      let zc = 0;
-      for (let k = 0; k < 5; k++) { /* 4 corners, then the center (k = 4) for the depth */
-        const u = k === 4 ? 0 : k === 0 || k === 3 ? -hw : hw, v = k === 4 ? 0 : k < 2 ? -hh : hh;
-        const y1 = v * t.cl - Z * t.sl, z1 = v * t.sl + Z * t.cl;           /* rotateX(lat) after translateZ */
-        const x2 = u * t.cn + z1 * t.sn, z2 = -u * t.sn + z1 * t.cn;        /* rotateY(lon) */
-        const x3 = x2 * cA + z2 * sA, z3 = -x2 * sA + z2 * cA;             /* rotateY(angle) */
-        const y4 = y1 * cT - z3 * sT, z4 = y1 * sT + z3 * cT;              /* rotateX(tilt) */
-        if (k === 4) { zc = z4; break; }
-        const f = P / (P - z4); q[k * 2] = x3 * f; q[k * 2 + 1] = y4 * f;
+    if (S.view !== 'home') return;
+    const dt = this.last ? Math.min(.05, (now - this.last) / 1000) : 1 / 60; this.last = now;
+    let busy = !!this.drag;
+    if (!this.drag) {
+      if (RM) { this.pos = this.target; this.vel = 0; }
+      else {
+        const w = HS_SPRING;
+        for (let t = dt; t > 1e-6; t -= 1 / 240) { const h = Math.min(t, 1 / 240); this.vel += (w * w * (this.target - this.pos) - 2 * w * this.vel) * h; this.pos += this.vel * h; }
+        if (Math.abs(this.target - this.pos) < 4e-4 && Math.abs(this.vel) < 4e-3) { this.pos = this.target; this.vel = 0; } else busy = true;
       }
+    }
+    for (const c of this.cards) {
+      const g = c.el === this.hover ? 1 : 0; if (c.l === g) continue;
+      if (RM) { c.l = g; continue; }
+      c.l += (g - c.l) * (1 - Math.exp(-dt / .1));
+      if (Math.abs(g - c.l) < .004) c.l = g; else busy = true;
+    }
+    this.render();
+    this.hitTest();
+    if (busy) { this.raf = requestAnimationFrame(this.tick); return; }
+    /* at rest: keep the numbers small, and say where the slider stands */
+    const k = Math.floor(this.target / this.N) * this.N; this.pos -= k; this.target -= k;
+    this.live(); this.media();
+  },
+  go(d) {
+    if (!this.built || !d) return;
+    this.target = Math.round(this.target) + d;
+    if (RM) this.pos = this.target;
+    this.kick();
+  },
+  /* the nearest card that shows item i */
+  toItem(i) { if (!this.built) return; const cur = mod(Math.round(this.target), this.m); let d = mod(i - cur, this.m); if (d > this.m / 2) d -= this.m; this.go(d); },
+  toCard(k) { if (!this.built) return; let d = mod(k - Math.round(this.target), this.N); if (d > this.N / 2) d -= this.N; this.go(d); },
+  hold(on) { this.held = on; if (on) this.setHover(null); this.media(); }, /* under the lightbox */
+  /* An overlay (menu, search) covers the whole page: the videos stop once it has finished coming in */
+  cover(on) {
+    clearTimeout(this.coverT);
+    if (!on) { if (this.covered) { this.covered = false; this.media(); } return; }
+    this.coverT = setTimeout(() => { this.covered = true; this.setHover(null); this.media(); }, RM ? 0 : 700);
+  },
+  /* ---- pointer ---- */
+  /* The card under a screen point, from the quads render() projected (cards take no pointer events: the browser's hit
+     test of moving 3D elements is unreliable). Where two overlap, the one painted on top wins: the hovered card, then
+     the one nearer the middle. */
+  pick(x, y) {
+    let best = null, bz = -Infinity;
+    for (const c of this.cards) {
+      const q = c.q; if (!q || c.el.classList.contains('is-out')) continue;
       let pos = 0, neg = 0;
       for (let k = 0; k < 4; k++) {
         const ax = q[k * 2], ay = q[k * 2 + 1], bx = q[(k + 1) % 4 * 2], by = q[(k + 1) % 4 * 2 + 1];
-        const c = (bx - ax) * (py - ay) - (by - ay) * (px - ax);
-        if (c > 0) pos++; else if (c < 0) neg++;
+        const cr = (bx - ax) * (y - ay) - (by - ay) * (x - ax);
+        if (cr > 0) pos++; else if (cr < 0) neg++;
       }
-      return pos && neg ? null : zc;
-    };
-    let best = null, bz = -Infinity;
-    for (const t of this.tiles) {
-      if (t.o < .3 || -t.sl * sT + t.cl * (t.cn * cA - t.sn * sA) * cT <= e || t.el.classList.contains('is-out')) continue;
-      let z = t.el === this.hover ? hit(t, R * 1.1, 1.08) : null;
-      if (z == null) z = hit(t, R, 1); else z += R; /* the lifted tile stays in front of its neighbours */
-      if (z != null && z > bz) { best = t; bz = z; }
+      if (!(pos && neg) && c.zc > bz) { best = c; bz = c.zc; }
     }
     return best;
+  },
+  hitTest() {
+    if (!this.inside || this.drag || this.held || this.covered || Lightbox.on || S.view !== 'home' || S.overlay) { this.setHover(null); return; }
+    const c = this.pick(this.mx, this.my);
+    this.setHover(c ? c.el : null);
   },
   setHover(el) {
     if (this.hover === el) return;
     if (this.hover) this.hover.classList.remove('is-hover');
     this.hover = el || null;
     if (el) el.classList.add('is-hover');
-    $('#globe-shadow').classList.toggle('is-on', !!el); $('#home').classList.toggle('is-pointing', !!el);
-    this.shadow();
+    $('#home').classList.toggle('is-pointing', !!el);
+    this.kick();
   },
-  /* the hovered tile's shadow follows it on screen, a little lower (the tile is lifted toward the viewer) */
-  shadow() {
-    const el = this.hover; if (!el) return;
-    const r = el.getBoundingClientRect(), st = $('#globe-shadow').style, k = .9;
-    st.width = r.width * k + 'px'; st.height = r.height * k + 'px';
-    st.transform = `translate(${(r.left + r.width * (1 - k) / 2).toFixed(1)}px,${(r.top + r.height * ((1 - k) / 2 + .06)).toFixed(1)}px)`;
-  },
-  /* the pointer counts as over the globe when nothing else of the page (top bar, admin tools, panels) is on top of it */
+  /* the pointer counts as over the slider when nothing else of the page (top bar, controls, admin tools, panels) is on top */
   track(e) {
     if (e.pointerType !== 'mouse') return;
     const el = e.target;
     this.mx = e.clientX; this.my = e.clientY;
-    this.inside = S.view === 'home' && !!el.closest && !!el.closest('#home') && !el.closest('.home-tools');
-    if (!this.running) this.hitTest();
+    this.inside = S.view === 'home' && !!el.closest && !!el.closest('#home') && !el.closest('.home-tools, .hs-nav');
+    if (!this.raf) this.hitTest();
   },
-  /* Drag to spin (with inertia) and to tilt a little; a drag never counts as a click on a tile */
+  /* Drag or swipe: the row follows the pointer, then glides on with the throw and settles on the nearest card. A drag
+     never counts as a click on a card. */
   down(e) {
-    if (S.view !== 'home' || Lightbox.on || e.button !== 0 || !e.isPrimary) return;
+    if (S.view !== 'home' || Lightbox.on || S.overlay || e.button !== 0 || !e.isPrimary || !this.built) return;
     const t = e.target;
-    if (!t.closest || !t.closest('#home') || t.closest('.home-tools')) return;
-    /* the tile pressed is the one a click opens, even if the turn carries it a little before the button comes up */
-    this.press = { tile: this.pick(e.clientX, e.clientY), at: performance.now() };
-    this.pd = { id: e.pointerId, x0: e.clientX, y0: e.clientY, a0: this.angle, t0: this.tiltOff, active: false, hist: [], mouse: e.pointerType === 'mouse' };
+    if (!t.closest || !t.closest('#home') || t.closest('.home-tools, .hs-nav')) return;
+    this.press = { c: this.pick(e.clientX, e.clientY), at: performance.now() };
+    this.pd = { id: e.pointerId, x0: e.clientX, y0: e.clientY, p0: this.pos, active: false, hist: [], mouse: e.pointerType === 'mouse' };
   },
   move(e) {
     const d = this.pd; if (!d || e.pointerId !== d.id) return;
-    const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
     if (!d.active) {
-      if (Math.hypot(dx, dy) < (d.mouse ? 4 : 8)) return;
-      d.active = true; this.drag = d;
+      if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < (d.mouse ? 5 : 8)) return;
+      d.active = true; this.drag = d; d.x0 = e.clientX; d.p0 = this.pos; this.vel = 0;
       try { $('#home').setPointerCapture(e.pointerId); } catch {}
-      ROOT.classList.add('globe-grabbing'); this.setHover(null); this.vel = 0; this.boost = 0;
-      this.kick();
+      ROOT.classList.add('hs-grabbing'); this.setHover(null);
     }
-    const k = 180 / (Math.PI * this.R); /* degrees per pixel: the surface under the pointer follows it */
-    this.angle = d.a0 + dx * k;
-    this.tiltOff = clamp(d.t0 - dy * k * .45, -24, 18);
+    this.pos = this.target = d.p0 - (e.clientX - d.x0) / this.step;
     const now = performance.now();
     d.hist.push({ x: e.clientX, t: now });
-    while (d.hist.length > 2 && now - d.hist[0].t > 120) d.hist.shift();
+    while (d.hist.length > 2 && now - d.hist[0].t > 100) d.hist.shift();
+    this.kick();
   },
   up(e) {
     const d = this.pd; if (!d || e.pointerId !== d.id) return;
     this.pd = null; if (!d.active) return;
     this.drag = null; this.dragEnd = performance.now();
-    ROOT.classList.remove('globe-grabbing');
-    const a = d.hist[0], b = d.hist[d.hist.length - 1], k = 180 / (Math.PI * this.R);
-    const v = a && b && b.t - a.t > 10 && performance.now() - b.t < 80 ? (b.x - a.x) / ((b.t - a.t) / 1000) * k : 0;
-    this.vel = RM ? 0 : clamp(v, -360, 360);
+    ROOT.classList.remove('hs-grabbing');
+    const a = d.hist[0], b = d.hist[d.hist.length - 1];
+    const v = a && b && b.t - a.t > 10 && performance.now() - b.t < 80 ? -(b.x - a.x) / ((b.t - a.t) / 1000) / this.step : 0; /* cards/s */
+    const moved = this.pos - d.p0, base = Math.round(d.p0);
+    let t = Math.round(this.pos + (RM ? 0 : v * HS_THROW));
+    if (t === base && Math.abs(moved) > .18) t = base + Math.sign(moved); /* a short pull is enough to move one card */
+    t = clamp(t, base - 8, base + 8);
+    this.target = t;
+    if (RM) { this.pos = t; this.vel = 0; } else this.vel = clamp(v, -30, 30);
     this.kick();
   },
-  /* A click on the globe (tiles take no pointer events, see pick): opens the tile pressed, never after a drag */
+  /* A click on the slider: opens the card pressed (the glide may carry it a little before the button comes up) */
   click(e) {
     const p = this.press; this.press = null;
-    if (Lightbox.on || S.overlay || performance.now() - this.dragEnd < 250 || !e.target.closest('#home') || e.target.closest('.home-tools')) return;
-    const t = p && performance.now() - p.at < 1000 ? p.tile : this.pick(e.clientX, e.clientY);
-    if (t) Lightbox.open(t.el);
+    if (Lightbox.on || S.overlay || performance.now() - this.dragEnd < 250 || !e.target.closest || !e.target.closest('#home') || e.target.closest('.home-tools, .hs-nav')) return;
+    const c = (p && performance.now() - p.at < 1000 && p.c) || this.pick(e.clientX, e.clientY);
+    if (c) Lightbox.open(c);
   },
+  /* Horizontal swipes on a trackpad move the row freely and settle on a card; a mouse wheel steps one card a notch */
   wheel(e) {
-    if (RM || S.view !== 'home' || Lightbox.on || S.overlay || !this.built || (e.target.closest && e.target.closest('#home-gal'))) return;
-    this.boost = Math.min(80, this.boost + Math.min(60, Math.abs(e.deltaY) + Math.abs(e.deltaX)) * .35);
+    if (S.view !== 'home' || Lightbox.on || S.overlay || !this.built || S.modal || (e.target.closest && e.target.closest('#home-gal'))) return;
+    const dx = e.deltaX, dy = e.deltaY, d0 = Math.abs(dx) > Math.abs(dy) ? dx : dy; if (!d0) return;
+    const px = e.deltaMode === 1 ? d0 * 40 : e.deltaMode === 2 ? d0 * innerWidth : d0;
+    const now = performance.now();
+    if (RM || e.deltaMode !== 0 || (!dx && Math.abs(dy) >= 50 && Number.isInteger(dy))) {
+      if (now - this.wheelAt > (RM ? 320 : 90)) { this.wheelAt = now; this.go(Math.sign(px)); }
+      return;
+    }
+    this.target += clamp(px / this.step, -.6, .6); this.wheelDir = Math.sign(px);
+    clearTimeout(this.wheelT);
+    this.wheelT = setTimeout(() => { this.target = Math.round(this.target + this.wheelDir * .3); this.kick(); }, 140);
     this.kick();
   },
-  /* First appearance: the globe grows in with a quick turn that settles into the slow spin */
+  /* First appearance: the row sweeps in along the curve and settles on the first card */
   intro() {
-    this.kick();
-    if (RM || S.view !== 'home') return;
-    this.boost = 70;
-    $('#globe-wrap').animate([{ opacity: 0, transform: 'scale(.86)' }, { opacity: 1, transform: 'none' }], { duration: 1400, easing: 'cubic-bezier(.16,1,.3,1)' });
+    this.render(); this.media();
+    if (RM || S.view !== 'home') { this.live(); return; }
+    this.pos = this.target - 2.2; this.vel = 0;
+    $('#hs-stage').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, easing: 'ease-out' });
+    $('#hs-nav').animate([{ opacity: 0, transform: 'translate(-50%, 10px)' }, { opacity: 1, transform: 'translateX(-50%)' }], { duration: 600, delay: 300, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' });
+    this.render(); this.kick();
   },
   enter() {
-    this.size(); this.apply(); this.kick();
+    this.size(); this.media();
     if (RM) return;
-    this.boost = 45;
+    this.pos = this.target - .7; this.vel = 0;
     $('#home').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360, easing: 'ease-out' });
-    $('#globe-wrap').animate([{ transform: 'scale(.94)' }, { transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.16,1,.3,1)' });
-  },
-  nudge() { if (!RM && this.built) { this.boost = Math.min(110, this.boost + 70); this.kick(); } }
+    this.render(); this.kick();
+  }
 };
-Globe.tick = (t) => Globe.frame(t);
-addEventListener('wheel', (e) => Globe.wheel(e), { passive: true });
-document.addEventListener('pointerout', (e) => { if (!e.relatedTarget && e.pointerType === 'mouse') { Globe.inside = false; Globe.setHover(null); } });
-document.addEventListener('visibilitychange', () => { if (document.hidden) Globe.stop(); else Globe.kick(); });
+Slider.tick = (t) => Slider.frame(t);
+addEventListener('wheel', (e) => Slider.wheel(e), { passive: true });
+document.addEventListener('pointerout', (e) => { if (!e.relatedTarget && e.pointerType === 'mouse') { Slider.inside = false; Slider.setHover(null); } });
+document.addEventListener('visibilitychange', () => Slider.media());
 
 /* ---------- Lightbox ---------- */
-/* A tile grows from where it is on the globe into a centered view (max ~72vw × 72vh, its own proportions) over a
-   light veil, and shrinks back into the same tile. The globe holds still meanwhile. */
+/* A card grows from where it is on the slider into a centered view (max ~72vw × 72vh, its own proportions) over a
+   light veil, and shrinks back into the same card, which glides to the middle meanwhile. */
 const Lightbox = {
-  on: false, t: null, ret: null, timer: 0, fin: null, ar: 1, ph: false,
+  on: false, c: null, ret: null, timer: 0, fin: null, ar: 1, ph: false,
   /* Centered box with the item's proportions; a placeholder opens as a smaller card that says what goes there */
   target() {
     const mob = MOBILE.matches, ph = this.ph, ar = this.ar;
@@ -5488,56 +5534,63 @@ const Lightbox = {
     let w = maxW, h = w / ar; if (h > maxH) { h = maxH; w = h * ar; }
     return { left: (innerWidth - w) / 2, top: (innerHeight - h) / 2, width: w, height: h };
   },
-  fit() { const fr = this.on && $('#home-lb .hlb-frame'); if (fr) Object.assign(fr.style, rectCss(this.target())); },
-  open(tileEl) {
-    if (this.on) return;
+  fit() {
+    if (!this.on) return;
+    const fr = $('#home-lb .hlb-frame'), to = this.target(); if (fr) Object.assign(fr.style, rectCss(to));
+    const cap = $('#home-lb .hlb-cap'); if (cap) cap.style.top = to.top + to.height + 16 + 'px';
+  },
+  open(c) {
+    if (this.on || !c || !c.item) return;
     if (this.fin) this.fin(); /* a close still animating: land it first */
-    const t = Globe.tiles[+tileEl.dataset.i]; if (!t || !t.item) return;
-    const item = t.item, lb = $('#home-lb');
-    const from = tileEl.getBoundingClientRect();
-    this.on = true; this.t = t; this.ret = document.activeElement;
-    Globe.setHover(null); Globe.hold(true);
+    const item = c.item, lb = $('#home-lb'), mediaEl = $('.hs-media', c.el);
+    const from = mediaEl.getBoundingClientRect();
+    this.on = true; this.c = c; this.ret = document.activeElement;
+    Slider.hold(true);
     const ph = this.ph = item.ph != null;
-    this.ar = item.w && item.h ? item.w / item.h : ph ? 1 : t.w / t.h;
+    this.ar = item.w && item.h ? item.w / item.h : ph ? 1 : .8;
     const to = this.target();
     const url = item.id ? esc(assetUrl(item.id)) : '';
-    const body = ph ? `<div class="hlb-ph"><i class="gt-b" aria-hidden="true">b</i><p>${S.mode === 'admin' ? 'Este espacio es para las imágenes y videos de la marca. Añádelos desde «Galería».' : 'Pronto, imágenes y videos de la marca en este espacio.'}</p></div>`
-      : item.kind === 'video' ? `<video src="${url}" muted loop playsinline controls${RM ? '' : ' autoplay'}></video>` : `<img src="${url}" alt="">`;
-    lb.innerHTML = `<div class="hlb-bg" data-action="home-lb-close"></div><div class="hlb-frame"${ph ? ` data-ph="${item.ph}"` : ''}>${body}</div><button type="button" class="hlb-x" data-action="home-lb-close" aria-label="Cerrar">${icon('x')}</button>`;
+    const body = ph ? `<div class="hlb-ph"><i class="hs-b" aria-hidden="true">b</i><p>${S.mode === 'admin' ? 'Este espacio es para las imágenes y videos de la marca. Añádelos desde «Galería».' : 'Pronto, imágenes y videos de la marca en este espacio.'}</p></div>`
+      : item.kind === 'video' ? `<video src="${url}" muted loop playsinline controls${RM ? '' : ' autoplay'}></video>` : `<img src="${url}" alt="${esc(item.label || '')}">`;
+    lb.innerHTML = `<div class="hlb-bg" data-action="home-lb-close"></div><div class="hlb-frame"${ph ? ` data-ph="${item.ph}"` : ''}>${body}</div>`
+      + (item.label ? `<p class="hlb-cap" style="top:${to.top + to.height + 16}px">${esc(item.label)}</p>` : '')
+      + `<button type="button" class="hlb-x" data-action="home-lb-close" aria-label="Cerrar">${icon('x')}</button>`;
     lb.hidden = false;
     const fr = $('.hlb-frame', lb);
     Object.assign(fr.style, rectCss(to));
-    tileEl.classList.add('is-out');
+    c.el.classList.add('is-out');
     if (!RM) {
-      const r0 = parseFloat(getComputedStyle(tileEl).borderTopLeftRadius) || 8;
+      const r0 = parseFloat(getComputedStyle(mediaEl).borderTopLeftRadius) || 8;
       fr.animate([{ ...rectCss(from), borderRadius: r0 + 'px' }, { ...rectCss(to), borderRadius: '18px' }], { duration: 640, easing: 'cubic-bezier(.32,.72,0,1)' });
       $('.hlb-bg', lb).animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' });
       $('.hlb-x', lb).animate([{ opacity: 0, transform: 'scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 320, delay: 200, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' });
+      const cap = $('.hlb-cap', lb); if (cap) cap.animate([{ opacity: 0, transform: 'translate(-50%, 6px)' }, { opacity: 1, transform: 'translateX(-50%)' }], { duration: 360, delay: 320, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' });
     }
+    Slider.toCard(c.k); /* behind the veil, the card glides to the middle: it closes back there */
     /* the dialog takes the focus (Tab reaches the close button and the video controls); focusing the button itself
        would draw its focus ring after a mouse click */
     requestAnimationFrame(() => { if (this.on) lb.focus({ preventScroll: true }); });
   },
   close(instant = false) {
     if (!this.on) return;
-    const lb = $('#home-lb'), fr = $('.hlb-frame', lb), t = this.t, v = $('video', lb);
-    this.on = false; this.t = null;
+    const lb = $('#home-lb'), fr = $('.hlb-frame', lb), c = this.c, v = $('video', lb);
+    this.on = false; this.c = null;
     if (v) v.pause();
     const fin = this.fin = () => {
       if (this.fin !== fin) return;
       this.fin = null; clearTimeout(this.timer);
       lb.hidden = true; lb.innerHTML = '';
-      if (t) t.el.classList.remove('is-out');
-      Globe.hold(false);
+      if (c) c.el.classList.remove('is-out');
+      Slider.hold(false);
     };
-    if (instant || RM || !fr || !t) fin();
+    if (instant || RM || !fr || !c || !c.el.isConnected || c.off) fin();
     else {
-      const cur = fr.getBoundingClientRect(), to = t.el.getBoundingClientRect();
-      const r0 = parseFloat(getComputedStyle(t.el).borderTopLeftRadius) || 8;
+      const m = $('.hs-media', c.el), cur = fr.getBoundingClientRect(), to = m.getBoundingClientRect();
+      const r0 = parseFloat(getComputedStyle(m).borderTopLeftRadius) || 8;
       fr.getAnimations().forEach(a => a.cancel());
       fr.animate([{ ...rectCss(cur), borderRadius: '18px' }, { ...rectCss(to), borderRadius: r0 + 'px' }], { duration: 480, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' }).finished.then(fin, fin);
       $('.hlb-bg', lb).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, easing: 'ease-out', fill: 'forwards' });
-      $('.hlb-x', lb).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out', fill: 'forwards' });
+      $$('.hlb-x, .hlb-cap', lb).forEach(n => n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out', fill: 'forwards' }));
       this.timer = setTimeout(fin, 820);
     }
     const r = this.ret; this.ret = null;
@@ -5546,10 +5599,11 @@ const Lightbox = {
 };
 
 /* ---------- Gallery (admin) ---------- */
-/* A panel in the left column lists the media of the globe: add (pick or drop files), remove, drag to reorder. Changes
-   save right away; while the panel is open they can be undone, and the files removed are deleted when it closes. */
+/* A panel in the left column lists the media of the slider: add (pick or drop files), remove, drag to reorder, and the
+   optional caption of the selected one. Changes save right away; while the panel is open they can be undone, and the
+   files removed are deleted when it closes. Selecting a thumbnail brings its card to the middle of the slider. */
 const Gallery = {
-  isOpen: false, hist: [], removed: new Map(),
+  isOpen: false, hist: [], removed: new Map(), sel: null, capFrom: null, capT: 0,
   toggle() { if (this.isOpen) this.close(); else this.open(); },
   open() {
     if (this.isOpen || S.mode !== 'admin' || S.view !== 'home' || !S.tree) return;
@@ -5558,6 +5612,7 @@ const Gallery = {
   },
   close() {
     if (!this.isOpen) return;
+    this.capCommit();
     this.isOpen = false;
     this.flush(); this.hist = [];
     renderHome();
@@ -5594,13 +5649,43 @@ const Gallery = {
     const add = `<label class="hg-th hg-add${empty ? ' is-big' : ''}" title="Añadir imágenes o videos">${icon('plus')}<span>${empty ? 'Añadir imágenes o videos' : 'Añadir'}</span><input type="file" id="home-file" class="sr-only" multiple accept="${HOME_ACCEPT}"></label>`;
     const html = `<div class="hgal-head"><button type="button" class="insp-back" data-action="home-undo" aria-label="Volver atrás" title="Volver atrás (${mac ? '⌘' : 'Ctrl'} + Z)"${this.hist.length ? '' : ' disabled'}>${icon('left')}</button><div class="hgal-title"><strong>Galería de la Home</strong><small>${sum}</small></div><button type="button" class="icon-btn" data-action="home-gal" aria-label="Cerrar galería">${icon('x')}</button></div>`
       + `<div class="hgal-grid" role="list" data-lenis-prevent>${thumbs}${add}</div>`
-      + `<p class="hgal-foot">${media.length ? 'Arrastra para ordenar: la primera queda al frente del globo.' : 'PNG, JPG, WebP, GIF, SVG, MP4 o WebM. Se reparten por todo el globo y se repiten hasta cubrirlo.'} También puedes soltar archivos aquí.</p>`;
+      + (media.length ? '<div class="hgal-cap"><label for="home-cap">Leyenda <span id="home-cap-of"></span></label><span class="fld"><input type="text" id="home-cap" maxlength="60" placeholder="Opcional: aparece debajo de la tarjeta" autocomplete="off" spellcheck="false"></span></div>' : '')
+      + `<p class="hgal-foot">${media.length ? 'Arrastra para ordenar: la primera abre el slider.' : 'PNG, JPG, WebP, GIF, SVG, MP4 o WebM. Se repiten hasta llenar la curva del slider.'} También puedes soltar archivos aquí.</p>`;
     if (el.dataset.html !== html) {
       const sc = $('.hgal-grid', el), top = sc ? sc.scrollTop : 0;
       el.innerHTML = html; el.dataset.html = html;
       const sc2 = $('.hgal-grid', el); if (sc2) sc2.scrollTop = top;
     }
     el.hidden = false;
+    this.sync();
+  },
+  /* The selected thumbnail and its caption field (kept out of the markup above, so typing never redraws the panel) */
+  sync() {
+    const media = homeMedia(); if (!media.length) { this.sel = null; return; }
+    if (!media.some(m => m.id === this.sel)) this.sel = media[0].id;
+    $$('#home-gal .hg-th[data-index]').forEach(n => n.classList.toggle('is-sel', n.dataset.id === this.sel));
+    const i = media.findIndex(m => m.id === this.sel), m = media[i], inp = $('#home-cap'), of = $('#home-cap-of');
+    if (inp && (document.activeElement !== inp || inp.dataset.id !== m.id)) { inp.value = m.label || ''; inp.dataset.id = m.id; }
+    if (of) of.textContent = `· ${m.kind === 'video' ? 'video' : 'imagen'} ${i + 1}`;
+  },
+  select(id) {
+    if (id === this.sel) return;
+    this.capCommit(); this.sel = id; this.sync();
+    const i = homeMedia().findIndex(m => m.id === id); if (i >= 0) Slider.toItem(i);
+  },
+  /* Captions save while typing (a short pause) and when the field is left; one undo step per edit */
+  capInput(inp) {
+    const id = inp.dataset.id; if (!id) return;
+    if (!this.capFrom || this.capFrom.id !== id) { const m = homeMedia().find(x => x.id === id); this.capFrom = { id, label: (m && m.label) || '' }; }
+    clearTimeout(this.capT); this.capT = setTimeout(() => homeLabel(id, inp.value), 450);
+  },
+  capCommit() {
+    clearTimeout(this.capT);
+    const inp = $('#home-cap'), f = this.capFrom; this.capFrom = null;
+    if (!inp || !f || inp.dataset.id !== f.id) return;
+    const now = inp.value.replace(/\s+/g, ' ').trim().slice(0, 60);
+    if (now !== f.label && this.isOpen) this.hist.push({ kind: 'label', id: f.id, from: f.label });
+    homeLabel(f.id, inp.value);
   }
 };
 addEventListener('pagehide', () => Gallery.flush());
@@ -5617,6 +5702,11 @@ function homeRemove(id) {
   const n = $(`#home-gal .hg-th[data-index="${Math.min(i, homeMedia().length - 1)}"]`) || $('#home-file');
   if (n) n.focus({ preventScroll: true });
 }
+function homeLabel(id, text) {
+  const v = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 60), m = homeMedia().find(x => x.id === id);
+  if (!m || (m.label || '') === v) return;
+  mutateTree(t => { const x = t.home.media.find(y => y.id === id); if (!x) return; if (v) x.label = v; else delete x.label; });
+}
 function homeMove(id, to) {
   const from = homeMedia().findIndex(m => m.id === id); if (from < 0 || from === to) return;
   if (Gallery.isOpen) Gallery.hist.push({ kind: 'move', id, from, to });
@@ -5628,6 +5718,7 @@ function homeUndo() {
     Gallery.removed.delete(h.item.id);
     mutateTree(t => { if (!t.home.media.some(m => m.id === h.item.id)) t.home.media.splice(Math.min(h.index, t.home.media.length), 0, clone(h.item)); });
   } else if (h.kind === 'move') mutateTree(homeMoveOp(h.id, h.from));
+  else if (h.kind === 'label') { homeLabel(h.id, h.from); Gallery.sel = h.id; Gallery.sync(); }
   else if (h.kind === 'add') {
     homeMedia().filter(m => h.ids.includes(m.id)).forEach(m => Gallery.removed.set(m.id, clone(m)));
     mutateTree(t => { t.home.media = t.home.media.filter(m => !h.ids.includes(m.id)); });
@@ -5684,7 +5775,7 @@ function galMove(e) {
 }
 function galUp(e) {
   const d = gdrag; if (!d || e.pointerId !== d.id) return;
-  gdrag = null; if (!d.active) return;
+  gdrag = null; if (!d.active) { Gallery.select(d.th.dataset.id); return; }
   const a = d.rects[d.from], b = d.rects[d.to];
   d.th.style.transition = 'transform 200ms cubic-bezier(.23,1,.32,1)';
   d.th.style.transform = `translate(${b.left - a.left}px,${b.top - a.top}px)`;
@@ -5827,14 +5918,14 @@ function openOverlay(kind, { instant = false } = {}) {
       ovTimer = setTimeout(() => { if (S.overlay === kind) settle(ov); }, 550);
     }
   }
-  renderPageMode(); Globe.cover(true);
+  renderPageMode(); Slider.cover(true);
   requestAnimationFrame(() => { if (kind === 'search') $('#search-input').focus(); else { const f = $('.ov-cat[aria-current]', ov) || $('.ov-cat', ov) || $('#menu-close'); f && f.focus({ preventScroll: true }); } });
 }
 function closeOverlay(instant = false) {
   const kind = S.overlay; if (!kind) return;
   const ov = $('#' + kind);
   S.overlay = null;
-  renderPageMode(); Globe.cover(false);
+  renderPageMode(); Slider.cover(false);
   if (S.inline && (S.inline.kind === 'cat' || S.inline.kind === 'rename-cat')) S.inline = null;
   clearTimeout(ovTimer);
   const fin = () => { if (S.overlay === kind) return; clearTimeout(ovTimer); ov.classList.remove('is-open'); ov.setAttribute('aria-hidden', 'true'); ov.getAnimations({ subtree: true }).forEach(a => a.cancel()); };
@@ -6176,7 +6267,7 @@ const POP_TRIGGERS = ['item-menu', 'dd', 'pal-open', 'slot-act', 'row-move', 'ro
 document.addEventListener('click', (ev) => {
   const a = ev.target.closest('[data-action]');
   if (S.pop && !ev.target.closest('#pop') && !(a && POP_TRIGGERS.includes(a.dataset.action))) closePop();
-  if (!a && S.view === 'home') { Globe.click(ev); return; }
+  if (!a && S.view === 'home') { Slider.click(ev); return; }
   if (!a || a.disabled) return;
   const act = a.dataset.action, id = a.dataset.id, slotId = a.dataset.slot;
   switch (act) {
@@ -6185,6 +6276,9 @@ document.addEventListener('click', (ev) => {
     case 'home-gal': Gallery.toggle(); break;
     case 'home-remove': homeRemove(a.dataset.id); break;
     case 'home-undo': homeUndo(); break;
+    case 'hs-prev': Slider.go(-1); break;
+    case 'hs-next': Slider.go(1); break;
+    case 'hs-dot': Slider.toItem(+a.dataset.i); break;
     case 'logo': if (S.mode === 'admin') $('#logo-input').click(); break;
     case 'menu-open': openOverlay('menu'); break;
     case 'menu-close': closeOverlay(); break;
@@ -6393,11 +6487,11 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('pointerdown', (ev) => {
   const s = ev.target.closest && ev.target.closest('#stage .row.is-editing [data-slot]');
   if (s && !ev.target.closest('.spl, .thumbs')) setActiveSlot(s.dataset.slot);
-  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev); rowDragDown(ev); frameDown(ev); Globe.down(ev); galDown(ev);
+  rzDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev); rowDragDown(ev); frameDown(ev); Slider.down(ev); galDown(ev);
 });
-document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); rowDragMove(ev); frameMove(ev); Globe.track(ev); Globe.move(ev); galMove(ev); });
-document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); rowDragUp(ev); frameUp(ev); Globe.up(ev); galUp(ev); });
-document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); frameUp(ev); if (rdrag && ev.pointerId === rdrag.pid) rowDragCancel(); Globe.up(ev); galUp(ev); });
+document.addEventListener('pointermove', (ev) => { rzMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); rowDragMove(ev); frameMove(ev); Slider.track(ev); Slider.move(ev); galMove(ev); });
+document.addEventListener('pointerup', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); rowDragUp(ev); frameUp(ev); Slider.up(ev); galUp(ev); });
+document.addEventListener('pointercancel', (ev) => { rzUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); frameUp(ev); if (rdrag && ev.pointerId === rdrag.pid) rowDragCancel(); Slider.up(ev); galUp(ev); });
 /* While a block is dragged Lenis is paused (it swallows the wheel), so the wheel scrolls the page directly; the
    panels Lenis leaves alone (the rail list) keep scrolling on their own */
 addEventListener('wheel', (ev) => {
@@ -6444,6 +6538,7 @@ document.addEventListener('focusin', (ev) => {
 });
 document.addEventListener('input', (ev) => {
   const el = ev.target;
+  if (el.id === 'home-cap') { Gallery.capInput(el); return; }
   if (el.matches && el.matches('.tb[data-block]')) {
     const s = S.edit && findSlot(S.edit.draft, el.dataset.slot); if (!s) return;
     const b = s.blocks.find(x => x.id === el.dataset.block); if (!b) return;
@@ -6479,6 +6574,7 @@ document.addEventListener('change', (ev) => {
   if (el.id === 'logo-input') { const f = el.files && el.files[0]; el.value = ''; if (f) uploadLogo(f); return; }
   if (el.id === 'menu-bg-file') { const f = el.files && el.files[0]; el.value = ''; if (f) uploadMenuBg(f); return; }
   if (el.id === 'home-file') { const f = [...(el.files || [])]; el.value = ''; if (f.length) uploadHome(f); return; }
+  if (el.id === 'home-cap') { Gallery.capCommit(); return; }
   if (el.id === 'menu-color') { const c = el.value; mutateTree(t => { t.menu.bg = { kind: 'color', color: c }; }); return; }
   if (el.dataset.upload) { const files = el.files; handleFiles(el.dataset.upload, files).finally(() => { try { el.value = ''; } catch {} }); return; }
   if (el.dataset.files || el.dataset.modalMedia) { const files = [...(el.files || [])]; try { el.value = ''; } catch {} uploadInto(el.dataset.files || el.dataset.modalMedia, files, el.dataset.files ? 'files' : 'media'); return; }
@@ -6543,6 +6639,7 @@ document.addEventListener('keydown', (ev) => {
   if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter' && S.edit && S.mode === 'admin') { ev.preventDefault(); if (t && t.blur && t.closest && t.closest('#insp')) t.blur(); confirmEdit(); return; }
   if (t && t.dataset && t.dataset.f && FIELD[t.dataset.f] && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) { ev.preventDefault(); stepField(t, ev.key === 'ArrowUp' ? 1 : -1, ev.shiftKey); return; }
   if (t && t.dataset && (t.dataset.f || t.dataset.fileName) && ev.key === 'Enter' && t.tagName !== 'TEXTAREA') { t.blur(); return; }
+  if (t && t.id === 'home-cap' && ev.key === 'Enter') { ev.preventDefault(); Gallery.capCommit(); return; }
   if (t && t.matches && !S.edit && t.matches('.slot[data-act]') && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); slotAct(t); return; }
   if (t && t.id === 'search-input') {
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); if (!lastResults.length) return; S.srSel = clamp(S.srSel + (ev.key === 'ArrowDown' ? 1 : -1), 0, lastResults.length - 1); renderSearch(t.value); const s = $('#sr-' + S.srSel); s && s.scrollIntoView({ block: 'nearest' }); return; }
@@ -6579,6 +6676,11 @@ document.addEventListener('keydown', (ev) => {
       return;
     }
   }
+  /* Home: the arrows move the slider, Enter or Space on it opens the card in the middle */
+  if (S.view === 'home' && !typing && !S.overlay && !S.modal && !S.edit && !Lightbox.on && !ev.altKey && !ev.metaKey && !ev.ctrlKey && !(t && t.closest && t.closest('#home-gal'))) {
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); Slider.go(ev.key === 'ArrowLeft' ? -1 : 1); return; }
+    if ((ev.key === 'Enter' || ev.key === ' ') && t && t.id === 'hs') { ev.preventDefault(); const c = Slider.cards.find(x => !x.off && Math.abs(x.o) < .5); if (c) Lightbox.open(c); return; }
+  }
   if (S.frameUi && !typing && /^Arrow(Left|Right|Up|Down)$/.test(ev.key)) {
     const s = frameSlot(); if (!s) return;
     ev.preventDefault(); record('frame-key');
@@ -6598,6 +6700,10 @@ document.addEventListener('keydown', (ev) => {
     bump();
     const nt = $(`.thumbs[data-slot="${s.id}"] .thumb[data-index="${j}"]`); nt && nt.focus();
   }
+});
+document.addEventListener('focusin', (ev) => {
+  const th = ev.target && ev.target.closest && ev.target.closest('#home-gal .hg-th[data-index]');
+  if (th) Gallery.select(th.dataset.id);
 });
 document.addEventListener('focusout', (ev) => {
   const t = ev.target;
