@@ -34,7 +34,7 @@ async function scenario(browser, stalled) {
   await page.route(/cdn\.jsdelivr\.net\/npm\/lenis/, r => r.fulfill({ path: FIX + 'lenis.min.js', contentType: 'text/javascript' }));
   await page.route(/cdn\.jsdelivr\.net\/npm\/gsap@[^/]+\/dist\/(gsap|ScrollTrigger|SplitText)\.min\.js/, r => r.fulfill({ path: FIX + r.request().url().split('/').pop(), contentType: 'text/javascript' }));
   await page.goto(BASE);
-  await page.waitForSelector('#home #globe .gt');
+  await page.waitForSelector('#home .hs-card');
   await page.waitForTimeout(500);
   const tag = stalled ? 'STALLED' : 'NORMAL';
   // Home is the opening screen now: the menu stays closed until its button is used
@@ -66,7 +66,7 @@ async function scenario(browser, stalled) {
   log(tag, 'after category:', await state(page), '| title:', await page.textContent('.rail-title'));
   log(tag, 'errors:', JSON.stringify(errors));
   // The production case: reload, open the menu from Home, close it while it is still animating in, open it again.
-  await page.reload(); await page.waitForSelector('#home #globe .gt');
+  await page.reload(); await page.waitForSelector('#home .hs-card');
   await page.click('#btn-menu'); await page.waitForTimeout(150);
   await page.keyboard.press('Escape'); await page.waitForTimeout(120);
   await page.click('#btn-menu'); await page.waitForTimeout(1500);
