@@ -868,17 +868,16 @@ html[data-view="home"]{overscroll-behavior:none;background:var(--home-bg)}
    the middle, and lifted toward the viewer on hover. Cards take no pointer events (see Slider.pick). */
 .hs{position:absolute;inset:0;outline:none}
 .hs-stage{position:absolute;inset:0;perspective:var(--hs-p,2400px);perspective-origin:50% var(--hs-cy,50%);pointer-events:none}
-.hs-card{position:absolute;left:calc(50% - var(--hs-w) / 2);top:calc(var(--hs-cy) - var(--hs-mh) / 2 - var(--hs-pad));width:var(--hs-w);padding:var(--hs-pad);border-radius:calc(var(--hs-r) + var(--hs-pad));
-  background:var(--hs-card);box-shadow:var(--hs-shadow);transform-origin:50% calc(var(--hs-pad) + var(--hs-mh) / 2);backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform;transition:box-shadow 420ms ease}
-.hs-card.is-hover{box-shadow:var(--hs-shadow-up);transition-duration:300ms}
-.hs:focus-visible .hs-card.is-mid{box-shadow:0 0 0 3px var(--focus),var(--hs-shadow)} /* the keyboard is on the slider: Enter opens this one */
+/* A card is the image or video itself (size and place set by Slider.layout), with the caption as plain text under it */
+.hs-card{position:absolute;left:0;top:0;transform-origin:50% 50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform}
 .hs-card.is-off{visibility:hidden}
-.hs-card.is-out > *{visibility:hidden} /* in the lightbox: the empty frame waits for it to come back */
-.hs-media{position:relative;height:var(--hs-mh);border-radius:var(--hs-r);overflow:hidden;background:var(--ph-0);container-type:size;isolation:isolate}
+.hs-card.is-out > *{visibility:hidden} /* in the lightbox: its place on the curve waits for it to come back */
+.hs-media{position:absolute;inset:0;border-radius:var(--hs-r,16px);overflow:hidden;background:var(--ph-0);container-type:size;isolation:isolate;box-shadow:var(--hs-shadow);transition:box-shadow 420ms ease}
+.hs-card.is-hover .hs-media{box-shadow:var(--hs-shadow-up);transition-duration:300ms}
+.hs:focus-visible .hs-card.is-mid .hs-media{box-shadow:0 0 0 3px var(--focus),var(--hs-shadow)} /* the keyboard is on the slider: Enter opens this one */
 .hs-media img,.hs-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;opacity:0;transition:opacity 500ms ease}
 .hs-media .is-loaded{opacity:1}
-/* The label strip under the image: only on cards that have a caption */
-.hs-cap{height:var(--hs-cap);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(var(--hs-pad) * .55) calc(var(--hs-pad) * .45) 0;font-size:var(--hs-fs,11px);font-weight:650;letter-spacing:.09em;line-height:1;text-transform:uppercase;color:var(--ink)}
+.hs-cap{position:absolute;left:2px;right:2px;top:calc(100% + var(--hs-capgap,10px));display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:var(--hs-fs,11px);font-weight:600;letter-spacing:.09em;line-height:1.2;text-transform:uppercase;color:color-mix(in srgb,var(--ink) 72%,transparent)}
 .hs-cap-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hs-n{flex:none;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.04em}
 :is(.hs-media,.hlb-frame)[data-ph="0"]{background:var(--ph-0)}
@@ -920,7 +919,7 @@ html.hs-grabbing,html.hs-grabbing *{cursor:grabbing!important}
 .hgal-title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
 .hgal-title strong{font-size:13.5px;font-weight:650;letter-spacing:-.01em}
 .hgal-title small{font-size:11.5px;color:var(--muted)}
-.hgal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 14px 14px;overflow-y:auto;align-content:start;scrollbar-width:thin}
+.hgal-grid{min-height:96px;flex:0 1 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 14px 14px;overflow-y:auto;align-content:start;scrollbar-width:thin}
 .hg-th{position:relative;aspect-ratio:1;border-radius:12px;overflow:clip;background:var(--surface-2);cursor:grab;touch-action:none;outline:none;transition:transform 220ms var(--ease-out),box-shadow 200ms ease;animation:pickIn 300ms var(--ease-out) both}
 .hg-th img,.hg-th video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 .hg-th:focus-visible{box-shadow:0 0 0 2px var(--focus)}
@@ -937,9 +936,14 @@ html.hs-grabbing,html.hs-grabbing *{cursor:grabbing!important}
 .hg-th.is-sel{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--ink)}
 .hg-th.is-sel:focus-visible{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--focus)}
 /* The caption of the selected item: the label strip under its card on the slider (optional) */
-.hgal-cap{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px;border-top:1px solid var(--line)}
-.hgal-cap label{font-size:11.5px;font-weight:600;color:var(--muted)}
-.hgal-cap .fld input{padding:0 14px;font-variant-numeric:normal}
+.hgal-sel,.hgal-rad{display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;border-top:1px solid var(--line)}
+.hgal-k{margin:0;font-size:11.5px;font-weight:600;color:var(--muted)}
+.hgal-sel .fld input{padding:0 14px;font-variant-numeric:normal}
+.hg-ratio{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:2px;border-radius:999px;background:var(--field)}
+.hg-ratio button{height:30px;padding:0 4px;text-align:center;white-space:nowrap;border-radius:999px;font-size:11.5px;font-weight:600;color:var(--muted);transition:background-color 160ms ease,color 160ms ease}
+.hg-ratio button:hover{color:var(--ink)}
+.hg-ratio button[aria-pressed="true"]{background:var(--seg-on);color:var(--ink);box-shadow:var(--shadow-soft)}
+.hgal-rad .rng{font-size:12px}
 .hgal-foot{margin:0;padding:10px 16px 14px;border-top:1px solid var(--line);font-size:11.5px;line-height:1.45;color:var(--muted)}
 /* The card that was clicked grows into a centered view over a light veil */
 .hlb{position:fixed;inset:0;z-index:70;outline:none}
@@ -1544,8 +1548,10 @@ function normTree(t) {
     if (isNum(m.w) && m.w > 0 && isNum(m.h) && m.h > 0) { o.w = m.w; o.h = m.h; }
     const label = typeof m.label === 'string' ? m.label.replace(/\s+/g, ' ').trim().slice(0, 60) : '';
     if (label) o.label = label;
+    if (['16/9', '4/5', '1/1'].includes(m.ratio)) o.ratio = m.ratio; /* the card's shape; none = the file's own */
     return o;
   }) };
+  if (isNum(home.radius)) t.home.radius = clamp(Math.round(home.radius), 0, 40); else delete t.home.radius; /* corners of the cards */
   /* Seeded only when the key is missing: an empty list means the editors removed them all */
   if (!Array.isArray(t.textStyles)) t.textStyles = clone(TEXT_STYLE_SEED);
   t.textStyles = uniqueById(t.textStyles.filter(x => x && typeof x.id === 'string' && x.id)).map(normTextStyle);
@@ -5180,46 +5186,52 @@ function renderHome() {
   const html = !S.tree ? '' : `<button type="button" class="hbtn" data-action="home-gal" aria-expanded="${open}" aria-controls="home-gal" aria-label="Galería">${up ? '<span class="spinner" aria-hidden="true"></span>' : icon('image')}<span class="hbtn-t">${up ? `Subiendo ${up}…` : 'Galería'}</span>${media.length && !up ? `<span class="hbtn-n">${media.length}</span>` : ''}</button>`
     + (!media.length && !open && !up ? '<p class="home-hint">Añade imágenes o videos a la galería</p>' : '');
   if (tools.dataset.html !== html) { tools.innerHTML = html; tools.dataset.html = html; }
-  if (S.tree && S.view === 'home') Slider.setMedia(media); /* built on the first visit only: links to a section skip it */
+  if (S.tree && S.view === 'home') Slider.setMedia(media, S.tree.home.radius); /* built on the first visit only: links to a section skip it */
   Gallery.render();
 }
 
 /* ---------- Slider ---------- */
-/* Placeholder cards for an empty gallery (data-ph 0-5, colors in the --ph-* tokens), in slider order: the brand blue
-   one with the small "b" opens in the middle, quiet tints and white around it. */
-const PH_SEQ = [4, 2, 1, 3, 0, 5, 2, 1];
+/* Placeholder cards for an empty gallery (data-ph 0-5, colors in the --ph-* tokens) and their shapes, in slider order:
+   the brand blue one with the small "b" opens in the middle, quiet tints and white around it. */
+const PH_SEQ = [[4, '4/5'], [2, '1/1'], [1, '4/5'], [3, '16/9'], [0, '4/5'], [5, '1/1'], [1, '16/9'], [2, '4/5']];
 const PH_B = [false, false, false, false, true, false];
-/* The curve. The cards sit on the inside of a cylinder whose axis stands in front of them, so the middle card faces
-   the viewer flat and the ones beside it turn toward the middle; the farther, the more. HS_ARC is the angle between two
-   neighbours on that cylinder (the bend), HS_CAM the camera distance in cylinder radii, HS_SINK how far the side cards
-   step back (in card widths, growing with the square of the offset) so the row recedes a little toward the edges. */
-const HS_ARC = 17;      /* degrees per card */
-const HS_CAM = 1.1;     /* camera distance, in radii of the cylinder */
-const HS_SINK = .2;     /* step back per card², in card widths */
-const HS_GAP = .22;     /* space between cards, in card widths */
-const HS_SPRING = 11;   /* stiffness of the glide between cards (critically damped: no bounce) */
+/* Card shapes an editor can pick per item (stored as its ratio); without one a card keeps the file's own proportions */
+const HOME_RATIOS = [['auto', 'Original'], ['16/9', 'Horizontal'], ['4/5', 'Vertical'], ['1/1', 'Cuadrada']];
+const ratioNum = (r) => { const m = /^(\d+)\/(\d+)$/.exec(r || ''); return m ? +m[1] / +m[2] : 0; };
+const HOME_RADIUS = 16; /* default corner radius of the cards (tree.home.radius), in px of a 420px tall card */
+/* The curve: a cylinder seen from the inside. The cards stand on it side by side as chords, placed by arc length with an
+   even gap and turned to face its axis, so neighbours never cover each other; toward the edges they wrap around and
+   turn away. The camera sits a little behind the axis (HS_CAM radii from the middle card), and a card shrinks a little
+   as it goes round (HS_BULGE), which gives the surface a slightly spherical feel. */
+const HS_RAD = .58;     /* radius of the cylinder, in viewport widths (desktop) */
+const HS_RAD_M = 1.1;   /* the same on a phone */
+const HS_CAM = 1.7;     /* camera distance from the middle card, in radii */
+const HS_BULGE = .55;   /* size lost going round, per unit of (1 - cos) of the angle */
+const HS_GAP = .07;     /* gap between cards, in card heights */
+const HS_H = .44;       /* card height, in heights of the room between the top bar and the controls (desktop) */
+const HS_MAXW = .4;     /* the widest a card gets, in viewport widths (desktop) */
+const HS_SPRING = 11;   /* stiffness of the glide to a card (critically damped: no bounce) */
 const HS_THROW = .28;   /* how far a flick carries, in seconds of its speed */
-const HS_LIFT = .1;     /* hover: toward the viewer, in card widths */
-const HS_SIZE = .17;    /* card width on desktop, in viewport widths */
-const HS_MAXA = 1.42;   /* past ~80° around the curve a card is edge-on: it is not drawn */
+const HS_LIFT = .05;    /* hover: toward the axis, in card heights */
+const HS_DRIFT = .06;   /* autoplay: a slow constant drift, in card heights per second */
+const HS_HOLD = 2500;   /* after a touch or a key the drift waits this long (ms) before it starts again */
 const Slider = {
-  built: false, cards: [], items: [], m: 0, N: 0, sig: null, capSig: '', half: 3,
-  pos: 0, vel: 0, target: 0, raf: 0, last: 0, held: false, covered: false, coverT: 0,
-  W: 300, MH: 375, pad: 10, cap: 0, step: 330, dA: .2, R: 1500, P: 1350, cy: 0, vw: 0,
-  mid: null, mx: 0, my: 0, inside: false, hover: null, press: null, pd: null, drag: null, dragEnd: 0, wheelT: 0, wheelDir: 0, wheelAt: 0, cur: -1,
+  built: false, cards: [], items: [], m: 0, N: 0, sig: null, look: '', sz: [], nat: new Map(),
+  pos: 0, vel: 0, target: 0, mode: 'drift', auto: 0, raf: 0, last: 0, held: false, covered: false, coverT: 0, holdUntil: 0, holdT: 0,
+  H: 400, gap: 30, R: 900, P: 1200, L: 1, cy: 0, vw: 0, maxW: 600, thVis: 1, band: [0, 0],
+  mid: null, mx: 0, my: 0, inside: false, zone: false, hover: null, press: null, pd: null, drag: null, dragEnd: 0,
+  wheelT: 0, wheelDir: 0, wheelAt: 0, cur: -1,
   /* The list the cards cycle through: the gallery, or the placeholders while it is empty */
-  setMedia(media) {
-    const items = media.length ? media : PH_SEQ.map(ph => ({ ph }));
+  setMedia(media, radius) {
+    const items = media.length ? media : PH_SEQ.map(([ph, ratio]) => ({ ph, ratio }));
     const sig = media.map(m => m.kind + ':' + m.id).join('|');
-    const capSig = items.map(m => m.label || '').join('\u0001');
-    if (sig === this.sig && capSig === this.capSig) { this.media(); return; }
-    const first = this.sig == null, fresh = sig !== this.sig;
-    this.items = items; this.m = items.length; this.sig = sig; this.capSig = capSig;
-    if (fresh) { this.N = 0; if (!first) { this.target = Math.round(this.target); this.pos = this.target; this.vel = 0; } }
-    this.size(); /* builds the cards when their count or the media changed */
-    if (!fresh) this.cards.forEach(c => { c.item = this.items[c.i]; this.fillCap(c); });
-    if (!first) { this.render(); this.media(); return; }
-    this.intro();
+    const look = items.map(m => (m.label || '') + '\u0002' + (m.ratio || '')).join('\u0001') + '|' + radius;
+    if (sig === this.sig && look === this.look) { this.media(); this.kick(); return; }
+    const first = this.sig == null;
+    this.items = items; this.m = items.length; this.look = look; this.radius = radius;
+    if (sig !== this.sig) { this.sig = sig; this.N = 0; }
+    this.size();
+    if (first) this.intro(); else this.kick();
   },
   cardHTML(k) {
     const i = k % this.m, it = this.items[i];
@@ -5233,97 +5245,131 @@ const Slider = {
   },
   fillCap(c) {
     const it = c.item, el = c.el, cur = $('.hs-cap', el), label = it && it.label;
-    c.capH = label ? this.cap : 0;
     if (!label) { if (cur) cur.remove(); return; }
     const html = `<span class="hs-cap-t">${esc(label)}</span><span class="hs-n">${pad2(c.i + 1)}</span>`;
     if (cur) { if (cur.innerHTML !== html) cur.innerHTML = html; return; }
     el.insertAdjacentHTML('beforeend', `<div class="hs-cap">${html}</div>`);
   },
+  /* A file without stored proportions (saved before they were kept) takes them from the image or video once loaded */
+  natural(c, w, h) {
+    const it = c.item; if (!it || it.ph != null || (it.w && it.h) || !w || !h || this.nat.has(it.id)) return;
+    this.nat.set(it.id, w / h);
+    if (!ratioNum(it.ratio)) this.size();
+  },
   build(N) {
     const st = $('#hs-stage');
     if (this.hover) this.setHover(null);
     st.innerHTML = Array.from({ length: N }, (_, k) => this.cardHTML(k)).join('');
-    this.mid = null;
-    this.N = N;
-    this.cards = $$('.hs-card', st).map((el, k) => ({ el, k, i: k % this.m, item: this.items[k % this.m], l: 0, o: 0, tf: '', zi: '', off: null, q: null, zc: 0, capH: 0, v: $('video', el), img: $('img', el), playing: false }));
+    this.N = N; this.mid = null;
+    this.cards = $$('.hs-card', st).map((el, k) => ({ el, k, i: k % this.m, item: this.items[k % this.m], l: 0, s: 0, c: 0, w: 0, h: 0, r: 0, ph: 0, box: '', tf: '', zi: '', off: null, q: null, zc: 0, v: $('video', el), img: $('img', el), playing: false }));
     this.cards.forEach(c => {
       this.fillCap(c);
-      if (c.img) { if (c.img.complete && c.img.naturalWidth) c.img.classList.add('is-loaded'); else c.img.addEventListener('load', () => c.img.classList.add('is-loaded'), { once: true }); }
-      if (c.v) { c.v.muted = true; c.v.addEventListener('loadeddata', () => c.v.classList.add('is-loaded'), { once: true }); }
+      if (c.img) {
+        const done = () => { c.img.classList.add('is-loaded'); this.natural(c, c.img.naturalWidth, c.img.naturalHeight); };
+        if (c.img.complete && c.img.naturalWidth) done(); else c.img.addEventListener('load', done, { once: true });
+      }
+      if (c.v) { c.v.muted = true; c.v.addEventListener('loadeddata', () => { c.v.classList.add('is-loaded'); this.natural(c, c.v.videoWidth, c.v.videoHeight); }, { once: true }); }
     });
     this.built = true;
-    this.renderNav();
   },
-  /* Card size from the room between the top bar and the controls: about a fifth of the width on desktop (a 4:5 image
-     in a card frame, plus the label strip when there are captions), two thirds of it on a phone */
+  /* A card's proportions: the shape picked for it, else the file's own (clamped to sane bounds) */
+  aspect(it) {
+    const r = ratioNum(it.ratio); if (r) return r;
+    if (it.ph != null) return .8;
+    const a = it.w && it.h ? it.w / it.h : this.nat.get(it.id) || .8;
+    return clamp(a, .4, 2.4);
+  },
+  /* Sizes from the room between the top bar and the controls: one height for every card (a very wide one on a narrow
+     screen gets smaller instead), widths from the proportions; then the curve, and how many cards it takes to wrap
+     past both edges of the screen */
   size() {
     const home = $('#home'); if (!home || !this.m) return;
-    const W = innerWidth, H = innerHeight, mob = MOBILE.matches;
+    const W = innerWidth, VH = innerHeight, mob = MOBILE.matches;
     this.vw = W;
     const top = ($('.rail-top').getBoundingClientRect().bottom || 64) + (mob ? 8 : 12);
-    const bottom = H - (mob ? 16 : 24) - 44 - (mob ? 18 : 24);
+    const bottom = VH - (mob ? 16 : 24) - 44 - (mob ? 18 : 24);
     const band = Math.max(220, bottom - top);
-    const caps = this.items.some(m => m.label);
-    let w = mob ? W * .58 : clamp(W * HS_SIZE, 220, 380);
-    const capOf = (w) => caps ? Math.round(clamp(w * .12, 30, 42)) : 0;
-    const fit = (w) => w * 1.25 + (w * .028 + 4) * 2 + capOf(w);
-    if (fit(w) > band * .8) w = (band * .8 - (caps ? 36 : 0) - 8) / 1.306;
-    w = Math.round(Math.max(140, w));
-    this.W = w; this.MH = Math.round(w * 1.25); this.pad = Math.round(w * .028 + 4); this.cap = capOf(w);
-    this.cy = Math.round(top + band / 2 - this.cap / 2);
-    this.step = Math.round(w * (1 + HS_GAP));
-    this.dA = HS_ARC * Math.PI / 180; this.R = this.step / this.dA; this.P = Math.round(this.R * HS_CAM);
+    const caps = this.items.some(m => m.label), fs = mob ? 10.5 : 11, capH = caps ? Math.round(fs * 1.2 + 12) : 0;
+    const H = Math.round(clamp(mob ? Math.min(band * .52, W * .78) : Math.min(band * HS_H - capH, W * .3), 150, 520));
+    this.H = H; this.maxW = Math.round(W * (mob ? .8 : HS_MAXW)); this.gap = Math.round(H * HS_GAP + 6);
+    this.cy = Math.round(top + band / 2 - capH / 2);
+    this.band = [this.cy - H / 2 - 28, this.cy + H / 2 + capH + 28];
+    this.R = Math.round(W * (mob ? HS_RAD_M : HS_RAD)); this.P = Math.round(this.R * HS_CAM);
     const st = home.style;
-    st.setProperty('--hs-w', w + 'px'); st.setProperty('--hs-mh', this.MH + 'px'); st.setProperty('--hs-pad', this.pad + 'px');
-    st.setProperty('--hs-r', Math.round(w * .035 + 6) + 'px'); st.setProperty('--hs-cap', this.cap + 'px'); st.setProperty('--hs-fs', clamp(w * .034, 10, 12).toFixed(1) + 'px');
-    st.setProperty('--hs-cy', this.cy + 'px'); st.setProperty('--hs-p', this.P + 'px');
-    /* how many cards show on each side at rest: the row runs off both edges */
-    let half = 1;
-    while (half < 12 && (half + .5) * this.dA < HS_MAXA) { const q = this.quad(this.matrix(half + .5, 0), 0); if (!q || Math.min(q[0], q[6]) > W + 8) break; half++; }
-    this.half = half;
-    const need = 2 * half + 4, N = this.m * Math.ceil(need / this.m);
-    if (N !== this.N || !this.built || !this.cards.length) this.build(N); else this.renderNav(); /* dots or a counter: depends on the width */
-    this.render(); this.media();
+    st.setProperty('--hs-cy', this.cy + 'px'); st.setProperty('--hs-p', this.P + 'px'); st.setProperty('--hs-fs', fs + 'px');
+    st.setProperty('--hs-r', Math.round((this.radius ?? HOME_RADIUS) * H / 420 * 10) / 10 + 'px');
+    this.sz = this.items.map(it => { const a = this.aspect(it); let w = H * a, h = H; if (w > this.maxW) { w = this.maxW; h = w / a; } return { w: Math.round(w), h: Math.round(h) }; });
+    /* the angle at which the curve leaves the screen, and the length of curve that must be covered on each side */
+    let th = 0; while (th < 2.4 && this.proj(th) < W / 2 + 8) th += .01;
+    this.thVis = th;
+    const arc = (w) => 2 * this.R * Math.asin(Math.min(1, w / (2 * this.R)));
+    const one = this.sz.reduce((a, x) => a + arc(x.w) + this.gap, 0), widest = Math.max(...this.sz.map(x => arc(x.w)));
+    const N = this.m * Math.max(1, Math.ceil((2 * (this.R * th + widest + this.gap) + 1) / one));
+    const keep = this.built && this.cards.length && this.L > 1 ? this.nearest(this.pos) : null;
+    if (N !== this.N || !this.built || !this.cards.length) this.build(N);
+    else this.cards.forEach(c => { c.item = this.items[c.i]; this.fillCap(c); });
+    this.layout();
+    if (keep) { const c = this.cards[keep.k % this.N]; this.pos = c.c - keep.s; if (this.mode === 'spring' || this.drag) this.target = c.c; else this.target = this.pos; }
+    this.renderNav(); this.render(); this.media();
   },
-  /* The 3D place of a card at offset o from the middle (in cards, fractional while moving), lifted by l (0-1) */
-  matrix(o, l) {
-    const th = o * this.dA, R = this.R;
-    const x = R * Math.sin(th), z = R * (1 - Math.cos(th)) - HS_SINK * this.W * o * o;
-    const s = 1 + .03 * l;
-    return new DOMMatrix().translateSelf(x, 0, z).rotateSelf(0, -th * 180 / Math.PI, 0).translateSelf(0, 0, HS_LIFT * this.W * l).scaleSelf(s, s, 1);
+  /* where a point of the curve at angle th lands on screen, from the middle */
+  proj(th) { const x = this.R * Math.sin(th), z = this.R * (1 - Math.cos(th)), d = this.P - z; return d <= 0 ? Infinity : x * this.P / d; },
+  /* Each card is a chord of the cylinder: its angle (ph) follows from its width, and the arc it takes plus the gap
+     sets where the next one starts. c is the card's middle along the curve, in px of arc. */
+  layout() {
+    const R = this.R; let at = 0;
+    this.cards.forEach((c, k) => {
+      const s = this.sz[c.i]; c.w = s.w; c.h = s.h;
+      c.ph = 2 * Math.asin(Math.min(1, s.w / (2 * R))); c.r = R * Math.cos(c.ph / 2);
+      if (k) at += this.cards[k - 1].ph * R / 2 + this.gap + c.ph * R / 2;
+      c.c = at;
+      const box = `${s.w}|${s.h}|${this.vw}|${this.cy}`;
+      if (box !== c.box) { c.box = box; Object.assign(c.el.style, { width: s.w + 'px', height: s.h + 'px', left: (this.vw - s.w) / 2 + 'px', top: this.cy - s.h / 2 + 'px' }); }
+    });
+    const a = this.cards[0], z = this.cards[this.cards.length - 1];
+    this.L = at + z.ph * R / 2 + this.gap + a.ph * R / 2;
+  },
+  /* offset of card c from the middle, along the curve (px of arc, wrapped around the loop) */
+  off(c, p = this.pos) { let s = mod(c.c - p, this.L); if (s > this.L / 2) s -= this.L; return s; },
+  nearest(p) { let best = null; for (const c of this.cards) { const s = this.off(c, p); if (!best || Math.abs(s) < Math.abs(best.s)) best = { k: c.k, s, c }; } return best; },
+  /* The 3D place of a card s px of arc from the middle, lifted by l (0-1) */
+  matrix(c, s, l) {
+    const th = s / this.R, R = this.R, r = c.r;
+    const x = r * Math.sin(th), z = R - r * Math.cos(th);
+    const k = (1 - HS_BULGE * (1 - Math.cos(th))) * (1 + .03 * l); /* shrinking around its middle only widens the gaps */
+    return new DOMMatrix().translateSelf(x, 0, z).rotateSelf(0, -th * 180 / Math.PI, 0).translateSelf(0, 0, HS_LIFT * this.H * l).scaleSelf(k, k, 1);
   },
   /* The card's corners on screen [x0,y0, x1,y1, x2,y2, x3,y3] (clockwise from top left), through the stage's
      perspective; null when a corner would reach the camera */
-  quad(M, capH) {
-    const hw = this.W / 2 + this.pad, t = -(this.MH / 2 + this.pad), b = this.MH / 2 + this.pad + capH, out = [];
-    for (const [x, y] of [[-hw, t], [hw, t], [hw, b], [-hw, b]]) {
+  quad(M, w, h) {
+    const out = [];
+    for (const [x, y] of [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]]) {
       const p = M.transformPoint(new DOMPoint(x, y, 0)), d = this.P - p.z;
-      if (d < this.P * .15) return null;
+      if (d < this.P * .1) return null;
       const f = this.P / d; out.push(this.vw / 2 + p.x * f, this.cy + p.y * f);
     }
     return out;
   },
   render() {
-    if (!this.built) return;
-    const N = this.N, lim = this.half + 1;
+    if (!this.built || this.L <= 1) return;
+    let changed = false;
     for (const c of this.cards) {
-      let o = mod(c.k - this.pos, N); if (o > N / 2) o -= N;
-      c.o = o;
-      let off = Math.abs(o) > lim || Math.abs(o) * this.dA > HS_MAXA, q = null, M = null;
-      if (!off) { M = this.matrix(o, c.l); q = this.quad(M, c.capH); off = !q || Math.max(q[0], q[2], q[4], q[6]) < -8 || Math.min(q[0], q[2], q[4], q[6]) > this.vw + 8; }
-      if (off !== c.off) { c.off = off; c.el.classList.toggle('is-off', off); }
+      const s = c.s = this.off(c), th = Math.abs(s) / this.R;
+      let off = th - c.ph / 2 > this.thVis, q = null, M = null;
+      if (!off) { M = this.matrix(c, s, c.l); q = this.quad(M, c.w, c.h); off = !q || Math.max(q[0], q[2], q[4], q[6]) < -8 || Math.min(q[0], q[2], q[4], q[6]) > this.vw + 8; }
+      if (off !== c.off) { c.off = off; c.el.classList.toggle('is-off', off); changed = true; }
       c.q = off ? null : q;
       if (off) continue;
-      c.zc = c.el === this.hover ? 1e4 : -Math.abs(o); /* the paint order (z-index): what the eye sees on top */
+      c.zc = c.el === this.hover ? 1e4 : -th; /* the paint order (z-index): what the eye sees on top */
       const tf = M.toString();
       if (tf !== c.tf) { c.tf = tf; c.el.style.transform = tf; }
-      const zi = String(c.el === this.hover ? 60 : 40 - Math.round(Math.abs(o) * 2));
+      const zi = String(c.el === this.hover ? 60 : 40 - Math.round(th * 10));
       if (zi !== c.zi) { c.zi = zi; c.el.style.zIndex = zi; }
     }
-    const cur = mod(Math.round(this.pos), this.m);
-    if (cur !== this.cur) { this.cur = cur; this.paintNav(); }
-    const mid = this.cards[mod(Math.round(this.pos), N)];
+    const n = this.nearest(this.pos), mid = n && this.cards[n.k];
+    if (mid && mid.i !== this.cur) { this.cur = mid.i; this.paintNav(); }
     if (mid !== this.mid) { if (this.mid) this.mid.el.classList.remove('is-mid'); this.mid = mid; if (mid) mid.el.classList.add('is-mid'); }
+    if (changed) this.media();
   },
   /* Prev / next and a dot per item (a counter instead once they would not fit) */
   renderNav() {
@@ -5332,8 +5378,7 @@ const Slider = {
     const what = this.items[0] && this.items[0].ph != null ? 'tarjeta' : 'elemento';
     const mid = dots ? `<div class="hs-dots">${this.items.map((_, i) => `<button type="button" class="hs-dot" data-action="hs-dot" data-i="${i}" tabindex="-1" aria-label="Ir al ${what} ${i + 1}"></button>`).join('')}</div>` : '<div class="hs-count" aria-hidden="true"></div>';
     const html = `<button type="button" class="hs-btn" data-action="hs-prev" aria-label="Anterior">${icon('left')}<span>Anterior</span></button>${mid}<button type="button" class="hs-btn" data-action="hs-next" aria-label="Siguiente"><span>Siguiente</span>${icon('right')}</button>`;
-    if (nav.dataset.html !== html) { nav.innerHTML = html; nav.dataset.html = html; }
-    this.cur = -1; this.render();
+    if (nav.dataset.html !== html) { nav.innerHTML = html; nav.dataset.html = html; this.cur = -1; }
   },
   paintNav() {
     const i = this.cur;
@@ -5356,21 +5401,36 @@ const Slider = {
       if (play) c.v.play().catch(() => {}); else c.v.pause();
     }
   },
-  /* ---- motion: one loop, running only while something moves (a glide, a drag, a hover lift) ---- */
+  /* ---- motion: one loop. 'drift' is the autoplay (a slow constant movement that eases in and out); 'spring' is a glide
+     to a card (buttons, dots, keys, wheel, the end of a drag), after which the drift takes over again ---- */
+  canDrift() {
+    return !RM && this.built && S.view === 'home' && !document.hidden && !this.held && !this.covered && !this.drag && !this.zone
+      && performance.now() >= this.holdUntil && !Gallery.isOpen && !S.overlay && !S.modal;
+  },
+  /* a touch or a key: the drift waits a moment, then comes back by itself */
+  hold() { this.holdUntil = performance.now() + HS_HOLD; clearTimeout(this.holdT); this.holdT = setTimeout(() => this.kick(), HS_HOLD + 30); },
   kick() { if (!this.raf && this.built && S.view === 'home') { this.last = 0; this.raf = requestAnimationFrame(this.tick); } },
-  stop() { cancelAnimationFrame(this.raf); this.raf = 0; this.setHover(null); this.media(); },
+  stop() { cancelAnimationFrame(this.raf); this.raf = 0; this.auto = 0; this.setHover(null); this.media(); },
   frame(now) {
     this.raf = 0;
-    if (S.view !== 'home') return;
+    if (S.view !== 'home' || !this.built) return;
     const dt = this.last ? Math.min(.05, (now - this.last) / 1000) : 1 / 60; this.last = now;
     let busy = !!this.drag;
-    if (!this.drag) {
+    if (!this.drag && this.mode === 'spring') {
       if (RM) { this.pos = this.target; this.vel = 0; }
       else {
         const w = HS_SPRING;
         for (let t = dt; t > 1e-6; t -= 1 / 240) { const h = Math.min(t, 1 / 240); this.vel += (w * w * (this.target - this.pos) - 2 * w * this.vel) * h; this.pos += this.vel * h; }
-        if (Math.abs(this.target - this.pos) < 4e-4 && Math.abs(this.vel) < 4e-3) { this.pos = this.target; this.vel = 0; } else busy = true;
       }
+      if (Math.abs(this.target - this.pos) < .3 && Math.abs(this.vel) < 3) { this.pos = this.target; this.vel = 0; this.mode = 'drift'; this.auto = 0; this.live(); }
+      else busy = true;
+    }
+    if (!this.drag && this.mode === 'drift') {
+      const want = this.canDrift() ? 1 : 0;
+      this.auto += (want - this.auto) * (1 - Math.exp(-dt / (want ? .9 : .3)));
+      if (Math.abs(want - this.auto) < .003) this.auto = want;
+      this.pos += this.auto * HS_DRIFT * this.H * dt; this.target = this.pos;
+      if (this.auto || want) busy = true;
     }
     for (const c of this.cards) {
       const g = c.el === this.hover ? 1 : 0; if (c.l === g) continue;
@@ -5378,33 +5438,47 @@ const Slider = {
       c.l += (g - c.l) * (1 - Math.exp(-dt / .1));
       if (Math.abs(g - c.l) < .004) c.l = g; else busy = true;
     }
+    if (!this.drag && !this.pd && Math.abs(this.target) > 4 * this.L) { const k = Math.floor(this.target / this.L) * this.L; this.pos -= k; this.target -= k; }
     this.render();
     this.hitTest();
-    if (busy) { this.raf = requestAnimationFrame(this.tick); return; }
-    /* at rest: keep the numbers small, and say where the slider stands */
-    const k = Math.floor(this.target / this.N) * this.N; this.pos -= k; this.target -= k;
-    this.live(); this.media();
+    if (busy) this.raf = requestAnimationFrame(this.tick);
   },
-  go(d) {
-    if (!this.built || !d) return;
-    this.target = Math.round(this.target) + d;
-    if (RM) this.pos = this.target;
+  /* glide to a point of the curve (a card's middle); a drift in progress hands its speed over */
+  glide(t) {
+    if (!this.built) return;
+    if (this.mode === 'drift') { this.vel = this.auto * HS_DRIFT * this.H; this.auto = 0; }
+    this.mode = 'spring'; this.target = t;
+    if (RM) this.pos = t;
     this.kick();
   },
-  /* the nearest card that shows item i */
-  toItem(i) { if (!this.built) return; const cur = mod(Math.round(this.target), this.m); let d = mod(i - cur, this.m); if (d > this.m / 2) d -= this.m; this.go(d); },
-  toCard(k) { if (!this.built) return; let d = mod(k - Math.round(this.target), this.N); if (d > this.N / 2) d -= this.N; this.go(d); },
-  hold(on) { this.held = on; if (on) this.setHover(null); this.media(); }, /* under the lightbox */
+  /* the next card to the right (d = 1) or the left (d = -1) of where the row stands or is heading */
+  go(d) {
+    if (!this.built || !d) return;
+    const base = this.mode === 'spring' ? this.target : this.pos;
+    let best = null;
+    for (const c of this.cards) { const s = this.off(c, base); if (d > 0 ? s > 2 : s < -2) if (best == null || Math.abs(s) < Math.abs(best)) best = s; }
+    if (best != null) this.glide(base + best);
+  },
+  /* the nearest card that shows item i, or card k */
+  toItem(i) { this.toWhere(c => c.i === i); },
+  toCard(k) { this.toWhere(c => c.k === k); },
+  toWhere(fn) {
+    if (!this.built) return;
+    const base = this.mode === 'spring' ? this.target : this.pos;
+    let best = null;
+    for (const c of this.cards) { if (!fn(c)) continue; const s = this.off(c, base); if (best == null || Math.abs(s) < Math.abs(best)) best = s; }
+    if (best != null) this.glide(base + best);
+  },
+  under(on) { this.held = on; if (on) this.setHover(null); this.media(); this.kick(); }, /* under the lightbox */
   /* An overlay (menu, search) covers the whole page: the videos stop once it has finished coming in */
   cover(on) {
     clearTimeout(this.coverT);
-    if (!on) { if (this.covered) { this.covered = false; this.media(); } return; }
+    if (!on) { if (this.covered) { this.covered = false; this.media(); this.kick(); } return; }
     this.coverT = setTimeout(() => { this.covered = true; this.setHover(null); this.media(); }, RM ? 0 : 700);
   },
   /* ---- pointer ---- */
   /* The card under a screen point, from the quads render() projected (cards take no pointer events: the browser's hit
-     test of moving 3D elements is unreliable). Where two overlap, the one painted on top wins: the hovered card, then
-     the one nearer the middle. */
+     test of moving 3D elements is unreliable). The hovered card counts first, so its lift never makes it flicker. */
   pick(x, y) {
     let best = null, bz = -Infinity;
     for (const c of this.cards) {
@@ -5432,20 +5506,26 @@ const Slider = {
     $('#home').classList.toggle('is-pointing', !!el);
     this.kick();
   },
-  /* the pointer counts as over the slider when nothing else of the page (top bar, controls, admin tools, panels) is on top */
+  /* The mouse over the band of cards (or the controls) pauses the drift; leaving it starts the drift again. Cards are
+     hovered when nothing else of the page (top bar, controls, admin tools, panels) is on top of them. */
   track(e) {
     if (e.pointerType !== 'mouse') return;
     const el = e.target;
     this.mx = e.clientX; this.my = e.clientY;
-    this.inside = S.view === 'home' && !!el.closest && !!el.closest('#home') && !el.closest('.home-tools, .hs-nav');
+    const over = S.view === 'home' && !!el.closest && !!el.closest('#home') && !el.closest('.home-tools');
+    this.inside = over && !el.closest('.hs-nav');
+    const zone = over && (!!el.closest('.hs-nav') || (e.clientY >= this.band[0] && e.clientY <= this.band[1]));
+    if (zone !== this.zone) { this.zone = zone; this.kick(); }
     if (!this.raf) this.hitTest();
   },
+  leave() { this.inside = false; this.setHover(null); if (this.zone) { this.zone = false; this.kick(); } },
   /* Drag or swipe: the row follows the pointer, then glides on with the throw and settles on the nearest card. A drag
      never counts as a click on a card. */
   down(e) {
     if (S.view !== 'home' || Lightbox.on || S.overlay || e.button !== 0 || !e.isPrimary || !this.built) return;
     const t = e.target;
     if (!t.closest || !t.closest('#home') || t.closest('.home-tools, .hs-nav')) return;
+    if (e.pointerType !== 'mouse') this.hold();
     this.press = { c: this.pick(e.clientX, e.clientY), at: performance.now() };
     this.pd = { id: e.pointerId, x0: e.clientX, y0: e.clientY, p0: this.pos, active: false, hist: [], mouse: e.pointerType === 'mouse' };
   },
@@ -5453,11 +5533,12 @@ const Slider = {
     const d = this.pd; if (!d || e.pointerId !== d.id) return;
     if (!d.active) {
       if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < (d.mouse ? 5 : 8)) return;
-      d.active = true; this.drag = d; d.x0 = e.clientX; d.p0 = this.pos; this.vel = 0;
+      d.active = true; this.drag = d; d.x0 = e.clientX; d.p0 = this.pos; this.vel = 0; this.auto = 0; this.mode = 'spring';
+      d.from = this.nearest(this.pos);
       try { $('#home').setPointerCapture(e.pointerId); } catch {}
       ROOT.classList.add('hs-grabbing'); this.setHover(null);
     }
-    this.pos = this.target = d.p0 - (e.clientX - d.x0) / this.step;
+    this.pos = this.target = d.p0 - (e.clientX - d.x0);
     const now = performance.now();
     d.hist.push({ x: e.clientX, t: now });
     while (d.hist.length > 2 && now - d.hist[0].t > 100) d.hist.shift();
@@ -5465,20 +5546,22 @@ const Slider = {
   },
   up(e) {
     const d = this.pd; if (!d || e.pointerId !== d.id) return;
-    this.pd = null; if (!d.active) return;
+    this.pd = null;
+    if (!d.mouse) this.hold();
+    if (!d.active) return;
     this.drag = null; this.dragEnd = performance.now();
     ROOT.classList.remove('hs-grabbing');
     const a = d.hist[0], b = d.hist[d.hist.length - 1];
-    const v = a && b && b.t - a.t > 10 && performance.now() - b.t < 80 ? -(b.x - a.x) / ((b.t - a.t) / 1000) / this.step : 0; /* cards/s */
-    const moved = this.pos - d.p0, base = Math.round(d.p0);
-    let t = Math.round(this.pos + (RM ? 0 : v * HS_THROW));
-    if (t === base && Math.abs(moved) > .18) t = base + Math.sign(moved); /* a short pull is enough to move one card */
-    t = clamp(t, base - 8, base + 8);
-    this.target = t;
-    if (RM) { this.pos = t; this.vel = 0; } else this.vel = clamp(v, -30, 30);
+    const v = a && b && b.t - a.t > 10 && performance.now() - b.t < 80 ? -(b.x - a.x) / ((b.t - a.t) / 1000) : 0; /* px/s along the curve */
+    const moved = this.pos - d.p0;
+    let n = this.nearest(this.pos + (RM ? 0 : v * HS_THROW)), t = this.pos + (RM ? 0 : v * HS_THROW) + n.s;
+    /* a short pull is enough to move one card */
+    if (n.k === d.from.k && Math.abs(moved) > .18 * d.from.c.w) { this.mode = 'drift'; this.go(Math.sign(moved)); }
+    else this.glide(t);
+    if (!RM) this.vel = clamp(v, -6000, 6000); else this.vel = 0;
     this.kick();
   },
-  /* A click on the slider: opens the card pressed (the glide may carry it a little before the button comes up) */
+  /* A click on the slider: opens the card pressed (the row may carry it a little before the button comes up) */
   click(e) {
     const p = this.press; this.press = null;
     if (Lightbox.on || S.overlay || performance.now() - this.dragEnd < 250 || !e.target.closest || !e.target.closest('#home') || e.target.closest('.home-tools, .hs-nav')) return;
@@ -5495,32 +5578,37 @@ const Slider = {
       if (now - this.wheelAt > (RM ? 320 : 90)) { this.wheelAt = now; this.go(Math.sign(px)); }
       return;
     }
-    this.target += clamp(px / this.step, -.6, .6); this.wheelDir = Math.sign(px);
+    const base = this.mode === 'spring' ? this.target : this.pos;
+    if (!this.wheelT) this.wheelFrom = this.nearest(base).k; /* the card the gesture started from */
+    this.glide(base + clamp(px, -.6 * this.H, .6 * this.H)); this.wheelDir = Math.sign(px);
     clearTimeout(this.wheelT);
-    this.wheelT = setTimeout(() => { this.target = Math.round(this.target + this.wheelDir * .3); this.kick(); }, 140);
-    this.kick();
+    /* when it ends: the nearest card, or at least the next one in the direction of the swipe */
+    this.wheelT = setTimeout(() => {
+      this.wheelT = 0;
+      const n = this.nearest(this.target);
+      if (n.k !== this.wheelFrom) { this.glide(this.target + n.s); return; }
+      this.target += n.s; this.go(this.wheelDir);
+    }, 140);
   },
-  /* First appearance: the row sweeps in along the curve and settles on the first card */
+  /* First appearance: the row fades in and starts drifting */
   intro() {
-    this.render(); this.media();
-    if (RM || S.view !== 'home') { this.live(); return; }
-    this.pos = this.target - 2.2; this.vel = 0;
-    $('#hs-stage').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, easing: 'ease-out' });
-    $('#hs-nav').animate([{ opacity: 0, transform: 'translate(-50%, 10px)' }, { opacity: 1, transform: 'translateX(-50%)' }], { duration: 600, delay: 300, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' });
-    this.render(); this.kick();
+    this.render(); this.media(); this.live();
+    if (!RM && S.view === 'home') {
+      $('#hs-stage').animate([{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.16,1,.3,1)' });
+      $('#hs-nav').animate([{ opacity: 0, transform: 'translate(-50%, 10px)' }, { opacity: 1, transform: 'translateX(-50%)' }], { duration: 600, delay: 300, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' });
+    }
+    this.kick();
   },
   enter() {
     this.size(); this.media();
-    if (RM) return;
-    this.pos = this.target - .7; this.vel = 0;
-    $('#home').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360, easing: 'ease-out' });
-    this.render(); this.kick();
+    if (!RM) $('#home').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360, easing: 'ease-out' });
+    this.kick();
   }
 };
 Slider.tick = (t) => Slider.frame(t);
 addEventListener('wheel', (e) => Slider.wheel(e), { passive: true });
-document.addEventListener('pointerout', (e) => { if (!e.relatedTarget && e.pointerType === 'mouse') { Slider.inside = false; Slider.setHover(null); } });
-document.addEventListener('visibilitychange', () => Slider.media());
+document.addEventListener('pointerout', (e) => { if (!e.relatedTarget && e.pointerType === 'mouse') Slider.leave(); });
+document.addEventListener('visibilitychange', () => { Slider.media(); Slider.kick(); });
 
 /* ---------- Lightbox ---------- */
 /* A card grows from where it is on the slider into a centered view (max ~72vw × 72vh, its own proportions) over a
@@ -5545,9 +5633,9 @@ const Lightbox = {
     const item = c.item, lb = $('#home-lb'), mediaEl = $('.hs-media', c.el);
     const from = mediaEl.getBoundingClientRect();
     this.on = true; this.c = c; this.ret = document.activeElement;
-    Slider.hold(true);
+    Slider.under(true);
     const ph = this.ph = item.ph != null;
-    this.ar = item.w && item.h ? item.w / item.h : ph ? 1 : .8;
+    this.ar = item.w && item.h ? item.w / item.h : ph ? 1 : Slider.nat.get(item.id) || c.w / c.h; /* the file's own shape, whatever the card's */
     const to = this.target();
     const url = item.id ? esc(assetUrl(item.id)) : '';
     const body = ph ? `<div class="hlb-ph"><i class="hs-b" aria-hidden="true">b</i><p>${S.mode === 'admin' ? 'Este espacio es para las imágenes y videos de la marca. Añádelos desde «Galería».' : 'Pronto, imágenes y videos de la marca en este espacio.'}</p></div>`
@@ -5581,7 +5669,7 @@ const Lightbox = {
       this.fin = null; clearTimeout(this.timer);
       lb.hidden = true; lb.innerHTML = '';
       if (c) c.el.classList.remove('is-out');
-      Slider.hold(false);
+      Slider.under(false);
     };
     if (instant || RM || !fr || !c || !c.el.isConnected || c.off) fin();
     else {
@@ -5649,7 +5737,9 @@ const Gallery = {
     const add = `<label class="hg-th hg-add${empty ? ' is-big' : ''}" title="Añadir imágenes o videos">${icon('plus')}<span>${empty ? 'Añadir imágenes o videos' : 'Añadir'}</span><input type="file" id="home-file" class="sr-only" multiple accept="${HOME_ACCEPT}"></label>`;
     const html = `<div class="hgal-head"><button type="button" class="insp-back" data-action="home-undo" aria-label="Volver atrás" title="Volver atrás (${mac ? '⌘' : 'Ctrl'} + Z)"${this.hist.length ? '' : ' disabled'}>${icon('left')}</button><div class="hgal-title"><strong>Galería de la Home</strong><small>${sum}</small></div><button type="button" class="icon-btn" data-action="home-gal" aria-label="Cerrar galería">${icon('x')}</button></div>`
       + `<div class="hgal-grid" role="list" data-lenis-prevent>${thumbs}${add}</div>`
-      + (media.length ? '<div class="hgal-cap"><label for="home-cap">Leyenda <span id="home-cap-of"></span></label><span class="fld"><input type="text" id="home-cap" maxlength="60" placeholder="Opcional: aparece debajo de la tarjeta" autocomplete="off" spellcheck="false"></span></div>' : '')
+      + (media.length ? `<div class="hgal-sel"><p class="hgal-k" id="home-sel-h"></p><div class="hg-ratio" role="group" aria-label="Formato de la tarjeta">${HOME_RATIOS.map(([v, l]) => `<button type="button" data-action="home-ratio" data-v="${v}" aria-pressed="false">${l}</button>`).join('')}</div>`
+        + '<span class="fld"><input type="text" id="home-cap" maxlength="60" placeholder="Leyenda (opcional)" aria-label="Leyenda" autocomplete="off" spellcheck="false"></span></div>' : '')
+      + `<div class="hgal-rad"><label class="hgal-k" for="home-radius">Esquinas de las tarjetas</label><div class="rng"><input type="range" id="home-radius" min="0" max="40" step="1"><output id="home-radius-v"></output></div></div>`
       + `<p class="hgal-foot">${media.length ? 'Arrastra para ordenar: la primera abre el slider.' : 'PNG, JPG, WebP, GIF, SVG, MP4 o WebM. Se repiten hasta llenar la curva del slider.'} También puedes soltar archivos aquí.</p>`;
     if (el.dataset.html !== html) {
       const sc = $('.hgal-grid', el), top = sc ? sc.scrollTop : 0;
@@ -5661,12 +5751,29 @@ const Gallery = {
   },
   /* The selected thumbnail and its caption field (kept out of the markup above, so typing never redraws the panel) */
   sync() {
+    const rad = $('#home-radius'), rv = S.tree && isNum(S.tree.home.radius) ? S.tree.home.radius : HOME_RADIUS;
+    if (rad && document.activeElement !== rad) { rad.value = rv; $('#home-radius-v').textContent = rv + ' px'; }
     const media = homeMedia(); if (!media.length) { this.sel = null; return; }
     if (!media.some(m => m.id === this.sel)) this.sel = media[0].id;
     $$('#home-gal .hg-th[data-index]').forEach(n => n.classList.toggle('is-sel', n.dataset.id === this.sel));
-    const i = media.findIndex(m => m.id === this.sel), m = media[i], inp = $('#home-cap'), of = $('#home-cap-of');
+    const i = media.findIndex(m => m.id === this.sel), m = media[i], inp = $('#home-cap'), h = $('#home-sel-h');
     if (inp && (document.activeElement !== inp || inp.dataset.id !== m.id)) { inp.value = m.label || ''; inp.dataset.id = m.id; }
-    if (of) of.textContent = `· ${m.kind === 'video' ? 'video' : 'imagen'} ${i + 1}`;
+    if (h) h.textContent = `${m.kind === 'video' ? 'Video' : 'Imagen'} ${i + 1} · formato y leyenda`;
+    $$('#home-gal [data-action="home-ratio"]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === (m.ratio || 'auto'))));
+  },
+  /* The shape of the selected card (Original keeps the file's proportions) */
+  ratio(v) {
+    const m = homeMedia().find(x => x.id === this.sel); if (!m || (m.ratio || 'auto') === v) return;
+    this.hist.push({ kind: 'ratio', id: m.id, from: m.ratio || 'auto' });
+    homeRatio(m.id, v);
+  },
+  /* Corners of every card: live while dragging the slider, saved when it is let go */
+  radiusInput(el) { const v = +el.value; $('#home-radius-v').textContent = v + ' px'; $('#home').style.setProperty('--hs-r', Math.round(v * Slider.H / 420 * 10) / 10 + 'px'); },
+  radiusCommit(el) {
+    const v = clamp(Math.round(+el.value), 0, 40), was = S.tree && isNum(S.tree.home.radius) ? S.tree.home.radius : null;
+    if (v === (was ?? HOME_RADIUS)) return;
+    this.hist.push({ kind: 'radius', from: was });
+    homeRadius(v);
   },
   select(id) {
     if (id === this.sel) return;
@@ -5702,6 +5809,10 @@ function homeRemove(id) {
   const n = $(`#home-gal .hg-th[data-index="${Math.min(i, homeMedia().length - 1)}"]`) || $('#home-file');
   if (n) n.focus({ preventScroll: true });
 }
+function homeRatio(id, v) {
+  mutateTree(t => { const x = t.home.media.find(y => y.id === id); if (!x) return; if (v && v !== 'auto') x.ratio = v; else delete x.ratio; });
+}
+function homeRadius(v) { mutateTree(t => { if (v == null) delete t.home.radius; else t.home.radius = v; }); }
 function homeLabel(id, text) {
   const v = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 60), m = homeMedia().find(x => x.id === id);
   if (!m || (m.label || '') === v) return;
@@ -5719,6 +5830,8 @@ function homeUndo() {
     mutateTree(t => { if (!t.home.media.some(m => m.id === h.item.id)) t.home.media.splice(Math.min(h.index, t.home.media.length), 0, clone(h.item)); });
   } else if (h.kind === 'move') mutateTree(homeMoveOp(h.id, h.from));
   else if (h.kind === 'label') { homeLabel(h.id, h.from); Gallery.sel = h.id; Gallery.sync(); }
+  else if (h.kind === 'ratio') { homeRatio(h.id, h.from); Gallery.sel = h.id; Gallery.sync(); }
+  else if (h.kind === 'radius') homeRadius(h.from);
   else if (h.kind === 'add') {
     homeMedia().filter(m => h.ids.includes(m.id)).forEach(m => Gallery.removed.set(m.id, clone(m)));
     mutateTree(t => { t.home.media = t.home.media.filter(m => !h.ids.includes(m.id)); });
@@ -6276,6 +6389,7 @@ document.addEventListener('click', (ev) => {
     case 'home-gal': Gallery.toggle(); break;
     case 'home-remove': homeRemove(a.dataset.id); break;
     case 'home-undo': homeUndo(); break;
+    case 'home-ratio': Gallery.ratio(a.dataset.v); break;
     case 'hs-prev': Slider.go(-1); break;
     case 'hs-next': Slider.go(1); break;
     case 'hs-dot': Slider.toItem(+a.dataset.i); break;
@@ -6539,6 +6653,7 @@ document.addEventListener('focusin', (ev) => {
 document.addEventListener('input', (ev) => {
   const el = ev.target;
   if (el.id === 'home-cap') { Gallery.capInput(el); return; }
+  if (el.id === 'home-radius') { Gallery.radiusInput(el); return; }
   if (el.matches && el.matches('.tb[data-block]')) {
     const s = S.edit && findSlot(S.edit.draft, el.dataset.slot); if (!s) return;
     const b = s.blocks.find(x => x.id === el.dataset.block); if (!b) return;
@@ -6575,6 +6690,7 @@ document.addEventListener('change', (ev) => {
   if (el.id === 'menu-bg-file') { const f = el.files && el.files[0]; el.value = ''; if (f) uploadMenuBg(f); return; }
   if (el.id === 'home-file') { const f = [...(el.files || [])]; el.value = ''; if (f.length) uploadHome(f); return; }
   if (el.id === 'home-cap') { Gallery.capCommit(); return; }
+  if (el.id === 'home-radius') { Gallery.radiusCommit(el); return; }
   if (el.id === 'menu-color') { const c = el.value; mutateTree(t => { t.menu.bg = { kind: 'color', color: c }; }); return; }
   if (el.dataset.upload) { const files = el.files; handleFiles(el.dataset.upload, files).finally(() => { try { el.value = ''; } catch {} }); return; }
   if (el.dataset.files || el.dataset.modalMedia) { const files = [...(el.files || [])]; try { el.value = ''; } catch {} uploadInto(el.dataset.files || el.dataset.modalMedia, files, el.dataset.files ? 'files' : 'media'); return; }
@@ -6678,8 +6794,8 @@ document.addEventListener('keydown', (ev) => {
   }
   /* Home: the arrows move the slider, Enter or Space on it opens the card in the middle */
   if (S.view === 'home' && !typing && !S.overlay && !S.modal && !S.edit && !Lightbox.on && !ev.altKey && !ev.metaKey && !ev.ctrlKey && !(t && t.closest && t.closest('#home-gal'))) {
-    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); Slider.go(ev.key === 'ArrowLeft' ? -1 : 1); return; }
-    if ((ev.key === 'Enter' || ev.key === ' ') && t && t.id === 'hs') { ev.preventDefault(); const c = Slider.cards.find(x => !x.off && Math.abs(x.o) < .5); if (c) Lightbox.open(c); return; }
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); Slider.hold(); Slider.go(ev.key === 'ArrowLeft' ? -1 : 1); return; }
+    if ((ev.key === 'Enter' || ev.key === ' ') && t && t.id === 'hs') { ev.preventDefault(); Slider.hold(); if (Slider.mid) Lightbox.open(Slider.mid); return; }
   }
   if (S.frameUi && !typing && /^Arrow(Left|Right|Up|Down)$/.test(ev.key)) {
     const s = frameSlot(); if (!s) return;
