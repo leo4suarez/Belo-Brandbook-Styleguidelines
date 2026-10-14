@@ -60,6 +60,11 @@ const minGap = (cs) => Math.min(...cs.slice(1).map((c, j) => c.l - cs[j].r));
 // Where the mouse can rest: over the controls (the drift pauses there, like over the cards) or above the cards (it drifts)
 const park = async (p) => { const r = await p.locator('#hs-nav .hs-dots, #hs-nav .hs-count').first().boundingBox(); await p.mouse.move(r.x + r.width / 2, r.y + r.height / 2); };
 const away = (p) => p.mouse.move(1490, 140);
+// The search + menu buttons: distance from the right edge and the top, and whether they are sliding
+const bar = (p) => p.evaluate(() => { const a = document.querySelector('.rail-actions'), r = a.getBoundingClientRect(), l = document.querySelector('#rail-logo').getBoundingClientRect(); return { right: innerWidth - r.right, left: r.left, top: r.top, logoLeft: l.left, anims: a.getAnimations().length }; });
+// Measured drift speed (px/s) of the card in the middle, after letting the drift ease in
+const driftSpeed = async (p, wait = 3000) => { await p.waitForTimeout(wait); const k = (await center(p)).k, x0 = await xOf(p, k); await p.waitForTimeout(1000); return x0 - await xOf(p, k); };
+const setRange = (p, id, v, change = true) => p.evaluate(([id, v, change]) => { const r = document.querySelector('#' + id); r.value = v; r.dispatchEvent(new Event('input', { bubbles: true })); if (change) r.dispatchEvent(new Event('change', { bubbles: true })); }, [id, v, change]);
 const xOf = (p, k) => p.evaluate((k) => { const r = document.querySelector(`#hs-stage .hs-card[data-k="${k}"]`).getBoundingClientRect(); return r.left + r.width / 2; }, k);
 const thumbIds = (p) => p.evaluate(() => [...document.querySelectorAll('#home-gal .hg-th[data-index]')].map(t => t.dataset.id));
 // A pointer drag across the slider, n steps of dx pixels, ms apart
@@ -95,6 +100,15 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   check(land.logo === 'belo|1', 'no logo uploaded: the "belo" wordmark is the way Home (' + land.logo + ')');
   check(land.hint === 'Añade imágenes o videos a la galería', 'admins see the hint to fill the gallery');
   check(await pageSwitch(page) === null, 'no viewer/admin switch on Home');
+  {
+    const b = await bar(page);
+    check(Math.abs(b.right - 20) < 1 && Math.abs(b.logoLeft - 20) < 1 && Math.abs(b.top - 20) < 1, `on Home, search and menu sit in the top right corner, 20px in like the logo on the left (${Math.round(b.right)}px)`);
+    const c = await page.evaluate(() => { const r = document.querySelector('#btn-menu').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    await page.click('#btn-menu'); await page.waitForTimeout(120);
+    const rv = await page.evaluate(() => { const r = document.querySelector('#menu-reveal').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    check(Math.abs(rv.x - c.x) < 2 && Math.abs(rv.y - c.y) < 2, 'the menu reveal grows from the menu button in its new corner');
+    await page.keyboard.press('Escape'); await page.waitForTimeout(600);
+  }
   {
     const cs = await cards(page), c = await center(page), W = 1512;
     check(Math.abs(c.dx) < 90 && c.ph === '4' && await page.evaluate((k) => !!document.querySelector(`.hs-card[data-k="${k}"] .hs-b`), c.k), 'the brand blue placeholder with the small "b" opens in the middle');
@@ -292,29 +306,71 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   check(await until(() => page.evaluate(() => { const vs = [...document.querySelectorAll('#hs-stage .hs-card video')]; return vs.some(v => !v.paused) && vs.every(v => v.paused === !!v.closest('.is-off')); }), 5000), 'videos play (muted, looping) on the cards in view only; the rest hold still');
   await page.click('#home-gal .hg-th[data-index="0"]'); await settled(page);
   check(await page.evaluate(() => [...document.querySelectorAll('#hs-stage video')].every(v => v.muted && v.loop)), 'card videos are muted and loop');
-  // Captions: the field edits the selected thumbnail; the label strip appears under its cards
-  check(await page.evaluate(() => document.querySelector('#home-gal .hg-th.is-sel')?.dataset.index === '0' && document.querySelector('#home-cap').value === '' && !document.querySelector('#hs-stage .hs-cap')), 'the first thumbnail is selected, without a caption, and no card has a label strip yet');
-  await page.fill('#home-cap', 'Campaña 2026'); await page.keyboard.press('Enter'); await page.waitForTimeout(300);
-  const capCards = await page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card')].filter(c => c.querySelector('.hs-cap')).map(c => ({ i: c.dataset.i, t: c.querySelector('.hs-cap-t').textContent, n: c.querySelector('.hs-n').textContent, tt: getComputedStyle(c.querySelector('.hs-cap')).textTransform, bg: getComputedStyle(c.querySelector('.hs-cap')).backgroundColor, below: c.querySelector('.hs-cap').offsetTop >= c.querySelector('.hs-media').offsetHeight })));
-  check(capCards.length > 0 && capCards.every(c => c.i === '0' && c.t === 'Campaña 2026' && c.n === '01' && c.tt === 'uppercase' && c.bg === 'rgba(0, 0, 0, 0)' && c.below), `the caption shows as plain uppercase text under every card of that item, no strip behind it (${capCards.length})`);
+  // Titular and Descripción: two fields for the selected thumbnail, with limits and live counters; nothing under the cards
+  const fields = () => page.evaluate(() => ({ sel: document.querySelector('#home-gal .hg-th.is-sel')?.dataset.index, t: document.querySelector('#home-title').value, d: document.querySelector('#home-desc').value, tn: document.querySelector('#home-title-n').textContent, dn: document.querySelector('#home-desc-n').textContent, tmax: document.querySelector('#home-title').maxLength, dmax: document.querySelector('#home-desc').maxLength, area: document.querySelector('#home-desc').tagName }));
+  let F = await fields();
+  check(F.sel === '0' && F.t === '' && F.d === '' && F.tn === '0/60' && F.dn === '0/160' && F.tmax === 60 && F.dmax === 160 && F.area === 'TEXTAREA', 'the first thumbnail is selected, with an empty Titular (0/60) and a Descripción text area (0/160)');
+  await page.click('#home-title'); await page.keyboard.type('T'.repeat(64));
+  F = await fields();
+  check(F.t.length === 60 && F.tn === '60/60', `Titular stops at 60 characters and counts them (${F.tn})`);
+  await page.fill('#home-title', 'Campaña 2026'); F = await fields();
+  check(F.tn === '12/60', 'the counter follows the text (' + F.tn + ')');
+  await page.click('#home-desc'); await page.keyboard.type('d'.repeat(165));
+  F = await fields();
+  check(F.d.length === 160 && F.dn === '160/160', `Descripción stops at 160 characters (${F.dn})`);
+  await page.fill('#home-desc', 'Fotos de la campaña de lanzamiento, con la luz de la tarde.'); await page.keyboard.press('Enter'); await page.waitForTimeout(300);
+  check(await page.evaluate(() => !document.querySelector('#hs-stage .hs-cap') && [...document.querySelectorAll('#hs-stage .hs-card')].every(c => !c.textContent.trim())), 'nothing is written under the cards: the texts are for the lightbox');
   await page.click('#home-gal .hg-th[data-index="2"]'); await settled(page);
-  check(await page.evaluate(() => document.querySelector('#home-gal .hg-th.is-sel')?.dataset.index === '2' && document.querySelector('#home-cap').value === '') && (await center(page)).i === 2, 'selecting another thumbnail edits its own caption and brings its card to the middle');
+  F = await fields();
+  check(F.sel === '2' && F.t === '' && F.d === '' && (await center(page)).i === 2, 'selecting another thumbnail shows its own texts and brings its card to the middle');
   await page.mouse.move(1490, 880);
   await page.keyboard.press('Control+z'); await page.waitForTimeout(300);
-  check(await page.evaluate(() => !document.querySelector('#hs-stage .hs-cap')), 'Ctrl+Z takes the caption back off');
   await page.click('#home-gal .hg-th[data-index="0"]'); await page.waitForTimeout(200);
-  await page.fill('#home-cap', 'Campaña 2026'); await page.locator('#home-cap').blur(); await page.waitForTimeout(300);
-  check(await page.evaluate(() => document.querySelectorAll('#hs-stage .hs-cap').length > 0), 'leaving the field also saves the caption');
-  await page.screenshot({ path: T + 'home-04-gallery.png' });
+  F = await fields();
+  check(F.t === 'Campaña 2026' && F.d === '', 'Ctrl+Z takes the description back off, the title stays');
+  await page.fill('#home-desc', 'Fotos de la campaña de lanzamiento, con la luz de la tarde.'); await page.locator('#home-desc').blur(); await page.waitForTimeout(300);
+  await page.click('#home-gal .hg-th[data-index="1"]'); await page.waitForTimeout(200); await page.click('#home-gal .hg-th[data-index="0"]'); await page.waitForTimeout(200);
+  check((await fields()).d === 'Fotos de la campaña de lanzamiento, con la luz de la tarde.', 'leaving the field also saves it');
+  // Velocidad: the drift speed for everyone, previewed live while it is being set
+  check(await page.evaluate(() => document.querySelector('#home-speed').value === '24' && document.querySelector('#home-speed-v').textContent === '24'), 'Velocidad starts at the default (24)');
+  await page.focus('#home-speed'); await setRange(page, 'home-speed', 100, false);
+  const live = await driftSpeed(page, 2500);
+  check(live > 40, `while Velocidad is being set the row drifts at that speed, with the panel open (${Math.round(live)} px/s)`);
+  await page.locator('#home-speed').blur(); await page.waitForTimeout(1500);
+  check(Math.abs(await driftSpeed(page, 0)) < 1, 'leaving the control, the open panel holds the row still again');
+  await setRange(page, 'home-speed', 100); await page.waitForTimeout(200);
+  check(await page.evaluate(() => document.querySelector('#home-speed-v').textContent === '100'), 'Velocidad set to 100');
+    await page.screenshot({ path: T + 'home-04-gallery.png' });
   await page.click('#home-gal [data-action="home-gal"]'); await page.waitForTimeout(500);
   await page.mouse.move(1490, 880); await settled(page, 1000);
   await page.screenshot({ path: T + 'home-05-slider-media.png' });
+  {
+    const H = await page.evaluate(() => Math.max(...[...document.querySelectorAll('#hs-stage .hs-card')].map(e => e.offsetHeight))), want = 80 * H / 320;
+    const v = await driftSpeed(page, 1500);
+    check(v > want * .75 && v < want * 1.5, `at 100 the row drifts fast (${Math.round(v)} px/s, ~${Math.round(want)} expected)`);
+    await page.click('#home-tools [data-action="home-gal"]'); await page.waitForTimeout(300);
+    await setRange(page, 'home-speed', 60); await page.waitForTimeout(100);
+    await page.mouse.move(1490, 140); await page.keyboard.press('Control+z'); await page.waitForTimeout(300);
+    check(await page.evaluate(() => document.querySelector('#home-speed').value === '100'), 'Ctrl+Z undoes a speed change');
+    await setRange(page, 'home-speed', 0); await page.waitForTimeout(100);
+    check(await page.evaluate(() => document.querySelector('#home-speed-v').textContent === 'Quieto'), 'at 0 the control reads "Quieto"');
+    await page.click('#home-gal [data-action="home-gal"]'); await page.mouse.move(1490, 880);
+    check(Math.abs(await driftSpeed(page, 1500)) < .5, 'and the row holds still');
+    await page.click('#home-tools [data-action="home-gal"]'); await page.waitForTimeout(300);
+    await setRange(page, 'home-speed', 24); await page.waitForTimeout(100);
+    await page.click('#home-gal [data-action="home-gal"]'); await page.waitForTimeout(300);
+  }
   {
     await page.click('#hs-nav .hs-dot[data-i="0"]'); await settled(page);
     const c = await center(page);
     await page.mouse.click(c.x, c.y); await page.waitForTimeout(900);
     const L = await lb(page);
-    check(L.open && !!L.img && L.img.startsWith('blob:') && L.cap === 'Campaña 2026', 'an image card opens the image itself in the lightbox, with its caption under it');
+    check(L.open && !!L.img && L.img.startsWith('blob:'), 'an image card opens the image itself in the lightbox');
+    const tx = await page.evaluate(() => { const f = document.querySelector('#home-lb .hlb-frame').getBoundingClientRect(), c = document.querySelector('#home-lb .hlb-cap'), t = c.querySelector('.hlb-t'), d = c.querySelector('.hlb-d'), cs = (e) => getComputedStyle(e), r = c.getBoundingClientRect();
+      return { t: t.textContent, d: d.textContent, ts: cs(t).fontSize, ds: cs(d).fontSize, tw: cs(t).fontWeight, dw: cs(d).fontWeight, tc: cs(t).color, dc: cs(d).color, fam: cs(t).fontFamily, left: r.left - f.left, gap: r.top - f.bottom, lh: parseFloat(cs(d).lineHeight) / parseFloat(cs(d).fontSize) }; });
+    check(tx.t === 'Campaña 2026' && tx.d === 'Fotos de la campaña de lanzamiento, con la luz de la tarde.', 'the title and the description show right under the opened image');
+    check(tx.ts === '14px' && tx.ds === '14px' && tx.tw === '600' && tx.dw === '400' && tx.tc !== tx.dc && /Plus Jakarta Sans/.test(tx.fam) && tx.lh >= 1.35, `title 14px semibold, description 14px regular in a softer color, Plus Jakarta Sans, comfortable line height (${tx.ts}/${tx.tw}, ${tx.ds}/${tx.dw}, ${tx.lh.toFixed(2)})`);
+    check(Math.abs(tx.left) < 1 && tx.gap > 4 && tx.gap < 30, `aligned with the image's left edge, just under it (${Math.round(tx.gap)}px)`);
     await page.screenshot({ path: T + 'home-06-lightbox-image.png' });
     await page.keyboard.press('Escape'); await page.waitForTimeout(900);
   }
@@ -338,7 +394,8 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   await page.mouse.up(); await page.waitForTimeout(500);
   let ids2 = await thumbIds(page);
   check(ids2[2] === ids[0] && ids2.length === 4, 'dragging a thumbnail reorders the gallery');
-  check(await page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card')].filter(c => c.querySelector('.hs-cap')).every(c => c.dataset.i === '2' && c.querySelector('.hs-n').textContent === '03')), 'the caption moves with its item');
+  await page.click('#home-gal .hg-th[data-index="2"]'); await page.waitForTimeout(200);
+  check(await page.evaluate(() => document.querySelector('#home-title').value === 'Campaña 2026'), 'the texts move with their item');
   await page.locator('#home-gal .hg-th[data-index="3"]').focus();
   await page.keyboard.press('Alt+ArrowLeft'); await page.waitForTimeout(300);
   const ids3 = await thumbIds(page);
@@ -393,6 +450,10 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   await enterCategory(page);
   const cat = await page.evaluate(() => ({ view: document.documentElement.dataset.view, hash: location.hash, stage: getComputedStyle(document.querySelector('#stage')).display, nav: getComputedStyle(document.querySelector('#rail-nav')).display }));
   check(cat.view === 'cat' && cat.stage !== 'none' && cat.nav !== 'none' && cat.hash === '#s_direccion', 'a category in the menu leaves Home for its page (' + cat.hash + ')');
+  {
+    const b = await bar(page);
+    check(b.left + 96 < 1512 * .25 + 1 && Math.abs(b.top - 20) < 1, `on the section pages search and menu are back next to the section list (${Math.round(b.left)}px from the left)`);
+  }
   check(await page.evaluate(() => document.querySelector('#home').getClientRects().length === 0 && [...document.querySelectorAll('#hs-stage video')].every(v => v.paused)), 'Home is hidden on the page and its videos are paused');
   let sw = await pageSwitch(page);
   check(!!sw && sw.n === 2 && Math.round(sw.left) === 20 && Math.round(sw.bottom) === 20 && !!sw.ink, `editors get the viewer/admin switch bottom left on the page (${sw && Math.round(sw.left)}, ${sw && Math.round(sw.bottom)}, ink ${sw && sw.ink})`);
@@ -413,8 +474,14 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   await page.click('#insp [data-action="cancel-edit"]'); await page.waitForTimeout(500);
   check(!!(await pageSwitch(page)), 'and comes back after the edit');
 
-  await page.click('#rail-logo [data-action="home"]'); await page.waitForTimeout(700);
+  await page.click('#rail-logo [data-action="home"]'); await page.waitForTimeout(60);
+  const slide = await bar(page);
+  await page.waitForTimeout(640);
   check(await view(page) === 'home' && await page.evaluate(() => location.hash === '' && !document.querySelector('#page-mode').getClientRects().length), 'the logo goes back Home from a section page (no hash, no page switch)');
+  {
+    const b = await bar(page);
+    check(slide.anims > 0 && slide.right > b.right + 20 && Math.abs(b.right - 20) < 1, `going Home, search and menu slide over to the top right corner (${Math.round(slide.right)} → ${Math.round(b.right)}px from the edge)`);
+  }
   await page.goBack(); await page.waitForTimeout(700);
   check(await view(page) === 'cat' && await page.evaluate(() => location.hash) === '#s_direccion', 'the browser back button returns to the section');
   await page.goForward(); await page.waitForTimeout(700);
@@ -464,6 +531,10 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     check(l.open && l.anims === 0 && Math.abs(l.r.cx - 756) < 2, 'reduced motion: the lightbox opens at once, centered');
     await p.keyboard.press('Escape'); await p.waitForTimeout(60);
     check(!(await lb(p)).open, 'reduced motion: it closes at once');
+    await enterCategory(p);
+    await p.click('#rail-logo [data-action="home"]'); await p.waitForTimeout(40);
+    const rb = await bar(p);
+    check(rb.anims === 0 && Math.abs(rb.right - 20) < 1, 'reduced motion: search and menu jump to their corner, no slide');
     check(p.errors.length === 0, 'no page errors (reduced motion): ' + p.errors.join(' | '));
     await c.close();
   }
@@ -480,6 +551,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     });
     check(m.over <= 0 && m.w <= 390 * .8 && m.top > m.bar && m.bottom < m.navTop, `phone: the middle card fits between the top bar and the controls, no sideways scroll (${Math.round(m.w)}px wide)`);
     check(m.navL > m.toolsR && m.navR <= 390, 'phone: the controls and the gallery button share the bottom row without touching');
+    { const b = await bar(p); check(Math.abs(b.right - 16) < 1 && Math.abs(b.logoLeft - 16) < 1, `phone: search and menu top right, 16px in like the logo (${Math.round(b.right)}px)`); }
     await p.screenshot({ path: T + 'home-07-phone.png' });
     // a swipe (real touch events) moves to the next card
     const cdp = await c.newCDPSession(p);
@@ -527,9 +599,12 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     const stored = await until(() => { const t = fake.docs.get('catalog/tree'); return !!(t && t.data.home && t.data.home.media.length === 1); }, 8000);
     const media = stored ? fake.docs.get('catalog/tree').data.home.media[0] : {};
     check(stored && media.kind === 'image' && fake.files.has(media.id) && media.w > 0 && media.h > 0, 'Supabase: the image is stored in the bucket and in the catalog tree (' + media.id + ')');
-    await E.waitForSelector('#home-cap');
-    await E.fill('#home-cap', 'Lanzamiento'); await E.keyboard.press('Enter');
-    check(await until(() => (fake.docs.get('catalog/tree').data.home.media[0] || {}).label === 'Lanzamiento', 8000), 'Supabase: the caption is stored with the item (label)');
+    await E.waitForSelector('#home-title');
+    await E.fill('#home-title', 'Lanzamiento'); await E.keyboard.press('Enter');
+    await E.fill('#home-desc', 'La tarjeta, de frente.'); await E.keyboard.press('Enter');
+    check(await until(() => { const m = fake.docs.get('catalog/tree').data.home.media[0] || {}; return m.title === 'Lanzamiento' && m.desc === 'La tarjeta, de frente.' && !('label' in m); }, 8000), 'Supabase: the title and the description are stored with the item');
+    await E.evaluate(() => { const r = document.querySelector('#home-speed'); r.value = 50; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); });
+    check(await until(() => fake.docs.get('catalog/tree').data.home.speed === 50, 8000), 'Supabase: the speed is stored (home.speed)');
     await E.click('#home-gal [data-action="home-ratio"][data-v="1/1"]');
     await E.evaluate(() => { const r = document.querySelector('#home-radius'); r.value = 28; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); });
     check(await until(() => { const h = fake.docs.get('catalog/tree').data.home; return h.media[0].ratio === '1/1' && h.radius === 28; }, 8000), 'Supabase: the card shape (ratio) and the corners (home.radius) are stored');
@@ -537,7 +612,12 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     const V = vis.page;
     await V.waitForSelector('#home .hs-card');
     check(await until(() => V.evaluate((id) => [...document.querySelectorAll('#hs-stage .hs-card img')].some(i => i.src.includes(id)) && !document.querySelector('#hs-stage .hs-media[data-ph]'), media.id)), 'Supabase: a visitor sees the slider made of that image');
-    check(await until(() => V.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-cap-t')].some(t => t.textContent === 'Lanzamiento'))), 'Supabase: and its caption');
+    {
+      const c = await center(V); await V.mouse.click(c.x, c.y); await V.waitForTimeout(60);
+      await V.waitForTimeout(840);
+      check(await V.evaluate(() => (document.querySelector('#home-lb .hlb-t') || {}).textContent === 'Lanzamiento' && (document.querySelector('#home-lb .hlb-d') || {}).textContent === 'La tarjeta, de frente.'), 'Supabase: a visitor opening it sees the title and the description');
+      await V.keyboard.press('Escape'); await V.waitForTimeout(800);
+    }
     check(await until(() => V.evaluate(() => { const e = document.querySelector('#hs-stage .hs-card'), m = e.querySelector('.hs-media'); return e.offsetWidth === e.offsetHeight && Math.abs(parseFloat(getComputedStyle(m).borderTopLeftRadius) - 28 * e.offsetHeight / 420) < .2; })), 'Supabase: and its square shape and corners');
     check(await V.evaluate(() => !document.querySelector('#home-tools').getClientRects().length && !document.querySelector('#page-mode').getClientRects().length && !!document.querySelector('#hs-nav .hs-btn')), 'Supabase: the visitor has the slider controls but no gallery tools and no view switch');
     await E.reload(); await E.waitForSelector('#home .hs-card');
@@ -549,6 +629,16 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     await E.click('#home-gal [data-action="home-gal"]');
     check(await until(() => !fake.files.has(media.id) && fake.docs.get('catalog/tree').data.home.media.length === 0, 8000), 'Supabase: removing it and closing the gallery deletes the file and the entry');
     check(await until(() => V.evaluate(() => document.querySelectorAll('#hs-stage .hs-media[data-ph]').length === document.querySelectorAll('#hs-stage .hs-card').length)), 'Supabase: the visitor\'s slider goes back to placeholders live');
+    // a caption saved before (label) shows as the title
+    {
+      const T0 = fake.docs.get('catalog/tree').data;
+      fake.seed('catalog/tree', { ...T0, home: { media: [{ id: media.id, kind: 'image', w: media.w, h: media.h, label: 'Leyenda vieja' }] } }, leo.id);
+      const old = await open(browser, SUPA_BASE, {}, (c) => fake.attach(c, 'visitor'));
+      await old.page.waitForSelector('#home .hs-card img');
+      const c = await center(old.page); await old.page.mouse.click(c.x, c.y); await old.page.waitForTimeout(900);
+      check(await old.page.evaluate(() => (document.querySelector('#home-lb .hlb-t') || {}).textContent === 'Leyenda vieja' && !document.querySelector('#home-lb .hlb-d')), 'Supabase: an old caption (label) shows as the title; no empty description');
+      await old.ctx.close();
+    }
     const errs = [...E.errors, ...V.errors].filter(e => !/status of 40[49]/.test(e));
     check(errs.length === 0, 'no page errors (Supabase): ' + errs.join(' | '));
     await ed.ctx.close(); await vis.ctx.close();
