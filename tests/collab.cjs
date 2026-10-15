@@ -42,12 +42,13 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
     const page = await ctx.newPage();
     page.errors = [];
     // 409 (conflict) and 403 (edit rights revoked) are answers the page handles; the browser still logs them.
-    page.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !/ERR_FAILED|ERR_CONNECTION_RESET|Failed to fetch|status of 409|status of 403/.test(m.text())) page.errors.push(label + ' ' + m.type() + ': ' + m.text()); });
+    // Chrome's own notes about software WebGL (the Home slider in a headless browser without a GPU) are not page errors.
+    page.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !/ERR_FAILED|ERR_CONNECTION_RESET|Failed to fetch|status of 409|status of 403|WebGL|GL Driver Message|swiftshader/.test(m.text())) page.errors.push(label + ' ' + m.type() + ': ' + m.text()); });
     page.on('pageerror', e => page.errors.push(label + ' pageerror: ' + e.message));
     await page.emulateMedia({ colorScheme: 'light' });
     await page.goto(BASE);
     // Home is the opening screen; the tests work on the category page, reached through the menu like a visitor would.
-    await page.waitForSelector('#home #globe .gt');
+    await page.waitForSelector('#home .hs-card');
     page.landedHome = await page.evaluate(() => document.documentElement.dataset.view === 'home' && !document.querySelector('#menu').classList.contains('is-open'));
     await page.click('#btn-menu'); await page.waitForTimeout(800);
     page.menuWasUp = await menuUp(page);

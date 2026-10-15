@@ -21,7 +21,7 @@ async function open(browser, opts = {}) {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto(BASE);
   // Home is the opening screen: go to the category through the menu
-  await page.waitForSelector('#home #globe .gt');
+  await page.waitForSelector('#home .hs-card');
   await page.click('#btn-menu'); await page.waitForTimeout(700);
   await page.click('.ov-cat[data-id="c_ourbrand"]');
   await page.waitForSelector('#s-s_sepuede .row');
