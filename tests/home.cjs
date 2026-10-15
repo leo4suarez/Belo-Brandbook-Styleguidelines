@@ -69,6 +69,21 @@ const bar = (p) => p.evaluate(() => { const a = document.querySelector('.rail-ac
 const driftSpeed = async (p, wait = 3000) => { await p.waitForTimeout(wait); const k = (await center(p)).k, x0 = await xOf(p, k); await p.waitForTimeout(1000); return x0 - await xOf(p, k); };
 const setRange = (p, id, v, change = true) => p.evaluate(([id, v, change]) => { const r = document.querySelector('#' + id); r.value = v; r.dispatchEvent(new Event('input', { bubbles: true })); if (change) r.dispatchEvent(new Event('change', { bubbles: true })); }, [id, v, change]);
 const xOf = (p, k) => p.evaluate((k) => { const r = document.querySelector(`#hs-stage .hs-card[data-k="${k}"]`).getBoundingClientRect(); return r.left + r.width / 2; }, k);
+// The page as drawn (the WebGL ring included): a screenshot decoded in the page, kept in window.__px for the probes below
+const grab = async (p) => { const buf = await p.screenshot(); await p.evaluate(async (b64) => { const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0); window.__px = x.getImageData(0, 0, c.width, c.height); }, buf.toString('base64')); };
+// How far a pixel is from the page background (sum of the channel differences)
+const offBg = (p, x, y) => p.evaluate(([x, y]) => { const { data, width } = window.__px, bg = getComputedStyle(document.documentElement).getPropertyValue('--home-bg').trim(), b = [1, 3, 5].map(i => parseInt(bg.slice(i, i + 2), 16)), o = (Math.round(y) * width + Math.round(x)) * 4; return Math.abs(data[o] - b[0]) + Math.abs(data[o + 1] - b[1]) + Math.abs(data[o + 2] - b[2]); }, [x, y]);
+// The top edge of the ring as drawn: for every 3rd column, the first pixel from above that is clearly not background
+const topEdge = (p, y0, y1) => p.evaluate(([y0, y1]) => { const { data, width } = window.__px, bg = getComputedStyle(document.documentElement).getPropertyValue('--home-bg').trim(), b = [1, 3, 5].map(i => parseInt(bg.slice(i, i + 2), 16)), out = [];
+  for (let x = 0; x < width; x += 3) for (let y = y0; y < y1; y++) { const o = (y * width + x) * 4; if (Math.abs(data[o] - b[0]) + Math.abs(data[o + 1] - b[1]) + Math.abs(data[o + 2] - b[2]) > 60) { out.push([x, y]); break; } }
+  return out; }, [y0, y1]);
+// Least squares fit of y = a + b t² + c t⁴ + d t⁶ (t from the middle of the screen): one smooth, symmetric curve
+const evenFit = (pts, cx, W) => { const B = (x) => { const t = (x - cx) / W, t2 = t * t; return [1, t2, t2 * t2, t2 * t2 * t2]; }; const A = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], v = [0, 0, 0, 0];
+  for (const [x, y] of pts) { const b = B(x); for (let i = 0; i < 4; i++) { v[i] += b[i] * y; for (let j = 0; j < 4; j++) A[i][j] += b[i] * b[j]; } }
+  for (let i = 0; i < 4; i++) { let m = i; for (let r = i + 1; r < 4; r++) if (Math.abs(A[r][i]) > Math.abs(A[m][i])) m = r; [A[i], A[m]] = [A[m], A[i]]; [v[i], v[m]] = [v[m], v[i]]; for (let r = 0; r < 4; r++) if (r !== i) { const f = A[r][i] / A[i][i]; for (let c = i; c < 4; c++) A[r][c] -= f * A[i][c]; v[r] -= f * v[i]; } }
+  const k = v.map((x, i) => x / A[i][i]); return (x) => B(x).reduce((s, b, i) => s + b * k[i], 0); };
+// The edge points split into runs (one per card) with their rounded ends left out
+const runs = (pts, trim = 30) => { const out = []; let cur = []; for (const q of pts) { if (cur.length && q[0] - cur[cur.length - 1][0] > 6) { out.push(cur); cur = []; } cur.push(q); } if (cur.length) out.push(cur); return out.map(r => r.filter(q => q[0] > r[0][0] + trim && q[0] < r[r.length - 1][0] - trim)).filter(r => r.length > 4); };
 const thumbIds = (p) => p.evaluate(() => [...document.querySelectorAll('#home-gal .hg-th[data-index]')].map(t => t.dataset.id));
 // A pointer drag across the slider, n steps of dx pixels, ms apart
 const drag = async (p, x, y, dx, n = 10, ms = 16) => {
@@ -78,7 +93,8 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
 };
 
 (async () => {
-  const browser = await chromium.launch();
+  /* the ring is drawn with WebGL: the headless browser needs the GPU switched on for it (without it, see 1b) */
+  const browser = await chromium.launch({ args: ['--ignore-gpu-blocklist', '--enable-gpu'] });
 
   // ---------- 1. Landing on Home (local demo, OS in dark mode: the page still starts light) ----------
   const { page, ctx } = await open(browser, BASE, { colorScheme: 'dark' });
@@ -131,10 +147,9 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     const cs = await cards(page), c = await center(page), W = 1512;
     check(Math.abs(c.dx) < 90 && c.ph === '4' && await page.evaluate((k) => !!document.querySelector(`.hs-card[data-k="${k}"] .hs-b`), c.k), 'the brand blue placeholder with the small "b" opens in the middle');
     check(cs[0].l < 0 && cs[cs.length - 1].r > W && cs.length >= 4, `the row runs off both edges (${cs.length} cards in view: ${Math.round(cs[0].l)} … ${Math.round(cs[cs.length - 1].r)})`);
-    const side = cs.filter(x => Math.abs(x.x - W / 2) > 200);
-    check(Math.abs(c.zl - c.zr) < 40 && side.length >= 3 && side.every(x => (x.x < W / 2 ? x.zl > x.zr : x.zr > x.zl)), 'real 3D: the middle card faces the viewer, the side ones turn to face the axis of the curve');
-    const R = cs.filter(x => x.x > W / 2).sort((a, b) => a.x - b.x);
-    check(R.length >= 2 && R[1].zr - R[1].zl > R[0].zr - R[0].zl, 'the farther from the middle, the more a card turns (the row wraps around)');
+    check(await page.evaluate(() => document.querySelector('#hs').classList.contains('is-gl') && getComputedStyle(document.querySelector('#hs-gl')).display === 'block'), 'the ring is drawn with WebGL, as one bent surface (the DOM cards are invisible stand-ins)');
+    const out = cs.map(x => ({ d: Math.max(Math.abs(x.l - W / 2), Math.abs(x.r - W / 2)), h: x.h })).sort((a, b) => a.d - b.d);
+    check(out.every((x, i) => !i || x.h >= out[i - 1].h - .5) && out[out.length - 1].h > out[0].h * 1.08, `the ring wraps around: cards look taller toward the edges, the farther the more (${Math.round(out[0].h)} → ${Math.round(out[out.length - 1].h)}px)`);
     check(overlaps(cs).length === 0 && minGap(cs) > 2, `no card is drawn over its neighbour, out to both edges (smallest gap ${Math.round(minGap(cs))}px)`);
     const shapes = await page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card')].map(e => { const m = e.querySelector('.hs-media'), cs = getComputedStyle(e); return { bg: cs.backgroundColor, pad: cs.paddingTop, fill: m.offsetWidth === e.offsetWidth && m.offsetHeight === e.offsetHeight, ar: Math.round(e.offsetWidth / e.offsetHeight * 100) / 100, h: e.offsetHeight }; }));
     check(shapes.every(x => x.bg === 'rgba(0, 0, 0, 0)' && x.pad === '0px' && x.fill), 'no card frames: each card is the image itself, edge to edge');
@@ -211,9 +226,9 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   {
     const c = await center(page);
     await page.mouse.move(c.x, c.y); await page.waitForTimeout(600);
-    const h = await page.evaluate(() => { const el = document.querySelector('#hs-stage .hs-card.is-hover'); return el ? { k: el.dataset.k, cursor: getComputedStyle(document.querySelector('#home')).cursor, z: new DOMMatrix(getComputedStyle(el).transform).m43 } : null; });
+    const h = await page.evaluate(() => { const el = document.querySelector('#hs-stage .hs-card.is-hover'); return el ? { k: el.dataset.k, cursor: getComputedStyle(document.querySelector('#home')).cursor } : null; });
     const after = (await cards(page)).find(x => x.k === c.k);
-    check(!!h && h.k === c.k && h.cursor === 'pointer' && h.z > c.z + 5 && after.w > c.w + 2, `hovering a card lifts it toward the viewer (z ${Math.round(c.z)} → ${Math.round(h && h.z)}, width ${Math.round(c.w)} → ${Math.round(after.w)}) with a pointer cursor`);
+    check(!!h && h.k === c.k && h.cursor === 'pointer' && after.w > c.w + 2 && after.h > c.h + 2, `hovering a card lifts it toward the viewer (${Math.round(c.w)}×${Math.round(c.h)} → ${Math.round(after.w)}×${Math.round(after.h)}) with a pointer cursor`);
     await page.screenshot({ path: T + 'home-03-hover.png' });
     const n = (await cards(page)).filter(x => x.x > c.x + 50 && x.x < 1450)[0];
     await page.mouse.move(n.x, n.y); await page.waitForTimeout(400);
@@ -313,7 +328,13 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   check(Math.abs(cr.r - 16 * cr.h / 420) < .2 && await page.evaluate(() => document.querySelector('#home-radius').value === '16'), `the corners start at the default (16, ${cr.r}px on a ${cr.h}px card)`);
   await setRadius(32); await page.waitForTimeout(300); cr = await corner();
   check(Math.abs(cr.r - 32 * cr.h / 420) < .2 && await page.evaluate(() => document.querySelector('#home-radius-v').textContent === '32 px'), `the Esquinas control rounds every card (32 → ${cr.r}px)`);
-  await setRadius(0); await page.waitForTimeout(300);
+  {
+    const m = await page.evaluate(() => { const e = document.querySelector('#hs-stage .hs-card.is-mid'), r = e.getBoundingClientRect(); return { x: r.left + 3, y: r.top + 3 }; });
+    await grab(page); const round = await offBg(page, m.x, m.y);
+    await setRadius(0); await page.waitForTimeout(300);
+    await grab(page); const square = await offBg(page, m.x, m.y);
+    check(round < 40 && square > 100, `the ring draws the corners too: rounded, the very corner is background (${round}); square, it is the image (${square})`);
+  }
   check((await corner()).r === 0, 'and down to square corners');
   await page.keyboard.press('Control+z'); await page.waitForTimeout(300);
   check(Math.abs((await corner()).r - 32 * cr.h / 420) < .2, 'Ctrl+Z undoes a corner change');
@@ -361,6 +382,24 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   await page.click('#home-gal [data-action="home-gal"]'); await page.waitForTimeout(500);
   await page.mouse.move(1490, 880); await settled(page, 1000);
   await page.screenshot({ path: T + 'home-05-slider-media.png' });
+  // One continuous ring: the top edges of all the cards lie on one smooth curve across the screen (no card has its own
+  // tilt), and each card is bent along it (its top edge is curved, not straight)
+  {
+    await park(page); await page.waitForTimeout(900);
+    await grab(page);
+    const cy = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#home')).getPropertyValue('--hs-cy')));
+    const pts = await topEdge(page, 100, Math.round(cy)), R = runs(pts), all = R.flat();
+    const fit = evenFit(all, 756, 756), res = Math.max(...all.map(([x, y]) => Math.abs(y - fit(x))));
+    check(R.length >= 3 && all.some(q => q[0] < 60) && all.some(q => q[0] > 1450), `the cards' top edges were found across the screen (${R.length} cards, ${all.length} points)`);
+    check(res < 2.5, `they all lie on one smooth curve: the ring is continuous, no card is tilted on its own (largest gap to the curve ${res.toFixed(2)}px)`);
+    const mid = R.find(r => r[0][0] < 756 && r[r.length - 1][0] > 756) || R.sort((a, b) => Math.abs((a[0][0] + a[a.length - 1][0]) / 2 - 756) - Math.abs((b[0][0] + b[b.length - 1][0]) / 2 - 756))[0];
+    const [a, b] = [mid[0], mid[mid.length - 1]], m = mid[Math.floor(mid.length / 2)], sag = m[1] - (a[1] + (b[1] - a[1]) * (m[0] - a[0]) / (b[0] - a[0]));
+    check(Math.abs(sag) > 2, `each card is bent with the ring: the middle card's top edge curves (${sag.toFixed(1)}px off a straight line)`);
+    const L = R.filter(r => r[r.length - 1][0] < 400).flat(), Rr = R.filter(r => r[0][0] > 1112).flat();
+    check(L.length && Rr.length && Math.min(...L.map(q => q[1])) < fit(756) - 15 && Math.min(...Rr.map(q => q[1])) < fit(756) - 15, 'toward both edges of the screen the ring rises: a marked curve, like the reference');
+    await page.screenshot({ path: T + 'home-05b-ring.png' });
+    await page.mouse.move(1490, 880);
+  }
   {
     const H = await page.evaluate(() => Math.max(...[...document.querySelectorAll('#hs-stage .hs-card')].map(e => e.offsetHeight))), want = 80 * H / 320;
     const v = await driftSpeed(page, 1500);
@@ -517,6 +556,20 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   check(page.errors.length === 0, 'no page errors (desktop): ' + page.errors.join(' | '));
   await ctx.close();
 
+  // ---------- 1b. Without WebGL the DOM cards are drawn instead ----------
+  {
+    const plain = await chromium.launch();
+    const { page: p, ctx: c } = await open(plain, BASE);
+    await p.waitForSelector('#home .hs-card'); await p.waitForTimeout(1500);
+    const g = await p.evaluate(() => ({ gl: document.querySelector('#hs').classList.contains('is-gl'), vis: getComputedStyle(document.querySelector('#hs-stage .hs-card .hs-media')).opacity }));
+    const cs = await cards(p);
+    check(!g.gl && cs.length >= 4 && overlaps(cs).length === 0, `no WebGL (plain headless): the DOM cards are drawn themselves, still without overlaps (${cs.length} in view)`);
+    const m = await center(p); await p.mouse.click(m.x, m.y); await p.waitForTimeout(900);
+    check((await lb(p)).open && (await lb(p)).out[0] === m.k, 'and a click still opens the card under the pointer');
+    check(p.errors.length === 0, 'no page errors (no WebGL): ' + p.errors.join(' | '));
+    await c.close(); await plain.close();
+  }
+
   // ---------- 4. A link to a section skips Home ----------
   {
     const { page: p, ctx: c } = await open(browser, BASE + '#s_sepuede');
@@ -630,6 +683,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     const V = vis.page;
     await V.waitForSelector('#home .hs-card');
     check(await until(() => V.evaluate((id) => [...document.querySelectorAll('#hs-stage .hs-card img')].some(i => i.src.includes(id)) && !document.querySelector('#hs-stage .hs-media[data-ph]'), media.id)), 'Supabase: a visitor sees the slider made of that image');
+    check(await until(() => V.evaluate(() => document.querySelector('#hs').classList.contains('is-gl'))), 'Supabase: the stored files load with CORS, so the ring keeps drawing them with WebGL');
     {
       const c = await center(V); await V.mouse.click(c.x, c.y); await V.waitForTimeout(60);
       await V.waitForTimeout(840);
