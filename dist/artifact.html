@@ -871,6 +871,15 @@ html[data-view="home"]{overscroll-behavior:none;background:var(--home-bg)}
    the middle, and lifted toward the viewer on hover. Cards take no pointer events (see Slider.pick). */
 .hs{position:absolute;inset:0;outline:none}
 .hs-stage{position:absolute;inset:0;perspective:var(--hs-p,2400px);perspective-origin:50% var(--hs-cy,50%);pointer-events:none}
+/* With WebGL the ring is drawn in the canvas; the DOM cards stay as invisible stand-ins laid over each card's outline
+   on screen (they hold the media, the hover box and the keyboard ring) */
+.hs-gl{position:absolute;inset:0;width:100%;height:100%;display:none;pointer-events:none}
+.hs.is-gl .hs-gl{display:block}
+.hs.is-gl .hs-stage{perspective:none}
+.hs.is-gl .hs-card{transform-origin:0 0;will-change:transform}
+.hs.is-gl .hs-card .hs-media{background:none!important;box-shadow:none!important}
+.hs.is-gl .hs-card .hs-media > *{opacity:0!important}
+.hs.is-gl:focus-visible .hs-card.is-mid .hs-media{box-shadow:0 0 0 3px var(--focus)!important}
 /* A card is the image or video itself (size and place set by Slider.layout); its title and description show in the lightbox */
 .hs-card{position:absolute;left:0;top:0;transform-origin:50% 50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform}
 .hs-card.is-off{visibility:hidden}
@@ -1104,6 +1113,7 @@ html.is-row-drag .page-mode{visibility:hidden}
 <main class="home" id="home" aria-label="Inicio" data-home-drop>
   <h1 class="sr-only">Belo · Catálogo de marca</h1>
   <section class="hs" id="hs" tabindex="0" aria-roledescription="carrusel" aria-label="Galería">
+    <canvas class="hs-gl" id="hs-gl" aria-hidden="true"></canvas>
     <div class="hs-stage" id="hs-stage" aria-hidden="true"></div>
     <div class="hs-nav" id="hs-nav"></div>
     <p class="sr-only" id="hs-live" aria-live="polite"></p>
@@ -1932,7 +1942,7 @@ function themeInk() { return ROOT.dataset.scheme === 'dark' ? 'light' : 'dark'; 
 function setScheme(next, persist = true) {
   if (persist) ls.set('scheme', next);
   if (ROOT.dataset.scheme === next) return;
-  const apply = () => { ROOT.dataset.scheme = next; Ink.run(); if (S.overlay === 'menu') renderMenuBottom(); };
+  const apply = () => { ROOT.dataset.scheme = next; Ink.run(); Slider.kick(); if (S.overlay === 'menu') renderMenuBottom(); };
   if (!RM && document.startViewTransition && persist) { try { document.startViewTransition(apply); return; } catch {} }
   apply();
 }
@@ -5210,6 +5220,144 @@ function renderHome() {
   Gallery.render();
 }
 
+/* ---------- Ring (WebGL) ---------- */
+/* The slider drawn as one surface: every card is a band of the same cylinder seen from the inside (Slider.pt is the
+   same math in JS), bent along it rather than a flat plane turned toward the middle, so the top and bottom edges of all
+   the cards run along the same two arcs. Each card is a strip of HS_SEG segments textured with its image, video or
+   placeholder, with rounded corners (a signed distance in the card's own pixels) and a soft shadow drawn first. The DOM
+   cards stay as invisible stand-ins (media sources, hit boxes, lightbox origin); without WebGL, or when a file can't be
+   used as a texture (no CORS), Slider falls back to drawing the DOM cards themselves. */
+const HS_SEG = 40;
+const HS_VS = `
+attribute vec2 a_p;
+uniform vec2 u_view; uniform vec4 u_cam; uniform float u_bulge; uniform vec4 u_card; uniform float u_lift; uniform float u_scale;
+varying vec2 v_l;
+void main() {
+  vec2 l = (a_p - .5) * (u_card.yz + 2. * u_card.w);
+  v_l = l;
+  float th = (u_card.x + l.x * u_scale) / u_cam.x, r = u_cam.x - u_lift;
+  float X = r * sin(th), Z = u_cam.x - r * cos(th), d = u_cam.y - Z, f = u_cam.y / d;
+  float Y = l.y * u_scale * (1. - u_bulge * (1. - cos(th)));
+  vec2 s = vec2(u_cam.z + X * f, u_cam.w + Y * f);
+  float w = d / u_cam.y; /* perspective-correct texture coordinates along the curve */
+  gl_Position = vec4((s.x / u_view.x * 2. - 1.) * w, (1. - s.y / u_view.y * 2.) * w, 0., w);
+}`;
+const HS_FS = `
+precision highp float;
+varying vec2 v_l;
+uniform vec4 u_card; uniform float u_rad; uniform float u_mode; uniform sampler2D u_tex; uniform float u_hasTex;
+uniform vec2 u_cover; uniform vec4 u_shadow; uniform vec3 u_base; uniform float u_line;
+float sdRR(vec2 p, vec2 b, float r) { vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
+void main() {
+  vec2 hb = u_card.yz * .5;
+  if (u_mode < .5) {
+    float blur = u_card.w * .55, d = sdRR(v_l - vec2(0., u_card.w * .38), hb - vec2(u_card.w * .12), u_rad);
+    float a = u_shadow.a * (1. - smoothstep(-blur, blur, d));
+    gl_FragColor = vec4(u_shadow.rgb * a, a);
+    return;
+  }
+  float d = sdRR(v_l, hb, u_rad), a = 1. - smoothstep(-.7, .7, d);
+  vec4 c = u_hasTex > .5 ? texture2D(u_tex, v_l / u_card.yz * u_cover + .5) : vec4(0.);
+  vec3 col = c.rgb + u_base * (1. - c.a);
+  col = mix(col, vec3(0.), u_line * smoothstep(-1.6, -.4, d));
+  gl_FragColor = vec4(col, 1.) * a;
+}`;
+function makeRing(canvas) {
+  let gl = null;
+  try { gl = canvas.getContext('webgl2', { premultipliedAlpha: true, antialias: true }) || canvas.getContext('webgl', { premultipliedAlpha: true, antialias: true }); } catch {}
+  if (!gl) return null;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null; };
+  const vs = sh(gl.VERTEX_SHADER, HS_VS), fs = sh(gl.FRAGMENT_SHADER, HS_FS); if (!vs || !fs) return null;
+  const prog = gl.createProgram(); gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+  const g2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
+  const U = {}; ['u_view', 'u_cam', 'u_bulge', 'u_card', 'u_lift', 'u_scale', 'u_rad', 'u_mode', 'u_tex', 'u_hasTex', 'u_cover', 'u_shadow', 'u_base', 'u_line'].forEach(n => { U[n] = gl.getUniformLocation(prog, n); });
+  const verts = new Float32Array((HS_SEG + 1) * 4);
+  for (let i = 0; i <= HS_SEG; i++) { verts.set([i / HS_SEG, 0, i / HS_SEG, 1], i * 4); }
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+  const aP = gl.getAttribLocation(prog, 'a_p');
+  const tex = new Map(); let lost = false;
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost = true; ring.failed = true; Slider.glFail(); });
+  const css = (n) => getComputedStyle(ROOT).getPropertyValue(n).trim();
+  const rgb = (v) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = v || '#000'; const h = c.fillStyle; if (h[0] === '#') return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255); const m = h.match(/[\d.]+/g) || [0, 0, 0]; return m.slice(0, 3).map(x => +x / 255); };
+  /* big files are scaled down first (a texture never needs more than ~1600px here); that also keeps mipmaps cheap */
+  const fit = (el) => {
+    const w = el.naturalWidth || el.videoWidth || el.width, h = el.naturalHeight || el.videoHeight || el.height, k = Math.min(1, 1600 / Math.max(w, h));
+    if (k >= 1 || el.tagName === 'VIDEO') return { src: el, w, h };
+    const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+    c.getContext('2d').drawImage(el, 0, 0, c.width, c.height);
+    return { src: c, w: c.width, h: c.height };
+  };
+  const upload = (key, el, video) => {
+    let t = tex.get(key);
+    if (!t) { t = { tex: gl.createTexture(), w: 0, h: 0, vt: -1, ok: false }; tex.set(key, t); }
+    const f = fit(el);
+    gl.bindTexture(gl.TEXTURE_2D, t.tex);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, f.src); /* throws on a file without CORS */
+    const mip = g2 && !video;
+    if (mip) gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mip ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    t.w = f.w; t.h = f.h; t.ok = true; if (video) t.vt = el.currentTime;
+    return t;
+  };
+  /* placeholder looks, drawn once per theme: the token color (or the blue gradient) and the small "b" */
+  const phTex = (n, scheme) => {
+    const key = 'ph' + n + '|' + scheme; if (tex.has(key)) return tex.get(key);
+    const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
+    if (n === 5) { const g = x.createLinearGradient(140, 0, 372, 512); g.addColorStop(0, css('--ph-5')); g.addColorStop(.7, css('--ph-4')); x.fillStyle = g; } else x.fillStyle = css('--ph-' + n);
+    x.fillRect(0, 0, 512, 512);
+    if (PH_B[n]) { x.fillStyle = '#FFFFFF'; x.font = `800 140px ${css('--font')}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('b', 256, 246); }
+    return upload(key, c, false);
+  };
+  const ring = {
+    failed: false, g2,
+    resize(w, h, dpr) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); this.w = w; this.h = h; },
+    /* the texture of a card, uploaded when it is ready (videos: a new frame per draw while they play) */
+    texOf(c, scheme, done) {
+      const it = c.item;
+      if (it.ph != null) return phTex(it.ph, scheme);
+      const el = c.v || c.img; if (!el) return null;
+      const key = (c.v ? 'v:' : 'i:') + it.id; let t = tex.get(key);
+      if (done.has(key)) return t;
+      done.add(key);
+      if (c.v) { if (c.v.readyState >= 2 && c.v.videoWidth && (!t || !t.ok || t.vt !== c.v.currentTime)) t = upload(key, c.v, true); }
+      else if (c.img.complete && c.img.naturalWidth && (!t || !t.ok)) t = upload(key, c.img, false);
+      return t && t.ok ? t : null;
+    },
+    draw(S2) {
+      if (lost) return;
+      const { cards, R, P, cx, cy, H, rad, dark } = S2;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(prog);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 0, 0);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.uniform2f(U.u_view, this.w, this.h); gl.uniform4f(U.u_cam, R, P, cx, cy); gl.uniform1f(U.u_bulge, HS_BULGE);
+      gl.uniform1f(U.u_rad, rad); gl.uniform1i(U.u_tex, 0); gl.activeTexture(gl.TEXTURE0);
+      const pad = Math.round(H * .09), base = rgb(css('--ph-0')), sc = dark ? [0, 0, 0] : [0, .06, .25], scheme = dark ? 'd' : 'l';
+      const done = new Set(), list = cards.filter(c => !c.off && !c.el.classList.contains('is-out'));
+      const each = (c) => { gl.uniform4f(U.u_card, c.s, c.w, c.h, pad); gl.uniform1f(U.u_lift, HS_LIFT * H * c.l); gl.uniform1f(U.u_scale, 1 + .03 * c.l); };
+      gl.uniform1f(U.u_mode, 0);
+      for (const c of list) { each(c); gl.uniform4f(U.u_shadow, sc[0], sc[1], sc[2], (dark ? .5 : .13) + c.l * (dark ? .2 : .08)); gl.drawArrays(gl.TRIANGLE_STRIP, 0, (HS_SEG + 1) * 2); }
+      gl.uniform1f(U.u_mode, 1); gl.uniform3f(U.u_base, base[0], base[1], base[2]);
+      for (const c of list) {
+        let t = null;
+        try { t = this.texOf(c, scheme, done); } catch { this.failed = true; return; }
+        each(c);
+        gl.uniform1f(U.u_hasTex, t ? 1 : 0);
+        if (t) { gl.bindTexture(gl.TEXTURE_2D, t.tex); const ta = t.w / t.h, ca = c.w / c.h; gl.uniform2f(U.u_cover, ta > ca ? ca / ta : 1, ta > ca ? 1 : ta / ca); }
+        gl.uniform1f(U.u_line, c.item.ph === 1 && !dark ? .08 : 0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, (HS_SEG + 1) * 2);
+      }
+    },
+    destroy() { tex.forEach(t => gl.deleteTexture(t.tex)); tex.clear(); const e = gl.getExtension('WEBGL_lose_context'); lost = true; if (e) e.loseContext(); }
+  };
+  return ring;
+}
+
 /* ---------- Slider ---------- */
 /* Placeholder cards for an empty gallery (data-ph 0-5, colors in the --ph-* tokens) and their shapes, in slider order:
    the brand blue one with the small "b" opens in the middle, quiet tints and white around it. */
@@ -5223,10 +5371,10 @@ const HOME_RADIUS = 16; /* default corner radius of the cards (tree.home.radius)
    even gap and turned to face its axis, so neighbours never cover each other; toward the edges they wrap around and
    turn away. The camera sits a little behind the axis (HS_CAM radii from the middle card), and a card shrinks a little
    as it goes round (HS_BULGE), which gives the surface a slightly spherical feel. */
-const HS_RAD = .58;     /* radius of the cylinder, in viewport widths (desktop) */
+const HS_RAD = .45;     /* radius of the cylinder, in viewport widths (desktop) */
 const HS_RAD_M = 1.1;   /* the same on a phone */
-const HS_CAM = 1.7;     /* camera distance from the middle card, in radii */
-const HS_BULGE = .55;   /* size lost going round, per unit of (1 - cos) of the angle */
+const HS_CAM = 1.4;     /* camera distance from the middle card, in radii */
+const HS_BULGE = .1;     /* size lost going round, per unit of (1 - cos) of the angle */
 const HS_GAP = .07;     /* gap between cards, in card heights */
 const HS_H = .44;       /* card height, in heights of the room between the top bar and the controls (desktop) */
 const HS_MAXW = .4;     /* the widest a card gets, in viewport widths (desktop) */
@@ -5262,7 +5410,7 @@ const Slider = {
     if (it.ph != null) body = `<div class="hs-media" data-ph="${it.ph}">${PH_B[it.ph] ? '<i class="hs-b" aria-hidden="true">b</i>' : ''}</div>`;
     else {
       const url = esc(assetUrl(it.id));
-      body = `<div class="hs-media">${it.kind === 'video' ? `<video src="${url}#t=0.1" muted loop playsinline preload="metadata" disablepictureinpicture></video>` : `<img src="${url}" alt="" decoding="async" draggable="false">`}</div>`;
+      body = `<div class="hs-media">${it.kind === 'video' ? `<video src="${url}#t=0.1" muted loop playsinline preload="metadata" disablepictureinpicture${XO()}></video>` : `<img src="${url}" alt="" decoding="async" draggable="false"${XO()}>`}</div>`;
     }
     return `<div class="hs-card" data-k="${k}" data-i="${i}">${body}</div>`;
   },
@@ -5272,7 +5420,21 @@ const Slider = {
     this.nat.set(it.id, w / h);
     if (!ratioNum(it.ratio)) this.size();
   },
+  /* WebGL when it can be had (once); otherwise, or after a failure, the DOM cards are drawn themselves */
+  glInit() {
+    if (this.glTried) return; this.glTried = true;
+    const cv = $('#hs-gl'); this.gl = cv ? makeRing(cv) : null;
+    $('#hs').classList.toggle('is-gl', !!this.gl);
+  },
+  glFail() {
+    if (!this.gl) return;
+    const g = this.gl; this.gl = null; $('#hs').classList.remove('is-gl');
+    try { g.destroy(); } catch {}
+    this.cards.forEach(c => { c.box = ''; c.tf = ''; c.el.style.transform = ''; });
+    if (this.built) { this.layout(); this.render(); }
+  },
   build(N) {
+    this.glInit();
     const st = $('#hs-stage');
     if (this.hover) this.setHover(null);
     st.innerHTML = Array.from({ length: N }, (_, k) => this.cardHTML(k)).join('');
@@ -5280,10 +5442,10 @@ const Slider = {
     this.cards = $$('.hs-card', st).map((el, k) => ({ el, k, i: k % this.m, item: this.items[k % this.m], l: 0, s: 0, c: 0, w: 0, h: 0, r: 0, ph: 0, box: '', tf: '', zi: '', off: null, q: null, zc: 0, v: $('video', el), img: $('img', el), playing: false }));
     this.cards.forEach(c => {
       if (c.img) {
-        const done = () => { c.img.classList.add('is-loaded'); this.natural(c, c.img.naturalWidth, c.img.naturalHeight); };
+        const done = () => { c.img.classList.add('is-loaded'); this.natural(c, c.img.naturalWidth, c.img.naturalHeight); this.kick(); };
         if (c.img.complete && c.img.naturalWidth) done(); else c.img.addEventListener('load', done, { once: true });
       }
-      if (c.v) { c.v.muted = true; c.v.addEventListener('loadeddata', () => { c.v.classList.add('is-loaded'); this.natural(c, c.v.videoWidth, c.v.videoHeight); }, { once: true }); }
+      if (c.v) { c.v.muted = true; c.v.addEventListener('loadeddata', () => { c.v.classList.add('is-loaded'); this.natural(c, c.v.videoWidth, c.v.videoHeight); this.kick(); }, { once: true }); }
     });
     this.built = true;
   },
@@ -5299,6 +5461,7 @@ const Slider = {
      past both edges of the screen */
   size() {
     const home = $('#home'); if (!home || !this.m) return;
+    this.glInit();
     const W = innerWidth, VH = innerHeight, mob = MOBILE.matches;
     this.vw = W;
     const top = ($('.rail-top').getBoundingClientRect().bottom || 64) + (mob ? 8 : 12);
@@ -5316,10 +5479,11 @@ const Slider = {
     /* the angle at which the curve leaves the screen, and the length of curve that must be covered on each side */
     let th = 0; while (th < 2.4 && this.proj(th) < W / 2 + 8) th += .01;
     this.thVis = th;
-    const arc = (w) => 2 * this.R * Math.asin(Math.min(1, w / (2 * this.R)));
+    const arc = (w) => this.gl ? w : 2 * this.R * Math.asin(Math.min(1, w / (2 * this.R))); /* bent cards are as long as they are wide */
     const one = this.sz.reduce((a, x) => a + arc(x.w) + this.gap, 0), widest = Math.max(...this.sz.map(x => arc(x.w)));
     const N = this.m * Math.max(1, Math.ceil((2 * (this.R * th + widest + this.gap) + 1) / one));
     const keep = this.built && this.cards.length && this.L > 1 ? this.nearest(this.pos) : null;
+    if (this.gl) this.gl.resize(W, VH, Math.min(2, devicePixelRatio || 1));
     if (N !== this.N || !this.built || !this.cards.length) this.build(N);
     else this.cards.forEach(c => { c.item = this.items[c.i]; });
     this.layout();
@@ -5334,11 +5498,11 @@ const Slider = {
     const R = this.R; let at = 0;
     this.cards.forEach((c, k) => {
       const s = this.sz[c.i]; c.w = s.w; c.h = s.h;
-      c.ph = 2 * Math.asin(Math.min(1, s.w / (2 * R))); c.r = R * Math.cos(c.ph / 2);
+      c.ph = this.gl ? s.w / R : 2 * Math.asin(Math.min(1, s.w / (2 * R))); c.r = R * Math.cos(c.ph / 2); /* bent on the curve, or a chord */
       if (k) at += this.cards[k - 1].ph * R / 2 + this.gap + c.ph * R / 2;
       c.c = at;
       const box = `${s.w}|${s.h}|${this.vw}|${this.cy}`;
-      if (box !== c.box) { c.box = box; Object.assign(c.el.style, { width: s.w + 'px', height: s.h + 'px', left: (this.vw - s.w) / 2 + 'px', top: this.cy - s.h / 2 + 'px' }); }
+      if (box !== c.box) { c.box = box; Object.assign(c.el.style, { width: s.w + 'px', height: s.h + 'px', left: this.gl ? '0px' : (this.vw - s.w) / 2 + 'px', top: this.gl ? '0px' : this.cy - s.h / 2 + 'px' }); }
     });
     const a = this.cards[0], z = this.cards[this.cards.length - 1];
     this.L = at + z.ph * R / 2 + this.gap + a.ph * R / 2;
@@ -5364,8 +5528,28 @@ const Slider = {
     }
     return out;
   },
+  /* A point of the ring on screen: u px of arc from the middle, v px from the band's center line, on a surface pulled
+     in toward the axis by lift. The same math as the WebGL vertex shader (HS_VS). */
+  pt(u, v, lift = 0) {
+    const R = this.R, th = u / R, r = R - lift, z = R - r * Math.cos(th), d = this.P - z;
+    if (d < this.P * .1) return null;
+    const f = this.P / d;
+    return [this.vw / 2 + r * Math.sin(th) * f, this.cy + v * (1 - HS_BULGE * (1 - Math.cos(th))) * f];
+  },
+  /* A bent card's outline on screen: its top edge left to right, then its bottom edge back (both pieces of the ring's
+     two arcs) */
+  outline(c, s) {
+    const n = 12, k = 1 + .03 * c.l, lift = HS_LIFT * this.H * c.l, top = [], bot = [];
+    for (let i = 0; i <= n; i++) {
+      const u = s + (i / n - .5) * c.w * k, a = this.pt(u, -c.h / 2 * k, lift), b = this.pt(u, c.h / 2 * k, lift);
+      if (!a || !b) return null;
+      top.push(a[0], a[1]); bot.unshift(b[0], b[1]);
+    }
+    return top.concat(bot);
+  },
   render() {
     if (!this.built || this.L <= 1) return;
+    if (this.gl) { this.renderGL(); return; }
     let changed = false;
     for (const c of this.cards) {
       const s = c.s = this.off(c), th = Math.abs(s) / this.R;
@@ -5380,10 +5564,34 @@ const Slider = {
       const zi = String(c.el === this.hover ? 60 : 40 - Math.round(th * 10));
       if (zi !== c.zi) { c.zi = zi; c.el.style.zIndex = zi; }
     }
+    this.after(changed);
+  },
+  after(changed) {
     const n = this.nearest(this.pos), mid = n && this.cards[n.k];
     if (mid) this.cur = mid.i; /* the item in the middle, for the screen reader status */
     if (mid !== this.mid) { if (this.mid) this.mid.el.classList.remove('is-mid'); this.mid = mid; if (mid) mid.el.classList.add('is-mid'); }
     if (changed) this.media();
+  },
+  /* WebGL: outlines for picking, the stand-ins laid over each card's box on screen, then the ring itself */
+  renderGL() {
+    let changed = false;
+    for (const c of this.cards) {
+      const s = c.s = this.off(c), th = Math.abs(s) / this.R;
+      let q = th - c.ph / 2 > this.thVis + .2 ? null : this.outline(c, s), off = !q;
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      if (q) { for (let i = 0; i < q.length; i += 2) { x0 = Math.min(x0, q[i]); x1 = Math.max(x1, q[i]); y0 = Math.min(y0, q[i + 1]); y1 = Math.max(y1, q[i + 1]); } off = x1 < -8 || x0 > this.vw + 8; }
+      if (off !== c.off) { c.off = off; c.el.classList.toggle('is-off', off); changed = true; }
+      c.q = off ? null : q;
+      if (off) continue;
+      c.zc = c.el === this.hover ? 1e4 : -th;
+      const tf = `translate(${x0.toFixed(2)}px,${y0.toFixed(2)}px) scale(${((x1 - x0) / c.w).toFixed(5)},${((y1 - y0) / c.h).toFixed(5)})`;
+      if (tf !== c.tf) { c.tf = tf; c.el.style.transform = tf; }
+      const zi = String(c.el === this.hover ? 60 : 40 - Math.round(th * 10));
+      if (zi !== c.zi) { c.zi = zi; c.el.style.zIndex = zi; }
+    }
+    this.gl.draw({ cards: this.cards, R: this.R, P: this.P, cx: this.vw / 2, cy: this.cy, H: this.H, rad: (this.radius ?? HOME_RADIUS) * this.H / 420, dark: ROOT.dataset.scheme === 'dark' });
+    if (this.gl.failed) { this.glFail(); return; }
+    this.after(changed);
   },
   /* Prev / next: two round buttons */
   renderNav() {
@@ -5446,6 +5654,7 @@ const Slider = {
       c.l += (g - c.l) * (1 - Math.exp(-dt / .1));
       if (Math.abs(g - c.l) < .004) c.l = g; else busy = true;
     }
+    if (this.gl && this.cards.some(c => c.playing && !c.off)) busy = true; /* the ring repaints the videos' frames */
     if (!this.drag && !this.pd && Math.abs(this.target) > 4 * this.L) { const k = Math.floor(this.target / this.L) * this.L; this.pos -= k; this.target -= k; }
     this.render();
     this.hitTest();
@@ -5491,13 +5700,13 @@ const Slider = {
     let best = null, bz = -Infinity;
     for (const c of this.cards) {
       const q = c.q; if (!q || c.el.classList.contains('is-out')) continue;
-      let pos = 0, neg = 0;
-      for (let k = 0; k < 4; k++) {
-        const ax = q[k * 2], ay = q[k * 2 + 1], bx = q[(k + 1) % 4 * 2], by = q[(k + 1) % 4 * 2 + 1];
-        const cr = (bx - ax) * (y - ay) - (by - ay) * (x - ax);
-        if (cr > 0) pos++; else if (cr < 0) neg++;
+      /* even-odd test on the outline (4 corners for a flat card, the sampled arcs for a bent one) */
+      let inside = false;
+      for (let i = 0, n = q.length / 2, j = n - 1; i < n; j = i++) {
+        const xi = q[i * 2], yi = q[i * 2 + 1], xj = q[j * 2], yj = q[j * 2 + 1];
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
       }
-      if (!(pos && neg) && c.zc > bz) { best = c; bz = c.zc; }
+      if (inside && c.zc > bz) { best = c; bz = c.zc; }
     }
     return best;
   },
