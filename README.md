@@ -18,11 +18,13 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 
 ### Funciones principales
 
-- **Home:** es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección). Un globo de mosaicos redondeados que gira solo, armado con CSS 3D y sin librerías.
-  - Los mosaicos se llenan con las imágenes y los videos de la galería de la Home, repetidos hasta cubrir el globo y sin dos iguales seguidos. Los videos se pintan desde un único `<video>` oculto por archivo, solo en los mosaicos de frente.
-  - Al pasar el mouse, el mosaico se levanta y el giro se frena mucho (sin pararse). Al hacer clic, se agranda hasta un lightbox centrado; se cierra con la X, Esc o un clic afuera. También se puede arrastrar para girarlo.
-  - En Admin, el botón **Galería** (abajo a la izquierda) abre el panel para sumar imágenes o videos (también soltándolos), quitarlos y ordenarlos arrastrando. Sin contenido, el globo muestra mosaicos de muestra en azul Belo.
-  - El logo (o la palabra "belo" si no hay logo cargado) siempre vuelve a la Home. Con `prefers-reduced-motion` el globo queda quieto.
+- **Home:** es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección). Un slider espacial de tarjetas: un anillo continuo visto desde adentro, dibujado con WebGL sin librerías. Las imágenes y los videos se curvan sobre la misma superficie (no son planos girados uno por uno): el borde de arriba y el de abajo de todas las tarjetas son tramos de los mismos dos arcos, con el mismo espacio entre tarjetas, y hacia los bordes de la pantalla el anillo envuelve la vista. Sin WebGL (o si un archivo no se puede usar como textura) se dibujan las tarjetas como planos en CSS 3D, con el mismo comportamiento.
+  - Cada tarjeta es la imagen o el video mismo, sin marco y sin texto, con las esquinas redondeadas que se elijan. Todas comparten la altura y el ancho sale de la proporción: la del archivo, salvo que se elija Horizontal (16:9), Vertical (4:5) o Cuadrada. Los elementos se repiten en un loop infinito hasta llenar la curva. Los videos se reproducen (sin sonido, en loop) solo en las tarjetas que se ven.
+  - Se mueve sola y sin parar, a la velocidad elegida en la galería (despacio por defecto; en 0 queda quieta). Con el mouse sobre las tarjetas (o sobre los controles) frena suavemente y, al salir, vuelve a arrancar; en pantallas táctiles arranca de nuevo un par de segundos después del último toque. También se pausa con la Home oculta, la pestaña en segundo plano, el lightbox o la galería abiertos.
+  - Se navega con dos botones redondos abajo al centro, con flechas finas (**Anterior** / **Siguiente**, sin puntos ni contador), con las flechas del teclado, con la rueda o el trackpad, y arrastrando o deslizando: la fila sigue con inercia y se acomoda en la tarjeta más cercana.
+  - Al pasar el mouse, la tarjeta se acerca un poco. Al hacer clic en cualquier tarjeta, se agranda hasta un lightbox centrado (con su proporción original) mientras la tarjeta se desliza al centro detrás; se cierra con la X, Esc o un clic afuera. Debajo de la imagen, centrados, van el **titular** (14 px, semibold) y la **descripción** (14 px, regular, en un tono más suave), si los tiene.
+  - En Admin, el botón **Galería** (abajo a la izquierda) abre el panel para sumar imágenes o videos (también soltándolos), quitarlos y ordenarlos arrastrando; para el elemento elegido, su formato (Original / Horizontal / Vertical / Cuadrada), su **Titular** (hasta 60 caracteres) y su **Descripción** (hasta 160), con contador; y para todas, las **Esquinas** (0 a 40) y la **Velocidad** del movimiento (0 a 100; mientras se ajusta, el slider se mueve a esa velocidad aunque la galería esté abierta). Elegir una miniatura lleva su tarjeta al centro y todo se puede deshacer. Sin contenido, el slider muestra tarjetas de muestra en azul Belo, blanco y grises.
+  - En la Home, los botones de búsqueda y menú van arriba a la derecha (con el mismo margen que el logo a la izquierda); en las secciones vuelven al lado de la lista, deslizándose al cambiar de vista. El logo (o la palabra "belo" si no hay logo cargado) siempre vuelve a la Home. Con `prefers-reduced-motion` no se mueve sola, el cambio de tarjeta es instantáneo, sin inercia, y los videos no arrancan solos.
   - Arranca en modo claro salvo que la persona haya elegido otro tema.
 - Menú de pantalla completa, desde el botón de arriba:
   - Categorías grandes abajo a la izquierda.
@@ -94,7 +96,7 @@ npm test                          # build + flows, panel, menu, motion, collab, 
 - Las pruebas recorren los flujos principales: crear y editar bloques, panel, deshacer y rehacer, menú, buscador, temas y mobile.
 - `collab.cjs` prueba el guardado compartido con la librería real de Supabase contra un Supabase simulado (`tests/fake-supabase.cjs`): login con Google, permisos, cambios en vivo entre dos editores, conflictos, presencia, archivos, reintentos e importación.
 - `blocks.cjs` prueba duplicar, arrastrar dentro de una sección, a otra y sobre el sidebar, **Mover a…**, Esc para cancelar y que borrar un duplicado no borre los archivos del original.
-- `home.cjs` prueba la Home: globo, hover, lightbox, galería (subir, ordenar, quitar y deshacer), movimiento reducido, mobile y el switch viewer/admin de las secciones.
+- `home.cjs` abre Chromium con la GPU habilitada (`--ignore-gpu-blocklist --enable-gpu`) para que el anillo se dibuje con WebGL, y comprueba sobre la captura que los bordes de todas las tarjetas caen sobre una misma curva; también prueba la versión sin WebGL. Prueba la Home: el slider (curva 3D sin tarjetas encimadas, movimiento automático y su pausa con el mouse o el toque, los dos botones redondos, teclado, rueda, arrastre con inercia), hover, lightbox de la tarjeta clickeada, galería (subir, titular y descripción con sus límites, formatos, esquinas, velocidad, ordenar, quitar y deshacer), los botones arriba a la derecha solo en la Home, movimiento reducido, mobile y el switch viewer/admin de las secciones.
 - `editor.cjs` prueba el inspector contextual, el espaciado interno, los estilos de texto (también entre secciones y entre dos editores) y la paleta.
 - `media.cjs` prueba el encuadre, el módulo SVG, el módulo de color, las interacciones (copiar, modal y descarga) y los archivos descargables, también guardados en el Supabase simulado.
 - Las capturas quedan en `tests/output/`, que está ignorado por git.
@@ -138,7 +140,10 @@ Hay dos tipos de documento (en Supabase y en la base del artifact):
   {
     logo: { id, w, h, mono } | null,
     menu: { bg: { kind: 'color', color } | { kind: 'image', asset, w, h, dim } },
-    home: { media: [{ id, kind: 'image' | 'video', w, h }] },          // la galería del globo, en orden
+    home: { media: [{ id, kind: 'image' | 'video', w, h, title, desc, ratio }], radius, speed },  // la galería del slider, en orden
+                                                                      // title (60) y desc (160): textos del lightbox, opcionales (un label viejo pasa a title)
+                                                                      // ratio: '16/9' | '4/5' | '1/1' (sin ratio = la del archivo); radius: esquinas (0-40, por defecto 16)
+                                                                      // speed: velocidad del movimiento automático (0-100, por defecto 24; 0 = quieto)
     animStyles: [{ id, name, kind: 'mod' | 'text', of, anim }],
     textStyles: [{ id, name, font, size, weight, lh, ls, upper }],    // estilos de texto (ids ts_…)
     palette: [{ id, name, hex }],                                     // paleta de marca (ids pc_…)
@@ -223,3 +228,10 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Inspector contextual con vista Interacción, espaciado interno, estilos de texto, paleta de marca, encuadre de imágenes, módulos SVG y de color, interacciones y archivos descargables.
   - Arranca en modo claro por defecto: ya no sigue la preferencia del sistema si la persona no eligió un tema.
   - La migración `supabase/migrations/20261009120000_catalog_assets_sources.sql`, que suma PDF, ZIP, EPS y AI a los tipos permitidos del bucket `assets`, **no está aplicada**. Hasta aplicarla en Supabase, esos archivos se rechazan al subirlos en la versión compartida (SVG, PNG, JPG y video ya funcionan).
+- **v6.1 (prueba local): slider espacial en la Home.**
+  - El globo de la Home se reemplaza por un slider de tarjetas sobre una curva en CSS 3D, con loop infinito, inercia, hover y el mismo lightbox. Toma como referencia el "Spatial Cards Slider" de Osmo.
+  - Leyenda opcional por elemento de la galería (`label`), editable en el panel **Galería**. Los datos guardados antes siguen funcionando igual.
+  - Quinta vuelta: el anillo pasa a WebGL, con las imágenes y los videos curvados sobre una misma superficie continua, como en la referencia de Osmo, y una curvatura más marcada.
+  - Cuarta vuelta: el titular y la descripción van centrados bajo la imagen; abajo quedan solo dos botones redondos con flechas finas (sin puntos ni contador).
+  - Tercera vuelta: búsqueda y menú arriba a la derecha en la Home; la leyenda se reemplaza por **titular** y **descripción** (`title`, `desc`), que se ven solo en el lightbox; control de **velocidad** del movimiento (`home.speed`).
+  - Segunda vuelta: se mueve sola despacio (frena con el mouse encima y vuelve al salir), tarjetas sin marco con la proporción de cada archivo (o Horizontal / Vertical / Cuadrada por elemento, `ratio`), esquinas regulables para todas (`home.radius`) y una curva nueva: un cilindro visto desde adentro, con las tarjetas ubicadas por longitud de arco y espacio parejo, para que nunca se tapen entre vecinas, con un toque esférico hacia los bordes.

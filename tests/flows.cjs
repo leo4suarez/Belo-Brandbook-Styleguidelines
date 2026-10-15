@@ -18,7 +18,7 @@ const log = (...a) => console.log(...a);
   await page.route(/cdn\.jsdelivr\.net\/npm\/gsap@[^/]+\/dist\/(gsap|ScrollTrigger|SplitText)\.min\.js/, r => r.fulfill({ path: FIX + r.request().url().split('/').pop(), contentType: 'text/javascript' }));
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto(BASE);
-  await page.waitForSelector('#home #globe .gt');
+  await page.waitForSelector('#home .hs-card');
   await page.waitForTimeout(900);
   const snap = async (name, opts = {}) => { await page.screenshot({ path: T + name + '.png', ...opts }); };
   // Home is the opening screen; the menu opens from its button and leads to the category

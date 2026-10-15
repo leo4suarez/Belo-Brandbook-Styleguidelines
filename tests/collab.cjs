@@ -47,7 +47,7 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
     await page.emulateMedia({ colorScheme: 'light' });
     await page.goto(BASE);
     // Home is the opening screen; the tests work on the category page, reached through the menu like a visitor would.
-    await page.waitForSelector('#home #globe .gt');
+    await page.waitForSelector('#home .hs-card');
     page.landedHome = await page.evaluate(() => document.documentElement.dataset.view === 'home' && !document.querySelector('#menu').classList.contains('is-open'));
     await page.click('#btn-menu'); await page.waitForTimeout(800);
     page.menuWasUp = await menuUp(page);
