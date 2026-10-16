@@ -246,6 +246,12 @@ function watchErrors(page, label) {
     await P.click('.row.is-editing [data-action="pick-type"][data-type="carousel"]');
     await P.setInputFiles('.row.is-editing input[data-upload]', [FIX + 'img1.jpg', FIX + 'split.jpg', FIX + 'img3.jpg']);
     await P.waitForFunction(() => document.querySelectorAll('.row.is-editing .thumb[data-index]').length === 3);
+    // The slides take a background too
+    check(await P.evaluate(() => !!document.querySelector('#insp [data-k="bgpal"]')), 'the slides offer a background, like the other containers');
+    await P.click('#insp [data-action="seg"][data-k="bgpal"][data-v="pc_negro"]'); await P.waitForTimeout(200);
+    const sl = await P.evaluate(() => { const el = document.querySelector('#stage .row.is-editing .slot-carousel'), cs = getComputedStyle(el); return { r: cs.borderTopLeftRadius, bg: cs.backgroundColor, car: getComputedStyle(el.querySelector('.carousel')).backgroundColor }; });
+    check(sl.r === '20px' && sl.bg === 'rgb(10, 10, 10)' && sl.car === 'rgba(0, 0, 0, 0)', 'a palette background fills the slides box (' + JSON.stringify(sl) + ')');
+    await P.click('#insp [data-action="seg"][data-k="bg"][data-v="none"]'); await P.waitForTimeout(150);
     await seg(P, 'cmode', 'strip'); await P.waitForTimeout(300);
     const items = await P.evaluate(() => [...document.querySelectorAll('#stage .row.is-editing .cs-item .cs-frame')].map(f => { const r = f.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
     check(items.length === 3 && items[0][1] === 480 && near(items[0][0], 768, 1) && near(items[1][0], 853, 1), 'a strip lines the images up, each in its own proportion (' + items.map(i => i.join('×')).join(', ') + ')');
@@ -267,12 +273,25 @@ function watchErrors(page, label) {
     await P.mouse.move(rz.x + 8, rz.y + 8); await P.mouse.down();
     await P.mouse.move(rz.x + 48, rz.y + 8, { steps: 5 }); await P.mouse.up();
     check(near(+(await P.inputValue('#f-ciw')), 400, 2) && +(await P.inputValue('#f-cih')) === 450, 'its corner resizes it (' + await P.inputValue('#f-ciw') + '×' + await P.inputValue('#f-cih') + ')');
+    // The box of the strip: rounded like every module, and a background of its own (with room around the images)
+    const boxOf = () => P.evaluate(() => { const el = document.querySelector('#stage .row.is-editing .slot-carousel'), cs = getComputedStyle(el), sc = el.querySelector('.car-strip'); sc.scrollLeft = 0; const a = el.getBoundingClientRect(), b = sc.querySelector('.cs-item').getBoundingClientRect(); return { r: cs.borderTopLeftRadius, clip: cs.overflowX, bg: cs.backgroundColor, pad: Math.round(b.left - a.left), ink: el.dataset.ink || '' }; });
+    let box = await boxOf();
+    check(box.r === '20px' && box.clip === 'clip', 'the strip has the rounded corners of the other modules (' + box.r + ', ' + box.clip + ')');
+    check(await P.evaluate(() => /Fondo/.test(document.querySelector('#insp').textContent) && !!document.querySelector('#insp [data-k="bgpal"]')), 'its container offers a background, like the others');
+    await P.click('#insp [data-action="seg"][data-k="bgpal"][data-v="pc_negro"]'); await P.waitForTimeout(200);
+    box = await boxOf();
+    check(box.bg === 'rgb(10, 10, 10)' && box.pad >= 20 && box.ink === 'light', 'a palette background fills it, with room around the images and captions in the ink that reads on it (' + JSON.stringify(box) + ')');
+    await fill(P, 'pl', 64);
+    check((await boxOf()).pad === 64, 'its inner spacing can be set');
+    await P.click('#insp [data-action="seg"][data-k="bg"][data-v="surface"]'); await P.waitForTimeout(150);
+    check((await boxOf()).bg === 'rgb(242, 243, 246)', 'or the gray of the theme');
     await P.screenshot({ path: T + 'v7-strip-edit.png' });
     await confirm(P);
     const strip = P.locator('#s-s_direccion .carousel.is-strip').last();
     await strip.scrollIntoViewIfNeeded(); await scrollIdle(P); await P.waitForTimeout(300);
     f1 = await P.evaluate(() => { const c = [...document.querySelectorAll('#s-s_direccion .carousel.is-strip')].pop(), f = c.querySelectorAll('.cs-item')[1], r = f.querySelector('.cs-frame').getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), (f.querySelector('.cs-cap') || {}).textContent, c.querySelectorAll('.cs-item').length]; });
     check(f1[0] === 400 && f1[1] === 450 && f1[2] === 'Tarjetas emitidas por belo.' && f1[3] === 3, 'the page shows the strip as edited: ' + f1.join(' · '));
+    check(await P.evaluate(() => { const el = [...document.querySelectorAll('#s-s_direccion .slot-carousel.is-strip')].pop(), cs = getComputedStyle(el); return cs.borderTopLeftRadius === '20px' && cs.backgroundColor === 'rgb(242, 243, 246)'; }), 'and keeps its rounded, gray box');
     const sb = await strip.locator('.car-strip').boundingBox();
     await P.mouse.move(sb.x + sb.width - 80, sb.y + 120); await P.mouse.down();
     await P.mouse.move(sb.x + 200, sb.y + 120, { steps: 8 }); await P.mouse.up(); await P.waitForTimeout(900);

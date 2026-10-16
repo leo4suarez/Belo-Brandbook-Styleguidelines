@@ -488,8 +488,20 @@ html.frame-on .status{visibility:hidden} /* on a phone the bar spans the screen 
 .car-arrow:disabled{pointer-events:none}
 
 /* Strip: images of any size side by side, scrolled sideways; the picked one (editing) shows its frame and a corner handle */
-.slot-carousel.is-strip{background:transparent;border-radius:0;overflow:visible}
-.carousel.is-strip{aspect-ratio:auto!important;height:auto!important;overflow:visible;border-radius:0!important;background:transparent}
+.slot-carousel.is-strip{background:transparent}
+.carousel.is-strip{aspect-ratio:auto!important;height:auto!important;overflow:visible;border-radius:inherit!important;background:transparent}
+/* Background of a carousel (slot.bg): none, gray or a color, like the other containers. Slides default to gray, a strip to
+   none. A strip with a background keeps its images off the edges (the inner spacing, automatic or set); its captions take
+   the ink that reads on the color. */
+.slot-carousel.bg-surface{background:var(--surface)}
+.slot-carousel.bg-color{background:var(--slot-bg)}
+.slot-carousel.bg-none{background:transparent}
+.slot-carousel:is(.bg-none,.bg-color) .carousel:not(.is-strip){background:transparent}
+.slot-carousel[data-ink="light"]{color:#FFFFFF}
+.slot-carousel[data-ink="dark"]{color:#000000}
+/* (the snap keeps the same room: an image never settles against the edge of a colored box) */
+.slot-carousel.is-strip .car-strip{padding:var(--pt,0px) var(--pr,0px) var(--pb,0px) var(--pl,0px);scroll-padding-inline:var(--pl,0px) var(--pr,0px)}
+.slot-carousel.is-strip:not(.bg-none) .car-strip{padding:var(--pt,clamp(20px,3.2cqi,40px)) var(--pr,clamp(20px,3.2cqi,40px)) var(--pb,clamp(20px,3.2cqi,40px)) var(--pl,clamp(20px,3.2cqi,40px));scroll-padding-inline:var(--pl,clamp(20px,3.2cqi,40px)) var(--pr,clamp(20px,3.2cqi,40px))}
 .car-strip{display:flex;align-items:flex-start;gap:calc(var(--sg,24) * var(--k));overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;cursor:grab}
 .car-strip::-webkit-scrollbar{display:none}
 .carousel.is-dragging .car-strip{cursor:grabbing;scroll-snap-type:none}
@@ -499,7 +511,8 @@ html.frame-on .status{visibility:hidden} /* on a phone the bar spans the screen 
 .cs-frame{position:relative;width:100%;height:calc(var(--ih) * var(--k));overflow:hidden;border-radius:var(--radius);background:var(--surface)}
 .cs-frame img{position:absolute;left:calc((1 - var(--fz,1)) * var(--fx,50) * 1%);top:calc((1 - var(--fz,1)) * var(--fy,50) * 1%);width:calc(var(--fz,1) * 100%);height:calc(var(--fz,1) * 100%);max-width:none;object-fit:cover;object-position:calc(var(--fx,50) * 1%) calc(var(--fy,50) * 1%);pointer-events:none;-webkit-user-drag:none}
 .cs-cap{max-width:52ch;font-size:max(12px,calc(14 * var(--k)));line-height:1.45;opacity:.72;text-wrap:pretty;white-space:pre-wrap}
-.row.is-editing .car-strip{padding:6px;cursor:default}
+.row.is-editing .car-strip{cursor:default}
+.row.is-editing .slot-carousel.is-strip.bg-none:not(.has-pad) .car-strip{padding:6px;scroll-padding-inline:6px} /* room for the outline of the picked image */
 .row.is-editing .cs-item{cursor:pointer}
 .row.is-editing .cs-item.is-sel .cs-frame{outline:2px solid var(--focus);outline-offset:3px;cursor:grab;touch-action:none}
 .cs-item.is-panning .cs-frame{cursor:grabbing}
@@ -1448,7 +1461,8 @@ const TEXT_STYLE_SEED = [
 const PALETTE_SEED = [{ id: 'pc_azul', name: 'Azul Belo', hex: '#002fa7' }, { id: 'pc_blanco', name: 'Blanco', hex: '#ffffff' }, { id: 'pc_negro', name: 'Negro', hex: '#0a0a0a' }];
 /* Inner spacing of a module (slot.pad): each side in design px, or null for the automatic value of that side */
 const PAD_SIDES = ['t', 'r', 'b', 'l'];
-const PAD_TYPES = ['text', 'svg'];
+const PAD_TYPES = ['text', 'svg', 'carousel']; /* a carousel: only as a strip */
+const padOn = (s) => !!s && PAD_TYPES.includes(s.type) && (s.type !== 'carousel' || s.mode === 'strip');
 const isPadKey = (k) => /^p[trbl]$/.test(k);
 /* Animation presets. Each module (image, video, color, the box of a text module) and each text block has its own
    animation; nothing is inherited. The block (row) only sets the sequence: the wait between modules and between texts.
@@ -1735,6 +1749,7 @@ function normSlot(s) {
     if (s.mode !== 'strip') delete s.mode;
     { const g = pxIn(s.sgap, 0, 400); if (g !== undefined) s.sgap = g; else delete s.sgap; }
     if (!['center', 'end'].includes(s.sal)) delete s.sal;
+    if (!s.bg || !['none', 'surface', 'color'].includes(s.bg.kind) || (s.bg.kind === 'color' && !hexOk(s.bg.color || ''))) delete s.bg;
   }
   if (s.anim) s.anim = normAnim(s.anim, 'mod'); else delete s.anim;
   return s;
@@ -2895,7 +2910,7 @@ function buildSlotView(s, ref) {
   if (s.type === 'text') el = buildTextView(s, ref, false);
   else if (s.type === 'image') el = buildImage(s);
   else if (s.type === 'video') el = buildVideo(s);
-  else if (s.type === 'carousel') { el = document.createElement('div'); el.className = 'slot slot-carousel' + (s.mode === 'strip' ? ' is-strip' : ''); el.dataset.slot = s.id; el.append(buildCarousel(s, false)); }
+  else if (s.type === 'carousel') { el = document.createElement('div'); el.className = 'slot slot-carousel' + (s.mode === 'strip' ? ' is-strip' : ''); el.dataset.slot = s.id; paintCarBox(el, s); el.append(buildCarousel(s, false)); }
   else if (s.type === 'svg') el = buildSvg(s, ref);
   else if (s.type === 'color') el = buildColor(s);
   else { el = document.createElement('div'); el.className = 'slot'; return el; }
@@ -3213,6 +3228,16 @@ class Carousel {
   }
 }
 
+/* The box of a carousel: its background (slides default to gray, a strip to none), the ink of its captions, its inner spacing */
+const carBg = (s) => s.bg || { kind: s.mode === 'strip' ? 'none' : 'surface' };
+function paintCarBox(el, s) {
+  const bg = carBg(s);
+  ['none', 'surface', 'color'].forEach(k => el.classList.toggle('bg-' + k, bg.kind === k));
+  setVar(el, '--slot-bg', bg.kind === 'color' ? bg.color : null);
+  if (bg.kind === 'color') el.dataset.ink = contrastKey(bg.color); else delete el.dataset.ink;
+  padVars(el, s.mode === 'strip' ? s.pad : null, '--p', '--k');
+  el.classList.toggle('has-pad', !!(s.mode === 'strip' && s.pad));
+}
 /* ---------- Strip: images of any size side by side ---------- */
 /* Each image keeps the box its editor gave it (see normCarImage); they line up at the top (or center, or bottom) and the
    strip scrolls sideways: trackpad and touch natively, a mouse by dragging (with a little inertia), and the arrows. */
@@ -3500,6 +3525,7 @@ function buildMediaEdit(s, ref) {
 function buildCarouselEdit(s) {
   if (!s.images || !s.images.length) return buildDropzone(s);
   const el = document.createElement('div'); el.className = 'slot slot-carousel is-edit' + (s.mode === 'strip' ? ' is-strip' : ''); el.dataset.drop = s.id; el.dataset.slot = s.id;
+  paintCarBox(el, s);
   el.append(buildCarousel(s, true));
   const strip = document.createElement('div'); strip.className = 'thumbs'; strip.dataset.slot = s.id; strip.setAttribute('role', 'list');
   const up = S.uploading.get(s.id);
@@ -4012,7 +4038,9 @@ function applyOverlay(row) {
 }
 function applyPad(s) {
   if (isOverlaySlot(s)) { const o = $('#stage .row.is-editing .fs-overlay'); if (o) padVars(o, s.pad, '--ov-p', '--u'); return; }
-  const el = slotEl(s.id); if (el) padVars(el, s.pad, '--p', '--k');
+  const el = slotEl(s.id); if (!el) return;
+  if (s.type === 'carousel') paintCarBox(el, s); else padVars(el, s.pad, '--p', '--k');
+  const c = $('.carousel', el), car = c && CAR.get(c); car && car.layout();
 }
 /* The spacing a side shows right now, in design px: where stepping or scrubbing an empty (automatic) side starts */
 function padNow(k) {
@@ -4020,7 +4048,7 @@ function padNow(k) {
   const side = { pt: 'Top', pr: 'Right', pb: 'Bottom', pl: 'Left' }[k];
   if (isOverlaySlot(s)) { const o = $('#stage .row.is-editing .fs-overlay'); return o ? Math.round(parseFloat(getComputedStyle(o)['padding' + side]) / uScale()) : 0; }
   const el = slotEl(s.id); if (!el) return 0;
-  const box = $(':scope > .tpad', el) || el;
+  const box = $(':scope > .tpad', el) || $(':scope > .carousel > .car-strip', el) || el;
   const scale = Math.min(1, el.clientWidth / (parseFloat(el.style.getPropertyValue('--ref')) || 1114)) || 1;
   return Math.round(parseFloat(getComputedStyle(box)['padding' + side]) / scale);
 }
@@ -4273,7 +4301,7 @@ const DESIGN_SECTIONS = {
   text: [secItemMain, secTextColor, secItemBox, secLayers, secTextModule, secPadding],
   image: [secMediaFile, secContainer, secImageFrame, secFsDim],
   video: [secMediaFile, secContainer, secFsDim],
-  carousel: [secCarouselImages, secCarouselPlay, secStripItem, secContainer],
+  carousel: [secCarouselImages, secCarouselPlay, secStripItem, secContainer, secPadding],
   color: [secFsColor, secContainer],
   svg: [secSvgFile, secContainer, secPadding, secSvgPlace, secSvgDownload]
 };
@@ -4473,7 +4501,7 @@ function bgSwatches(bg) {
       </div>`;
 }
 function paintBgSwatches(s) {
-  const bg = s.bg || { kind: 'none' }, hit = bg.kind === 'color' ? palByHex(bg.color) : null, custom = bg.kind === 'color' && !hit;
+  const bg = s.type === 'carousel' ? carBg(s) : s.bg || { kind: 'none' }, hit = bg.kind === 'color' ? palByHex(bg.color) : null, custom = bg.kind === 'color' && !hit;
   setPressed('bg', bg.kind); setPressed('bgpal', hit ? hit.id : '');
   const inp = $('#insp [data-f="bgcolor"]'), lab = inp && inp.closest('.sw-color');
   if (lab) { lab.classList.toggle('is-set', custom); lab.style.setProperty('--c', custom ? bg.color : 'transparent'); lab.setAttribute('aria-pressed', String(custom)); }
@@ -4505,7 +4533,7 @@ function padLinked(s) {
   const p = s.pad || {}; return PAD_SIDES.every(k => (p[k] ?? null) === (p.t ?? null));
 }
 function secPadding(c) {
-  const s = c.slot; if (!PAD_TYPES.includes(s.type)) return '';
+  const s = c.slot; if (!padOn(s)) return '';
   const p = s.pad || {};
   const f = (k, ic, l) => fld(k, ic, isNum(p[k[1]]) ? p[k[1]] : '', 'px', { title: l, ph: 'Auto' });
   return `<div class="insp-sec"><h4>Espaciado interno<button type="button" class="h4-act" data-action="pad-reset"${s.pad ? '' : ' disabled'}>Restablecer</button></h4>
@@ -4526,13 +4554,13 @@ function secMediaFile(c) {
    block has one; SVG modules add their background, color swatches their label */
 function secContainer(c) {
   if (c.fs) return '';
-  if (c.slot.type === 'carousel' && c.slot.mode === 'strip') return `<div class="insp-sec"><h4>Contenedor</h4>${strokeLines(c.slot)}</div>`;
+  if (c.slot.type === 'carousel' && c.slot.mode === 'strip') return `<div class="insp-sec"><h4>Contenedor</h4><div class="insp-line wrap"><span class="lbl">Fondo</span>${bgSwatches(carBg(c.slot))}</div>${strokeLines(c.slot)}</div>`;
   const s = c.slot, t = s.type, opts = t === 'color' ? RATIOS.filter(r => r[0] !== 'auto') : RATIOS;
   const val = s.ratio || (t === 'color' ? '1/1' : t === 'svg' ? '16/9' : 'auto');
   return `<div class="insp-sec"><h4>Contenedor${t === 'image' ? '<span>El tamaño del recuadro</span>' : ''}</h4>
       <div class="insp-line"><span class="lbl">Proporción</span>${selc('ratio', opts, val, 'Proporción del contenedor', !!c.row.h)}</div>
       ${c.row.h ? '<p class="insp-hint">El alto personalizado del bloque define el contenedor.</p>' : ''}
-      ${t === 'svg' ? `<div class="insp-line wrap"><span class="lbl">Fondo</span>${bgSwatches(s.bg || { kind: 'surface' })}</div>` : ''}
+      ${t === 'svg' || t === 'carousel' ? `<div class="insp-line wrap"><span class="lbl">Fondo</span>${bgSwatches(t === 'carousel' ? carBg(s) : s.bg || { kind: 'surface' })}</div>` : ''}
       ${t === 'color' ? `<button type="button" class="insp-switch" role="switch" aria-checked="${s.label !== false}" data-action="seg" data-k="clabel" data-v="${s.label === false}"><span>Mostrar nombre y HEX</span><span class="tog" aria-hidden="true"></span></button>` : ''}
       ${strokeLines(s)}
     </div>`;
@@ -5145,11 +5173,11 @@ function onField(k, v) {
       break;
     }
     case 'bg': case 'bgcolor': case 'bgpal': {
-      if (!slot || (slot.type !== 'text' && slot.type !== 'svg')) return;
+      if (!slot || !['text', 'svg', 'carousel'].includes(slot.type)) return;
       if (k === 'bgpal') { const p = palById(v); if (!p) return; slot.bg = { kind: 'color', color: p.hex }; }
       else if (k === 'bgcolor') slot.bg = { kind: 'color', color: v };
       else slot.bg = v === 'color' ? { kind: 'color', color: (slot.bg && slot.bg.color) || BRAND } : { kind: v };
-      const n = slotEl(slot.id); if (n) { if (slot.type === 'svg') paintSvg(n, slot); else paintTextSlot(n, slot, isOverlaySlot(slot)); }
+      const n = slotEl(slot.id); if (n) { if (slot.type === 'svg') paintSvg(n, slot); else if (slot.type === 'carousel') paintCarBox(n, slot); else paintTextSlot(n, slot, isOverlaySlot(slot)); }
       paintBgSwatches(slot);
       break;
     }
@@ -5187,7 +5215,7 @@ function onField(k, v) {
       return; /* text being typed: nothing on the page changes while editing */
     }
     case 'pt': case 'pr': case 'pb': case 'pl': {
-      if (!slot || !PAD_TYPES.includes(slot.type)) return;
+      if (!padOn(slot)) return;
       const sides = padLinked(slot) ? PAD_SIDES : [k[1]];
       const p = { ...(slot.pad || {}) }; sides.forEach(x => { p[x] = v; });
       const pad = normPad(p); if (pad) slot.pad = pad; else delete slot.pad;
@@ -7608,7 +7636,7 @@ document.addEventListener('click', (ev) => {
     case 'pal-cancel': S.palUi = { ...S.palUi, del: null }; renderPalPop(); break;
     case 'pal-del-ok': palDelete(id); break;
     case 'pad-link': {
-      const s = activeSlot(); if (!S.edit || !s || !PAD_TYPES.includes(s.type)) break;
+      const s = activeSlot(); if (!S.edit || !padOn(s)) break;
       const on = !padLinked(s);
       S.edit.padLink[s.id] = on;
       const p = s.pad || {}, first = PAD_SIDES.map(k => p[k]).find(isNum);
