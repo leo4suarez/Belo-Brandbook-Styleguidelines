@@ -165,6 +165,14 @@ function watchErrors(page, label) {
     await seg(P, 'gdir', 'h'); await fill(P, 'igap', 40);
     const gs = await P.evaluate(() => { const g = document.querySelector('#stage .row.is-editing .tgroup'); const cs = getComputedStyle(g); return { dir: cs.flexDirection, gap: cs.columnGap, div: Math.round(g.querySelector('.tdiv').getBoundingClientRect().width) }; });
     check(gs.dir === 'row' && gs.gap === '40px' && gs.div === 3, 'horizontal, 40px apart; the divider stands upright (' + JSON.stringify(gs) + ')');
+    // Its inner spacing, in the auto layout: the four sides together, then one alone
+    const gpad = () => P.evaluate(() => { const cs = getComputedStyle(document.querySelector('#stage .row.is-editing .tgroup')); return [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft].map(parseFloat).join(); });
+    check(await P.evaluate(() => { const f = document.querySelector('#insp #f-ibpt'), sec = f && f.closest('.insp-sec'); return !!sec && /Auto layout/.test(sec.querySelector('h4').textContent) && /Espaciado interno/.test(sec.textContent); }), 'the auto layout of a group has its inner spacing');
+    await fill(P, 'ibpt', 24);
+    check(await gpad() === '24,24,24,24', 'one value sets the four sides (' + await gpad() + ')');
+    await P.click('#insp [data-action="box-pad-link"]'); await P.waitForTimeout(150);
+    await fill(P, 'ibpl', 48);
+    check(await gpad() === '24,24,24,48' && await P.inputValue('#f-ibpr') === '24', 'unlinked, a side alone (' + await gpad() + ')');
     // Arrows: the text below steps into the group at its edge, and out again
     await P.click('#insp .layers [data-id="b2"]');
     await P.click('#insp [data-action="block-up"]'); await P.waitForTimeout(250);
@@ -173,9 +181,9 @@ function watchErrors(page, label) {
     check(await P.evaluate(() => !document.querySelector('#stage .row.is-editing .tgroup .tb[data-block="b2"]')), 'moving down out of it takes it out');
     // Container of a text: fill, hug, inner spacing, radius, fixed height
     await P.click('#insp .layers [data-id="b2"]');
-    if (!(await P.locator('#insp #f-ibpx').count())) await P.click('#insp [data-action="box-fold"]');
+    if (!(await P.locator('#insp #f-ibpt').count())) await P.click('#insp [data-action="box-fold"]');
     await P.click('#insp [data-action="seg"][data-k="ibfill"][data-v="#002fa7"]');
-    await seg(P, 'ibw', 'hug'); await fill(P, 'ibpx', 32); await fill(P, 'ibpy', 24); await fill(P, 'ibr', 24);
+    await seg(P, 'ibw', 'hug'); await fill(P, 'ibpt', 24); await P.click('#insp [data-action="box-pad-link"]'); await fill(P, 'ibpl', 32); await fill(P, 'ibr', 24);
     await seg(P, 'ibh', 'fix'); await fill(P, 'ibhv', 400);
     const bx = await P.evaluate(() => { const t = document.querySelector('#stage .row.is-editing .tb[data-block="b2"]'), cs = getComputedStyle(t); return { bg: cs.backgroundColor, pl: cs.paddingLeft, pt: cs.paddingTop, r: cs.borderTopLeftRadius, h: Math.round(t.getBoundingClientRect().height), bw: t.dataset.bw }; });
     check(bx.bg === 'rgb(0, 47, 167)' && bx.pl === '32px' && bx.pt === '24px' && bx.r === '24px' && bx.h >= 400 && bx.bw === 'hug', 'a text gets its own container: fill, spacing, radius, height (' + JSON.stringify(bx) + ')');
@@ -306,6 +314,50 @@ function watchErrors(page, label) {
     const tabs = await P.evaluate(() => [...document.querySelectorAll('#insp .insp-tabs button')].map(b => { const r = b.getBoundingClientRect(), rg = document.createRange(); rg.selectNodeContents(b); const t = rg.getBoundingClientRect(); return Math.round(Math.abs((t.left + t.right) / 2 - (r.left + r.right) / 2)); }));
     check(tabs.length === 2 && tabs.every(d => d <= 1), '"Fondo" and "Texto encima" are centered in their tabs (off by ' + tabs.join(', ') + ' px)');
     await P.click('#insp [data-action="cancel-edit"]'); await P.waitForTimeout(400);
+  }
+
+  /* ---------- 8b. The page scrollbar is only its indicator; the action chip follows the mouse ---------- */
+  {
+    const sb = () => P.evaluate(() => { const s = document.querySelector('#sbar'), r = s.querySelector('i').getBoundingClientRect(); return { on: !s.hidden && getComputedStyle(s).display !== 'none', gutter: innerWidth - document.documentElement.clientWidth, top: Math.round(r.top), h: Math.round(r.height), right: Math.round(innerWidth - r.right), y: Math.round(scrollY) }; });
+    await P.evaluate(() => window.scrollTo(0, 0)); await P.waitForTimeout(300);
+    const a = await sb();
+    check(a.on && a.gutter === 0 && a.top <= 8 && a.right <= 4, 'the page shows no scrollbar track, only its indicator at the right edge (' + JSON.stringify(a) + ')');
+    await P.mouse.move(760, 450); await P.mouse.wheel(0, 900); await P.waitForTimeout(400); await scrollIdle(P);
+    const b = await sb();
+    check(b.y > 300 && b.top > a.top + 20, 'the indicator moves down with the page (' + b.top + ' px at ' + b.y + ')');
+    await P.mouse.move(1512 - 4, b.top + b.h / 2); await P.mouse.down();
+    await P.mouse.move(1512 - 4, b.top + b.h / 2 + 120, { steps: 6 }); await P.mouse.up(); await P.waitForTimeout(300);
+    check((await sb()).y > b.y + 200, 'dragging it scrolls the page');
+
+    await P.click('.rail-cat'); await P.click('#pop [data-action="cat-go"][data-id="c_visual"]'); await P.waitForTimeout(500);
+    const sec = '#s-s_direccion';
+    await P.locator(`${sec} [data-action="adder-open"]`).scrollIntoViewIfNeeded(); await scrollIdle(P);
+    await P.click(`${sec} [data-action="adder-open"]`);
+    await P.click(`${sec} [data-action="adder-layout"][data-layout="full"]`);
+    await P.click('.row.is-editing [data-action="pick-type"][data-type="color"]');
+    await P.click('#insp [data-action="insp-view"][data-v="act"]');
+    await P.click('#insp [data-action="seg"][data-k="act"][data-v="copy"]');
+    await confirm(P);
+    const sel = `${sec} .slot-color[data-act]`, slot = P.locator(sel).last();
+    await slot.scrollIntoViewIfNeeded(); await scrollIdle(P);
+    const sbx = await slot.boundingBox();
+    const chip = () => P.evaluate((q) => { const s = [...document.querySelectorAll(q)].pop(), c = s.querySelector('.act-chip'), r = c.getBoundingClientRect(), o = s.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), r: Math.round(o.right - r.right), b: Math.round(o.bottom - r.bottom), op: +getComputedStyle(c).opacity, inside: r.left >= o.left - .5 && r.right <= o.right + .5 && r.top >= o.top - .5 && r.bottom <= o.bottom + .5 }; }, sel);
+    const top = Math.max(sbx.y, 0) + 80, p1 = [Math.round(sbx.x + 120), Math.round(top)], p2 = [Math.round(sbx.x + 460), Math.round(top + 140)];
+    await P.mouse.move(p1[0], p1[1], { steps: 4 }); await P.waitForTimeout(500);
+    const c1 = await chip();
+    check(c1.op > .9 && near(c1.x, p1[0] + 16) && near(c1.y, p1[1] + 16), 'the action chip shows next to the cursor (' + JSON.stringify(c1) + ' for ' + p1 + ')');
+    await P.mouse.move(p2[0], p2[1], { steps: 8 }); await P.waitForTimeout(700);
+    const c2 = await chip();
+    check(near(c2.x, p2[0] + 16) && near(c2.y, p2[1] + 16), 'and follows it over the module (' + c2.x + ', ' + c2.y + ')');
+    const p3 = [Math.round(sbx.x + sbx.width - 12), Math.round(top + 200)];
+    await P.mouse.move(p3[0], p3[1], { steps: 6 }); await P.waitForTimeout(700);
+    const c3 = await chip();
+    check(c3.inside && c3.x < p3[0], 'at the far edge it moves to the other side of the cursor and stays inside the module (' + JSON.stringify(c3) + ')');
+    await P.screenshot({ path: T + 'v7-chip-follow.png' });
+    await P.mouse.move(Math.round(sbx.x / 2), 450); await P.waitForTimeout(300); /* off the module, over the rail */
+    await P.keyboard.press('Tab'); await slot.focus(); await P.waitForTimeout(400);
+    const c4 = await chip();
+    check(c4.op > .9 && near(c4.r, 14) && near(c4.b, 14), 'from the keyboard it shows in its corner (' + JSON.stringify(c4) + ')');
   }
   check(!P.errors.length, 'no page errors on the local demo' + (P.errors.length ? ': ' + P.errors.join(' | ') : ''));
 

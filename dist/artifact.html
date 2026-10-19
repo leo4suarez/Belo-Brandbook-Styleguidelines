@@ -322,7 +322,7 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .tblocks .lx.has-fill{background:var(--bf)}
 .tblocks .lx.has-bst{border:calc(var(--bsw) * 1px) solid var(--bsc,currentColor)}
 .tblocks .lx.has-r{border-radius:calc(var(--br) * var(--k))}
-.tblocks .lx.has-pad{padding:calc(var(--bpy,0) * var(--k)) calc(var(--bpx,0) * var(--k))}
+.tblocks .lx.has-pad{padding:calc(var(--bpt,0) * var(--k)) calc(var(--bpr,0) * var(--k)) calc(var(--bpb,0) * var(--k)) calc(var(--bpl,0) * var(--k))}
 .tb.lx:is([data-bw="hug"],[data-bw="fix"]){max-width:100%}
 .tblocks > .lx:is([data-bw="hug"],[data-bw="fix"])[data-align="center"]{align-self:center}
 .tblocks > .lx:is([data-bw="hug"],[data-bw="fix"])[data-align="right"]{align-self:flex-end}
@@ -451,6 +451,12 @@ html.frame-on .status{visibility:hidden} /* on a phone the bar spans the screen 
 .tpad > .act-chip{position:relative;right:auto;bottom:auto;flex:none;align-self:flex-start;max-width:100%;margin-top:clamp(12px,1.6cqi,18px)}
 .tpad:has(> .tblocks > .tb:last-child[data-align="center"]) > .act-chip{align-self:center}
 .tpad:has(> .tblocks > .tb:last-child[data-align="right"]) > .act-chip{align-self:flex-end}
+/* With a mouse the chip rides next to the cursor, inside its module (ChipFollow places it), so a text no longer keeps a
+   line for it; from the keyboard (and on touch screens) it stays in its corner */
+@media (hover:hover) and (pointer:fine){
+  .slot[data-act] .tpad > .act-chip{position:absolute;right:14px;bottom:14px;margin:0}
+  .slot[data-act].is-follow .act-chip{left:0;top:0;right:auto;bottom:auto;max-width:calc(100% - 20px)}
+}
 .pop .mi-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pop .pal-h{margin:6px 12px 6px}
 
@@ -1087,6 +1093,19 @@ html.hs-grabbing,html.hs-grabbing *{cursor:grabbing!important}
 .hlb-x{position:absolute;top:calc(20px + env(safe-area-inset-top,0px));right:20px;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--bg);box-shadow:var(--shadow-float);transition:transform 140ms var(--ease-out)}
 .hlb-x:active{transform:scale(.94)}
 .hlb-x svg.i{width:20px;height:20px;stroke-width:1.9}
+/* The page scrollbar: no track, only the indicator of where the page is. The native bar is hidden (with classic
+   scrollbars it reserves a strip at the right edge, which reads as a box next to full-screen blocks) and Sbar draws a thin
+   pill over the page, which a mouse can drag like the native thumb. Panels keep their own bars, also without a track. */
+html{scrollbar-width:none}
+html::-webkit-scrollbar{display:none}
+.layers,.thumbs,.insp-body,.amodal-panel,.hgal,.hgal-grid{scrollbar-color:color-mix(in srgb,var(--ink) 24%,transparent) transparent}
+.sbar{position:fixed;top:6px;right:3px;bottom:6px;z-index:45;width:14px;pointer-events:none}
+.sbar[hidden],html[data-view="home"] .sbar{display:none}
+.sbar i{position:absolute;top:0;right:0;width:4px;height:40px;border-radius:999px;background:color-mix(in srgb,var(--ink) 32%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--bg) 40%,transparent);pointer-events:auto;touch-action:none;transition:width 160ms var(--ease-out),background-color 160ms ease}
+.sbar i::before{content:"";position:absolute;inset:0 -4px 0 -10px} /* a hit area wider than the line */
+.sbar i:hover,.sbar.is-drag i{width:7px;background:color-mix(in srgb,var(--ink) 50%,transparent)}
+@media (max-width:860px){.sbar{top:calc(var(--nav-h,0px) + 6px)}}
+@media (hover:none){.sbar i{pointer-events:none}}
 /* Editors switch viewer / admin from any section page: bottom left, colored by what is under it */
 .page-mode{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;--ov-solid:var(--brand);animation:fadeIn 240ms var(--ease-out) both}
 .page-mode[hidden]{display:none}
@@ -1270,6 +1289,7 @@ html.is-row-drag .page-mode{visibility:hidden}
 <div class="types" id="types" role="toolbar" aria-label="Tipo de módulo"></div>
 <div class="status admin-only" id="status" role="status"></div>
 <div class="page-mode" id="page-mode" hidden></div>
+<div class="sbar" id="sbar" aria-hidden="true" hidden><i></i></div>
 <aside class="hgal admin-only" id="home-gal" aria-label="Galería de la Home" data-home-drop data-lenis-prevent hidden></aside>
 <div class="hlb" id="home-lb" role="dialog" aria-modal="true" aria-label="Vista ampliada" tabindex="-1" hidden></div>
 <div class="pop" id="pop" role="menu" hidden></div>
@@ -1429,8 +1449,10 @@ const FIELD = {
   ibhv: { min: 8, max: 4000, step: 1, px: 1, dec: 0 },
   ibsw: { min: 0, max: 24, step: .5, px: 4, dec: 1 },
   ibr: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
-  ibpx: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
-  ibpy: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  ibpt: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  ibpr: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  ibpb: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
+  ibpl: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
   igap: { min: 0, max: 400, step: 1, px: 2, dec: 0 },
   divt: { min: .5, max: 24, step: .5, px: 4, dec: 1 },
   divlen: { min: 8, max: 4000, step: 1, px: 1, dec: 0 },
@@ -1446,7 +1468,7 @@ const FIELD = {
   rsplit: { min: 20, max: 80, step: 1, px: 3, dec: 0 }
 };
 /* Fields that may be left empty: empty means automatic (or none) */
-const NULLABLE = new Set(['pt', 'pr', 'pb', 'pl', 'ibwv', 'ibhv', 'ibsw', 'ibr', 'ibpx', 'ibpy', 'igap', 'divlen', 'divm', 'tgap', 'mstw', 'rw', 'rsplit', 'sgap']);
+const NULLABLE = new Set(['pt', 'pr', 'pb', 'pl', 'ibwv', 'ibhv', 'ibsw', 'ibr', 'ibpt', 'ibpr', 'ibpb', 'ibpl', 'igap', 'divlen', 'divm', 'tgap', 'mstw', 'rw', 'rsplit', 'sgap']);
 /* Text styles (tree.textStyles): the typography a block takes when it is linked. Color and alignment are not part of
    a style. The seeds have fixed ids, so two people opening a catalog saved before styles existed create the same ones. */
 const TYPE_KEYS = ['font', 'size', 'weight', 'lh', 'ls', 'upper'];
@@ -1464,6 +1486,8 @@ const PAD_SIDES = ['t', 'r', 'b', 'l'];
 const PAD_TYPES = ['text', 'svg', 'carousel']; /* a carousel: only as a strip */
 const padOn = (s) => !!s && PAD_TYPES.includes(s.type) && (s.type !== 'carousel' || s.mode === 'strip');
 const isPadKey = (k) => /^p[trbl]$/.test(k);
+/* The same four sides for the container of a text or a group: field, stored key, icon, name */
+const BOX_PAD = [['ibpt', 'pt', 'padT', 'Arriba'], ['ibpb', 'pb', 'padB', 'Abajo'], ['ibpl', 'pl', 'padL', 'Izquierda'], ['ibpr', 'pr', 'padR', 'Derecha']];
 /* Animation presets. Each module (image, video, color, the box of a text module) and each text block has its own
    animation; nothing is inherited. The block (row) only sets the sequence: the wait between modules and between texts.
    Enter presets play once when the block reaches the viewport; scroll presets are scrubbed by the scroll position.
@@ -1637,9 +1661,12 @@ const compact = (o) => { Object.keys(o).forEach(k => o[k] === undefined && delet
 function normBox(x) {
   if (!x || typeof x !== 'object') return undefined;
   const sw = strokeW(x.sw);
+  /* inner spacing per side; px / py (one value for both sides, before v7.3) still read as the sides they stood for */
+  const side = (k, axis) => posPx(x[k] !== undefined ? x[k] : x[axis]);
   return compact({
     w: x.w === 'hug' ? 'hug' : pxIn(x.w, 8, 4000), h: pxIn(x.h, 8, 4000), fill: hexIn(x.fill),
-    sw, sc: sw ? hexIn(x.sc) : undefined, r: posPx(x.r), px: posPx(x.px), py: posPx(x.py)
+    sw, sc: sw ? hexIn(x.sc) : undefined, r: posPx(x.r),
+    pt: side('pt', 'py'), pr: side('pr', 'px'), pb: side('pb', 'py'), pl: side('pl', 'px')
   });
 }
 function normDivider(d) {
@@ -2204,6 +2231,7 @@ async function boot() {
   $('#search-ico').innerHTML = icon('search');
   renderAll();
   initLenis();
+  Sbar.init();
   Motion.init();
   Slider.size();
   const c = window.claude;
@@ -2803,7 +2831,7 @@ function paintBox(el, box) {
   setVar(el, '--bf', b.fill); el.classList.toggle('has-fill', !!b.fill);
   setVar(el, '--bsw', b.sw); setVar(el, '--bsc', b.sc); el.classList.toggle('has-bst', !!b.sw);
   setVar(el, '--br', b.r); el.classList.toggle('has-r', !!b.r);
-  setVar(el, '--bpx', b.px); setVar(el, '--bpy', b.py); el.classList.toggle('has-pad', !!(b.px || b.py));
+  BOX_PAD.forEach(([, f]) => setVar(el, '--b' + f, b[f])); el.classList.toggle('has-pad', BOX_PAD.some(([, f]) => !!b[f]));
 }
 /* The stroke of a module (slot.stroke), drawn over its content so images and colors keep it */
 function paintStroke(el, s) {
@@ -4433,10 +4461,22 @@ function secItemBox(c) {
       <div class="insp-line wrap"><span class="lbl">Relleno</span>${colorRow('ibfill', b.fill || '', { none: 'Sin relleno', label: 'Relleno' })}</div>
       <div class="insp-line"><span class="lbl">Borde</span>${fld('ibsw', 'stroke', b.sw || '', 'px', { title: 'Grosor del borde', ph: 'Sin borde' })}</div>
       ${b.sw ? `<div class="insp-line wrap"><span class="lbl">Color</span>${colorRow('ibsc', b.sc || '', { none: 'Automático: el color del texto', cls: 'sw-auto', label: 'Color del borde' })}</div>` : ''}
-      <div class="grid2">${fld('ibpx', 'padL', b.px || '', 'px', { title: 'Espaciado interno a los lados', ph: '0' })}${fld('ibpy', 'padT', b.py || '', 'px', { title: 'Espaciado interno arriba y abajo', ph: '0' })}</div>
       <div class="grid2">${fld('ibr', 'radius', b.r || '', 'px', { title: 'Radio de las esquinas', ph: '0' })}</div>
+      ${a.kind === 'group' ? '' : boxPadLines(a.b.id, b)}
       ${hfix ? '<p class="insp-hint">El alto es un mínimo: si el contenido no entra, el contenedor crece.</p>' : ''}
     </div>`;
+}
+/* Inner spacing of a container (box.pt … box.pl): four sides, linked while they are all equal. A group shows it in its
+   auto layout, a text in its container. */
+function boxPadLinked(id, b) {
+  const u = S.edit && S.edit.padLink['box:' + id]; if (typeof u === 'boolean') return u;
+  b = b || {}; return BOX_PAD.every(([, f]) => (b[f] ?? null) === (b.pt ?? null));
+}
+function boxPadLines(id, b) {
+  b = b || {};
+  return `<h4 class="sub-h">Espaciado interno</h4>
+      <div class="grid2">${BOX_PAD.map(([k, f, ic, l]) => fld(k, ic, b[f] || '', 'px', { title: 'Espaciado interno: ' + l.toLowerCase(), ph: '0' })).join('')}</div>
+      <button type="button" class="btn ghost sm toggle" data-action="box-pad-link" data-id="${esc(id)}" aria-pressed="${boxPadLinked(id, b)}">${icon('link')}Mismo valor en los 4 lados</button>`;
 }
 function secDivider(c, d) {
   return `<div class="insp-sec"><h4>Divisor<span>Una línea entre elementos</span></h4>
@@ -4458,6 +4498,7 @@ function secGroup(c, id, g) {
       <div class="insp-line"><span class="lbl">Distribuir</span>${segc('gju', ju, g.ju, 'Distribución de los elementos')}</div>
       ${h ? `<button type="button" class="insp-switch" role="switch" aria-checked="${!!g.wrap}" data-action="seg" data-k="gwrap" data-v="${!g.wrap}"><span>Pasar a otra línea si no entra</span><span class="tog" aria-hidden="true"></span></button>` : ''}
       <p class="insp-hint">${h ? 'Los elementos van uno al lado del otro.' : 'Los elementos van uno debajo del otro.'} «Llenar» ocupa el espacio libre; «Ajustar» toma el tamaño del contenido.</p>
+      ${boxPadLines(id, g.box)}
     </div>`;
 }
 /* The items of the module as layers: select one (Shift selects a run to group), add, group, move and delete */
@@ -5332,7 +5373,7 @@ function onField(k, v) {
       break;
     }
     case 'rstag': case 'tstag': row.anim = normAnim({ ...seqAnim(row), [ANIM_FIELD[k]]: v }, 'row'); Motion.previewSoon(); break;
-    case 'ibw': case 'ibwv': case 'ibh': case 'ibhv': case 'ibfill': case 'ibsw': case 'ibsc': case 'ibr': case 'ibpx': case 'ibpy': {
+    case 'ibw': case 'ibwv': case 'ibh': case 'ibhv': case 'ibfill': case 'ibsw': case 'ibsc': case 'ibr': case 'ibpt': case 'ibpr': case 'ibpb': case 'ibpl': {
       const own = boxOwner(slot); if (!own) return;
       const shape = (x) => x ? [isNum(x.w) ? 'f' : x.w || '', isNum(x.h), !!x.sw, 1].join() : '';
       const was = shape(own.box), b = { ...(own.box || {}) };
@@ -5342,7 +5383,12 @@ function onField(k, v) {
       else if (k === 'ibhv') { if (v == null) delete b.h; else b.h = v; }
       else if (k === 'ibfill') { if (v) b.fill = v; else delete b.fill; }
       else if (k === 'ibsc') { if (v) { b.sc = v; if (!b.sw) b.sw = 1; } else delete b.sc; }
-      else { const f = { ibsw: 'sw', ibr: 'r', ibpx: 'px', ibpy: 'py' }[k]; if (!v) delete b[f]; else b[f] = v; }
+      else if (/^ibp[trbl]$/.test(k)) {
+        const a = activeItemOf(slot), linked = boxPadLinked(a.id, own.box), sides = linked ? BOX_PAD : BOX_PAD.filter(x => x[0] === k);
+        sides.forEach(([, f]) => { if (!v) delete b[f]; else b[f] = v; });
+        if (linked) BOX_PAD.forEach(([x]) => { if (x !== k) setFieldValue(x, v || ''); });
+      }
+      else { const f = { ibsw: 'sw', ibr: 'r' }[k]; if (!v) delete b[f]; else b[f] = v; }
       const nb = normBox(b); if (nb) own.box = nb; else delete own.box;
       refreshItems(slot);
       if (shape(own.box) !== was) renderInspector();
@@ -5408,7 +5454,7 @@ function storedField(k) {
   if (isPadKey(k)) { const p = s && s.pad; return p && isNum(p[k[1]]) ? p[k[1]] : null; }
   const a = s && s.type === 'text' ? activeItemOf(s) : null, own = boxOwner(s), b = (own && own.box) || {};
   const v = {
-    ibwv: isNum(b.w) ? b.w : null, ibhv: b.h, ibsw: b.sw, ibr: b.r, ibpx: b.px, ibpy: b.py,
+    ibwv: isNum(b.w) ? b.w : null, ibhv: b.h, ibsw: b.sw, ibr: b.r, ibpt: b.pt, ibpr: b.pr, ibpb: b.pb, ibpl: b.pl,
     igap: a && a.kind === 'group' ? a.g.gap : null, divlen: a && a.kind === 'div' ? a.b.len : null, divm: a && a.kind === 'div' ? a.b.m : null,
     tgap: s && s.gap, mstw: s && s.stroke && s.stroke.w, rw: row.w, rsplit: row.split, sgap: s && s.sgap
   }[k];
@@ -7740,6 +7786,14 @@ document.addEventListener('click', (ev) => {
       e.blocks[s.id] = first ? first.id : null; e.range = null; bump(); break;
     }
     case 'box-fold': S.boxOpen = !S.boxOpen; ls.set('box', S.boxOpen ? '1' : '0'); renderInspector(); break;
+    case 'box-pad-link': {
+      const s = activeSlot(), own = boxOwner(s); if (!S.edit || !own) break;
+      const on = !boxPadLinked(id, own.box), b = own.box || {};
+      S.edit.padLink['box:' + id] = on;
+      const first = BOX_PAD.map(([, f]) => b[f]).find(isNum);
+      if (on && first !== undefined && !BOX_PAD.every(([, f]) => b[f] === first)) { record(null); own.box = normBox({ ...b, pt: first, pr: first, pb: first, pl: first }); refreshItems(s); Ink.schedule(); }
+      renderInspector(); break;
+    }
     case 'box-reset': { const s = activeSlot(), own = boxOwner(s); if (!own || !own.box) break; record(null); delete own.box; refreshItems(s); renderInspector(); break; }
     case 'rw-reset': { const r = editRow(); if (!r) break; record(null); delete r.w; delete r.wa; delete r.split; applyRowW(r); renderInspector(); break; }
     case 'seg': onField(a.dataset.k, a.dataset.v); break;
@@ -7798,7 +7852,7 @@ document.addEventListener('pointerdown', (ev) => {
   if (it && (it.classList.contains('tdiv') || ev.target === it)) { const e = S.edit, sl = e && findSlot(e.draft, it.dataset.slot); if (sl) { e.range = null; selectItem(sl, it.dataset.item || it.dataset.group); } }
   csDown(ev); rzDown(ev); rzwDown(ev); thumbDown(ev); scrubDown(ev); ezDown(ev); rowDragDown(ev); frameDown(ev); Slider.down(ev); galDown(ev);
 });
-document.addEventListener('pointermove', (ev) => { csMove(ev); rzMove(ev); rzwMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); rowDragMove(ev); frameMove(ev); Slider.track(ev); Slider.move(ev); galMove(ev); });
+document.addEventListener('pointermove', (ev) => { ChipFollow.move(ev); csMove(ev); rzMove(ev); rzwMove(ev); thumbMove(ev); scrubMove(ev); ezMove(ev); rowDragMove(ev); frameMove(ev); Slider.track(ev); Slider.move(ev); galMove(ev); });
 document.addEventListener('pointerup', (ev) => { csUp(ev); rzUp(ev); rzwUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); rowDragUp(ev); frameUp(ev); Slider.up(ev); galUp(ev); });
 document.addEventListener('pointercancel', (ev) => { csUp(ev); rzUp(ev); rzwUp(ev); thumbUp(ev); scrubUp(ev); ezUp(ev); frameUp(ev); if (rdrag && ev.pointerId === rdrag.pid) rowDragCancel(); Slider.up(ev); galUp(ev); });
 /* While a block is dragged Lenis is paused (it swallows the wheel), so the wheel scrolls the page directly; the
@@ -8106,6 +8160,100 @@ async function importExport(fileList) {
   toast(`Listo: se importaron ${what}.`);
 }
 document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.closest('#pop') && !ev.target.closest(POP_TRIGGERS.map(x => `[data-action="${x}"]`).join(', '))) closePop(); }, true);
+
+/* ================= Page scrollbar: only the indicator ================= */
+/* A pill at the right edge: its length is the share of the page on screen, its place how far down the page is. A mouse
+   drags it to scroll (through Lenis when it runs, so the smooth scroll keeps its target). */
+const Sbar = {
+  el: null, th: null, raf: 0, drag: null,
+  init() {
+    this.el = $('#sbar'); this.th = this.el && $('i', this.el); if (!this.th) return;
+    const paint = () => this.paint();
+    addEventListener('scroll', paint, { passive: true }); addEventListener('resize', paint);
+    if (window.ResizeObserver) new ResizeObserver(paint).observe(document.body);
+    this.th.addEventListener('pointerdown', (ev) => this.down(ev));
+    this.th.addEventListener('pointermove', (ev) => this.move(ev));
+    this.th.addEventListener('pointerup', () => this.up()); this.th.addEventListener('pointercancel', () => this.up());
+    paint();
+  },
+  metrics() {
+    const view = innerHeight, page = document.documentElement.scrollHeight, track = this.el.clientHeight || view;
+    const h = Math.min(track, Math.max(36, track * view / Math.max(1, page)));
+    return { max: page - view, track, h };
+  },
+  paint() {
+    if (this.raf || !this.el) return;
+    this.raf = requestAnimationFrame(() => {
+      this.raf = 0;
+      const m = this.metrics(), off = m.max < 2; this.el.hidden = off; if (off) return;
+      this.th.style.height = m.h.toFixed(1) + 'px';
+      this.th.style.translate = `0 ${((m.track - m.h) * clamp(scrollY / m.max, 0, 1)).toFixed(1)}px`;
+    });
+  },
+  down(ev) {
+    if (ev.button !== 0) return;
+    ev.preventDefault();
+    const m = this.metrics();
+    this.drag = { y0: ev.clientY, s0: scrollY, k: m.max / Math.max(1, m.track - m.h) };
+    this.th.setPointerCapture(ev.pointerId); this.el.classList.add('is-drag');
+  },
+  move(ev) {
+    if (!this.drag) return;
+    const y = clamp(this.drag.s0 + (ev.clientY - this.drag.y0) * this.drag.k, 0, this.metrics().max);
+    if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y);
+  },
+  up() { if (!this.drag) return; this.drag = null; this.el.classList.remove('is-drag'); }
+};
+
+/* ================= The action chip follows the mouse ================= */
+/* Over a module with a click action the chip rides a little below and to the right of the cursor (above or to the left
+   near the far edges), always inside the module, easing after it. Leaving the module, it fades where it is. A module
+   reached with the keyboard shows it in its corner again. */
+const ChipFollow = {
+  el: null, chip: null, x: 0, y: 0, tx: 0, ty: 0, cx: 0, cy: 0, raf: 0, t: 0,
+  fine: matchMedia('(hover: hover) and (pointer: fine)'),
+  chipOf: (el) => $(':scope > .act-chip, :scope > .tpad > .act-chip', el),
+  move(ev) {
+    if (ev.pointerType !== 'mouse' || !this.fine.matches) return;
+    this.cx = ev.clientX; this.cy = ev.clientY; this.over(ev.target);
+  },
+  over(t) {
+    const el = t && t.closest ? t.closest('.slot[data-act]') : null, chip = el && this.chipOf(el);
+    if (!chip || el.classList.contains('is-pop')) { if (el !== this.el) this.el = this.chip = null; return; } /* an open menu stays on its chip */
+    if (el !== this.el) { this.el = el; this.chip = chip; el.classList.add('is-follow'); this.aim(); this.x = this.tx; this.y = this.ty; this.put(); return; }
+    this.aim(); this.run();
+  },
+  /* the page moves under a still cursor */
+  scroll() { if (this.el) this.over(document.elementFromPoint(this.cx, this.cy)); },
+  aim() {
+    const c = this.chip, host = c.offsetParent || this.el, hr = host.getBoundingClientRect(), sr = this.el.getBoundingClientRect();
+    const k = hr.width / (host.offsetWidth || hr.width) || 1; /* a module scaled by its motion */
+    const w = c.offsetWidth, h = c.offsetHeight, P = 10, G = 16;
+    const L = (sr.left - hr.left) / k, T = (sr.top - hr.top) / k, R = (sr.right - hr.left) / k, Bt = (sr.bottom - hr.top) / k;
+    const px = (this.cx - hr.left) / k, py = (this.cy - hr.top) / k;
+    let x = px + G, y = py + G;
+    if (x + w > R - P) x = px - G - w;
+    if (y + h > Bt - P) y = py - G / 2 - h;
+    this.tx = clamp(x, L + P, Math.max(L + P, R - P - w)); this.ty = clamp(y, T + P, Math.max(T + P, Bt - P - h));
+  },
+  run() { if (!this.raf) { this.t = performance.now(); this.raf = requestAnimationFrame((n) => this.tick(n)); } },
+  tick(now) {
+    this.raf = 0; if (!this.chip) return;
+    const f = RM ? 1 : 1 - Math.pow(.7, Math.min(4, (now - this.t) / 16.67)); this.t = now;
+    this.x += (this.tx - this.x) * f; this.y += (this.ty - this.y) * f;
+    const done = Math.abs(this.tx - this.x) < .2 && Math.abs(this.ty - this.y) < .2;
+    if (done) { this.x = this.tx; this.y = this.ty; }
+    this.put(); if (!done) this.raf = requestAnimationFrame((n) => this.tick(n));
+  },
+  put() { this.chip.style.translate = `${this.x.toFixed(1)}px ${this.y.toFixed(1)}px`; },
+  focus(ev) {
+    const el = ev.target.closest && ev.target.closest('.slot[data-act]');
+    if (!el || el === this.el || !el.matches(':focus-visible')) return;
+    el.classList.remove('is-follow'); const c = this.chipOf(el); if (c) c.style.translate = '';
+  }
+};
+addEventListener('scroll', () => ChipFollow.scroll(), { passive: true });
+document.addEventListener('focusin', (ev) => ChipFollow.focus(ev));
 
 /* ================= Smooth scroll ================= */
 function initLenis() {
