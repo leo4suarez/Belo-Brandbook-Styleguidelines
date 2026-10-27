@@ -64,6 +64,11 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 - Carrusel con stepper animado (step player), arrastre con física de resorte y autoplay al entrar en pantalla.
   - Formato **Tira**: las imágenes van una al lado de la otra, cada una con su tamaño (verticales, horizontales o libres), su encuadre y un texto opcional debajo. Se recorre deslizando (trackpad, dedo, arrastre con el mouse o flechas). En el editor, un clic elige una imagen: se encuadra arrastrándola y se cambia el tamaño desde su esquina (Shift mantiene la proporción), o con los campos del panel.
   - Su contenedor tiene las mismas esquinas redondeadas que el resto de los módulos y, en los dos formatos, un **Fondo** como los demás contenedores (ninguno, el gris del tema, uno de la paleta u otro color). En la tira, con fondo las imágenes quedan con aire alrededor (regulable en **Espaciado interno**) y los textos de debajo toman la tinta que se lee sobre ese fondo.
+- **Carga rápida:**
+  - Las imágenes y los videos se piden recién cuando están a una pantalla de distancia, y los que ya se ven van primero, con prioridad alta: lo visible nunca espera a lo que está más abajo.
+  - En el sitio publicado, cada imagen se pide al ancho al que se dibuja (por la densidad de la pantalla, hasta 2×), en WebP, a través de Vercel Image Optimization. El archivo original no se toca: las descargas siguen entregando el original. Si el optimizador falla, se cargan los originales. Los SVG y los GIF van siempre tal cual.
+  - En la Home, las tarjetas usan copias a su tamaño y los videos esperan a que carguen las imágenes, 3 segundos como máximo. El lightbox arranca con la copia de la tarjeta y la cambia por una más grande.
+  - Al abrir la página, el árbol y las secciones de la categoría se piden en un solo pedido, antes de que lleguen los scripts. Las demás categorías se leen de fondo, así que abrir otra es inmediato. Volver a una categoría ya vista también es inmediato.
 - Scroll suave con Lenis. La barra de scroll de la página no tiene canaleta: solo se ve el indicador, finito, a la derecha, y se puede arrastrar.
 - Animaciones preset (GSAP + ScrollTrigger + SplitText), en la vista **Animación** del panel de edición (toggle Diseño / Animación):
   - **Módulo** (imagen, video, color o la caja de un texto): entrada (aparecer, desplazar, escalar, desenfoque, cortina, zoom revelado) y con scroll (parallax, alejar, acercar, desvanecer al salir). Solo se ofrecen los presets que tienen efecto en ese tipo de módulo.
@@ -113,7 +118,7 @@ node tests/run.cjs layout.cjs     # solo algunas suites
 - `home.cjs` abre Chromium con la GPU habilitada (`--ignore-gpu-blocklist --enable-gpu`) para que el anillo se dibuje con WebGL, y comprueba sobre la captura que los bordes de todas las tarjetas caen sobre una misma curva; también prueba la versión sin WebGL. Prueba la Home: el slider (curva 3D sin tarjetas encimadas, movimiento automático y su pausa con el mouse o el toque, los dos botones redondos, teclado, rueda, arrastre con inercia), hover, lightbox de la tarjeta clickeada, galería (subir, titular y descripción con sus límites, formatos, esquinas, velocidad, ordenar, quitar y deshacer), los botones arriba a la derecha solo en la Home, movimiento reducido, mobile y el switch viewer/admin de las secciones.
 - `editor.cjs` prueba el inspector contextual, el espaciado interno, los estilos de texto (también entre secciones y entre dos editores) y la paleta.
 - `media.cjs` prueba el encuadre, el módulo SVG, el módulo de color, las interacciones (copiar, modal y descarga) y los archivos descargables, también guardados en el Supabase simulado.
-- `layout.cjs` prueba el tema claro por visita, el título del sidebar y su lista de categorías, las categorías bloqueadas (en la página y en la base simulada), mover una subcategoría, los contenedores, grupos y divisores de los textos, el espaciado interno del auto layout, los bordes, el ancho de los bloques, la división de dos mitades y la tira del carrusel (con sus esquinas, su fondo y su espaciado interno), la barra de scroll de la página y el chip de las interacciones que sigue al cursor.
+- `layout.cjs` prueba el tema claro por visita, el título del sidebar y su lista de categorías, las categorías bloqueadas (en la página y en la base simulada), mover una subcategoría, los contenedores, grupos y divisores de los textos, el espaciado interno del auto layout, los bordes, el ancho de los bloques, la división de dos mitades y la tira del carrusel (con sus esquinas, su fondo y su espaciado interno), la barra de scroll de la página, el chip de las interacciones que sigue al cursor y la carga. Sobre la carga prueba que las secciones llegan en un pedido, las lecturas tempranas de la visita siguiente, las imágenes diferidas, las copias optimizadas a su ancho y la vuelta a los originales si el optimizador falla.
 - Las capturas quedan en `tests/output/`, que está ignorado por git.
 - Las pruebas bloquean Google Fonts y sirven Lenis desde `tests/fixtures/` y supabase-js desde `node_modules`, así que corren sin red. Por eso en el log aparece `Failed to load resource: net::ERR_FAILED`: es esperado.
 - Para cambiar el puerto: `PORT=8790 npm test`.
@@ -132,7 +137,7 @@ node tests/run.cjs layout.cjs     # solo algunas suites
   - Los cambios de los demás llegan en vivo, sin recargar.
   - Si dos personas confirman el mismo bloque, gana la última. Para evitarlo, en Admin se ve quién está editando: sus iniciales junto a la sección y un contorno con su nombre sobre el bloque.
   - Abajo a la derecha (en Admin) se ve quién editó la sección que estás mirando y cuándo.
-- **Historial:** cada versión guardada queda en `doc_revisions`. Para volver atrás una sección, hay que copiar `data` de la revisión que corresponda a `docs` desde el editor SQL de Supabase.
+- **Historial:** cada versión guardada queda en `doc_revisions`. Con la migración `20261027120000_catalog_db_tuning.sql`, cada documento conserva siempre sus 20 versiones más nuevas y todas las de los últimos 60 días, hasta un máximo de 200; las demás se borran al guardar. Así la base no crece sin límite. Para volver atrás una sección, hay que copiar `data` de la revisión que corresponda a `docs` desde el editor SQL de Supabase.
   - El ajuste único de tamaños de texto del 14/10/2026 quedó guardado como «Ajuste de tamaños de texto» (`saved_by_name`): la revisión anterior de cada una de esas 30 secciones es la versión de antes.
 - **Sin conexión:** si un guardado falla, el indicador pasa a "Sin guardar" y se reintenta solo. Si cerrás la pestaña con cambios pendientes, el navegador avisa.
 
@@ -208,6 +213,13 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
 
 - El repo está conectado a Vercel (proyecto `belo-brandbook`): cada push a `main` se despliega solo, y cada rama tiene su preview.
 - `vercel.json` le indica que corra `node scripts/build.mjs`, que no hace falta instalar dependencias y que sirva la carpeta `dist/`.
+- También configura **Image Optimization** (`images`):
+  - Anchos 384, 640, 960, 1280, 1920 y 2560, iguales a `IMG_W` en `src/catalog.html`.
+  - Salida en WebP y caché de 31 días.
+  - Solo acepta imágenes del proyecto de Supabase. Si el proyecto cambia, hay que actualizar ahí `hostname`.
+  - La página pide `/_vercel/image?url=…&w=…&q=80`.
+  - El plan Hobby de Vercel tiene un cupo mensual de transformaciones. Cada imagen se transforma una vez por ancho y queda en caché; si el cupo se agota, la página vuelve sola a los originales.
+  - Fuera de Vercel (vista local, el artifact, las pruebas) se cargan los originales. `localStorage['bc.opt'] = '1'` o `'0'` fuerza las copias o los originales.
 - La versión de Vercel guarda en Supabase sin configurar nada en Vercel: la configuración pública está en `supabase/public.json`.
 - `dist/artifact.html` también la lleva, pero dentro de Claude la página usa la base del artifact.
 
@@ -266,3 +278,12 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
 - **v7.1:** la Home de la rama `vene-home-slider` (el slider espacial de tarjetas en WebGL, con titular y descripción en el lightbox, formato por elemento, esquinas, velocidad y los botones arriba a la derecha) integrada sobre la v7.0. Solo se trajo la Home: todo lo demás de la v7.0 queda igual.
 - **v7.2:** el carrusel en formato tira con las esquinas redondeadas de los demás módulos, y fondo a elección en el contenedor del carrusel (los dos formatos), con espaciado interno en la tira.
 - **v7.3:** espaciado interno por lado en el auto layout de los grupos (y en el contenedor de los textos); la barra de scroll de la página solo con su indicador; el chip de las interacciones acompaña al cursor.
+- **v7.4:** performance.
+  - Imágenes y videos diferidos, con prioridad para lo visible.
+  - Copias optimizadas por Vercel al ancho de cada módulo.
+  - Videos de la Home después de sus imágenes.
+  - Lecturas tempranas y agrupadas de la base, y categorías leídas de fondo.
+  - Migración de la base `20261027120000_catalog_db_tuning.sql` (pendiente de aplicar): historial acotado, chequeo de páginas bloqueadas más simple e índice en `updated_by`.
+  - En laboratorio (20 Mbps, 150 ms, caché vacía, pantalla 2×):
+    - categoría con fotos de 4000 px: la primera imagen pasa de 6,1 s a 1,0 s;
+    - Home: las tarjetas pasan de 11,4 s a 1,6 s.

@@ -423,6 +423,64 @@ function watchErrors(page, label) {
     check(!V.errors.length && !A.errors.length, 'no page errors on the shared catalog' + ([...V.errors, ...A.errors].length ? ': ' + [...V.errors, ...A.errors].join(' | ') : ''));
   }
 
+  /* ---------- 10. Loading: early and grouped reads, lazy media, optimized copies (and the originals if they fail) ---------- */
+  {
+    const fake = new FakeSupabase(SUPA_URL);
+    const img = (id, file) => { fake.files.set(id + '.jpg', { body: fs.readFileSync(FIX + file), type: 'image/jpeg' }); return { id: 'r_' + id, layout: 'full', h: null, slots: [{ id: 'm_' + id, type: 'image', asset: id + '.jpg', w: 1600, h: 1000 }] }; };
+    const text = (id, t) => ({ id, layout: 'full', h: null, slots: [{ id: 'm_' + id, type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b_' + id, text: t, font: 'jakarta', size: 40, weight: 600, lh: 110, ls: -1, align: 'left', upper: false }] }] });
+    fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [
+      { id: 'c_media', name: 'Fotografía', subs: [{ id: 's_m1', name: 'Estilo' }, { id: 's_m2', name: 'Retrato' }, { id: 's_m3', name: 'Producto' }] },
+      { id: 'c_other', name: 'Recursos', subs: [{ id: 's_o', name: 'Descargas' }] }] });
+    fake.seed('pages/s_m1', { rows: [img('p1', 'img1.jpg'), img('p2', 'img2.jpg'), img('p3', 'img3.jpg'), img('p4', 'img4.jpg'), img('p5', 'img1.jpg')] });
+    fake.seed('pages/s_m2', { rows: [text('r_m2', 'Retrato')] });
+    fake.seed('pages/s_m3', { rows: [text('r_m3', 'Producto')] });
+    fake.seed('pages/s_o', { rows: [text('r_o', 'Descargas de marca')] });
+    const opened = async (label, optimizer) => {
+      const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1 });
+      await fake.attach(ctx, label); await routes(ctx);
+      await ctx.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\/dist\/umd\/supabase\.js/, r => r.fulfill({ path: SB_JS, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+      await ctx.addInitScript(() => { try { localStorage.setItem('bc.opt', '1'); } catch {} });
+      const asked = [];
+      /* Vercel's optimizer, stood in for: it answers with the original's bytes (or fails, to test the way back) */
+      await ctx.route(/\/_vercel\/image\?/, r => {
+        const q = new URL(r.request().url()).searchParams, f = fake.files.get(decodeURIComponent(new URL(q.get('url')).pathname.split('/').pop()));
+        asked.push(+q.get('w'));
+        return optimizer && f ? r.fulfill({ status: 200, contentType: 'image/webp', body: f.body }) : r.fulfill({ status: 404, body: 'not found' });
+      });
+      const page = await ctx.newPage(); watchErrors(page, label);
+      return { page, ctx, asked };
+    };
+    fake.readLog = [];
+    const { page: L, ctx: lctx, asked } = await opened('loader', true);
+    await L.goto(SUPA_BASE + '#s_m1');
+    await L.waitForSelector('#s-s_m1 .row'); await L.waitForTimeout(900);
+    check(fake.readLog.some(w => ['pages/s_m1', 'pages/s_m2', 'pages/s_m3'].every(p => w.includes(p))), 'the three sections of the category come in one request (' + fake.readLog.map(w => w.length).join(', ') + ' documents per read)');
+    const imgs = await L.evaluate(() => [...document.querySelectorAll('#s-s_m1 .media img')].map(i => { const r = i.getBoundingClientRect(); return { src: i.getAttribute('src') || '', lazy: !!i.dataset.lazy, top: Math.round(r.top), w: Math.round(r.width), done: i.classList.contains('is-loaded') }; }));
+    const first = imgs[0], far = imgs.filter(i => i.top > 900 * 2.2);
+    check(/\/_vercel\/image\?url=.+&w=1280&q=80$/.test(first.src) && first.done, 'an image on screen loads an optimized copy at its drawn width (' + first.w + ' px → w=1280)');
+    check(far.length >= 1 && far.every(i => i.lazy && !i.src), 'images further than a screen below are not asked for yet (' + far.length + ' waiting)');
+    check(asked.every(w => [384, 640, 960, 1280, 1920, 2560].includes(w)), 'only the sizes set in vercel.json are asked for (' + [...new Set(asked)].join(', ') + ')');
+    await L.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await L.waitForTimeout(1200);
+    check(await L.evaluate(() => [...document.querySelectorAll('#s-s_m1 .media img')].every(i => !i.dataset.lazy && i.classList.contains('is-loaded'))), 'scrolling down loads them');
+    // The other category was read in the background: it opens at once, without a placeholder
+    check(await until(() => fake.readLog.some(w => w.includes('pages/s_o'))), 'the pages of the other categories are read in the background');
+    await L.click('.rail-cat'); await L.click('#pop [data-action="cat-go"][data-id="c_other"]'); await L.waitForTimeout(120);
+    check(await L.evaluate(() => !!document.querySelector('#s-s_o .row') && !document.querySelector('#s-s_o .skel')), 'so another category opens at once');
+    // The next visit asks for the tree and the open category's pages before the page scripts run
+    fake.readLog = [];
+    await L.goto('about:blank'); await L.goto(SUPA_BASE + '#s_m1'); await L.waitForSelector('#s-s_m1 .row');
+    check(fake.readLog[0] && ['catalog/tree', 'pages/s_m1', 'pages/s_m2', 'pages/s_m3'].every(p => fake.readLog[0].includes(p)), 'on the next visit the first request already brings the tree and the pages (' + (fake.readLog[0] || []).join(', ') + ')');
+    await lctx.close();
+    // Without the optimizer (another host, over quota): the originals load and nothing breaks
+    const { page: F, ctx: fctx } = await opened('fallback', false);
+    await F.goto(SUPA_BASE + '#s_m1'); await F.waitForSelector('#s-s_m1 .row'); await F.waitForTimeout(1200);
+    const fb = await F.evaluate(() => [...document.querySelectorAll('#s-s_m1 .media img')].filter(i => i.getAttribute('src')).map(i => ({ src: i.getAttribute('src'), done: i.classList.contains('is-loaded'), broken: i.parentElement.classList.contains('is-broken') })));
+    check(fb.length >= 1 && fb.every(i => /\/storage\/v1\/object\/public\/assets\//.test(i.src) && i.done && !i.broken), 'if the optimizer fails, the original files load instead (' + fb.length + ' images)');
+    const errs = [...L.errors, ...F.errors.filter(e => !/status of 404/.test(e))]; /* the failed copies themselves are expected */
+    check(!errs.length, 'no page errors while loading' + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await fctx.close();
+  }
+
   await browser.close();
   log(failures.length ? `\n${failures.length} check(s) failed` : '\nAll layout checks passed');
   process.exit(failures.length ? 1 : 0);

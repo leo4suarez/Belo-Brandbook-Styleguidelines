@@ -124,9 +124,16 @@ class FakeSupabase {
 
     // Data API
     if (p === '/rest/v1/docs' && req.method() === 'GET') {
-      const want = (u.searchParams.get('path') || '').replace(/^eq\./, '');
-      const row = this.pageLocked(want) && !this.isEditor(this.userFrom(headers)) ? null : this.docs.get(want);
-      const out = row ? [{ data: row.data, version: row.version, updated_at: row.updated_at, updated_by: row.updated_by, updated_by_name: row.updated_by_name }] : [];
+      // path=eq.<path> or path=in.(<path>,"<path>",…) — the page reads several documents in one request
+      const raw = u.searchParams.get('path') || '', inList = /^in\.\((.*)\)$/.exec(raw);
+      const wants = inList ? inList[1].split(',').map(x => x.trim().replace(/^"(.*)"$/, '$1')).filter(Boolean) : [raw.replace(/^eq\./, '')];
+      const editor = this.isEditor(this.userFrom(headers));
+      this.reads = (this.reads || 0) + 1;
+      (this.readLog = this.readLog || []).push(wants);
+      const out = wants.map(want => {
+        const row = this.pageLocked(want) && !editor ? null : this.docs.get(want);
+        return row && { path: want, data: row.data, version: row.version, updated_at: row.updated_at, updated_by: row.updated_by, updated_by_name: row.updated_by_name };
+      }).filter(Boolean);
       if ((headers['accept'] || '').includes('vnd.pgrst.object')) return out.length ? json(200, out[0]) : json(406, { code: 'PGRST116', message: 'no rows' });
       return json(200, out);
     }

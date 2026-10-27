@@ -3,5 +3,11 @@
   "framework": null,
   "installCommand": "echo 'El build no necesita dependencias'",
   "buildCommand": "node scripts/build.mjs",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "images": {
+    "sizes": [384, 640, 960, 1280, 1920, 2560],
+    "formats": ["image/webp"],
+    "minimumCacheTTL": 2678400,
+    "remotePatterns": [{ "protocol": "https", "hostname": "tdrlxenjgfvnjzmuixhy.supabase.co" }]
+  }
 }

@@ -16,6 +16,36 @@
      Set before the first paint so the page never flashes the other view. */
   h.setAttribute('data-view', location.hash.length < 2 && back.length < 2 ? 'home' : 'cat');
 })();
+/* Shared storage (filled in by scripts/build.mjs) and the supabase-js build the page loads */
+window.BC_SUPA = /*__SUPABASE__*/null;
+window.BC_SB = { src: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', sri: 'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok' };
+/* The catalog starts loading before the page scripts: supabase-js is preloaded, and the tree together with the pages of
+   the category the link opens (as the last visit's tree knew them, bc.nav, see onTree) are read at once, in one request
+   with the public key. The backend takes these answers first (BC_PRE, see supabaseBackend); a page that comes back
+   missing (a locked one, for an editor) is read again there with the session. */
+(function () {
+  var cfg = window.BC_SUPA; if (!cfg || !cfg.url || !cfg.key || !window.fetch || !window.Promise || window.claude) return;
+  try {
+    var link = function (rel, href, as, sri) { var l = document.createElement('link'); l.rel = rel; if (as) l.as = as; if (sri) l.integrity = sri; l.crossOrigin = 'anonymous'; l.href = href; document.head.appendChild(l); };
+    link('preconnect', cfg.url); link('preload', window.BC_SB.src, 'script', window.BC_SB.sri);
+  } catch (e) {}
+  var want = ['catalog/tree'], nav = null, last = null, sub = '';
+  try { nav = JSON.parse(localStorage.getItem('bc.nav') || 'null'); last = localStorage.getItem('bc.cat'); } catch (e) {}
+  try { sub = decodeURIComponent(location.hash.slice(1)); } catch (e) {}
+  if (nav && nav.length) {
+    var cat = null;
+    for (var i = 0; i < nav.length && !cat; i++) if (nav[i].subs.indexOf(sub) >= 0) cat = nav[i];
+    for (var j = 0; j < nav.length && !cat; j++) if (nav[j].id === last) cat = nav[j];
+    (cat || nav[0]).subs.forEach(function (id) { want.push('pages/' + id); });
+  }
+  var list = want.map(function (x) { return '"' + x + '"'; }).join(',');
+  var all = fetch(cfg.url + '/rest/v1/docs?select=path,data,version,updated_at,updated_by,updated_by_name&path=in.(' + encodeURIComponent(list) + ')', { headers: { apikey: cfg.key, Authorization: 'Bearer ' + cfg.key } })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  var pre = window.BC_PRE = {};
+  want.forEach(function (path) {
+    pre[path] = all.then(function (rows) { for (var k = 0; k < rows.length; k++) if (rows[k].path === path) return rows[k]; return null; }, function () { return undefined; });
+  });
+})();
 </script>
 <style>
 @font-face{font-family:"Phudu";src:url(data:font/woff2;base64,__PHUDU_B64__) format("woff2");font-weight:300 900;font-style:normal;font-display:swap}
@@ -1929,9 +1959,8 @@ const Local = (() => {
 })();
 /* ================= Supabase backend (shared catalog outside claude.ai) ================= */
 /* The build injects the project URL and its publishable key. Without them the page runs on the artifact or the local demo. */
-const SUPA = /*__SUPABASE__*/null;
-const SB_SRC = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
-const SB_SRI = 'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok';
+const SUPA = window.BC_SUPA || null; /* set in the head script (scripts/build.mjs fills it in) */
+const SB_SRC = window.BC_SB.src, SB_SRI = window.BC_SB.sri;
 let Cloud = null;
 function loadScript(src, integrity) {
   return new Promise((res, rej) => {
@@ -1957,10 +1986,29 @@ function supabaseBackend(sb, cfg) {
   };
   const metaOf = (r) => ({ at: r.updated_at || null, by: r.updated_by_name || '', uid: r.updated_by || null });
   const toSnap = (path, row) => ({ id: path.split('/').pop(), exists: !!row, version: row ? row.version : 0, meta: row ? metaOf(row) : null, data: () => row ? clone(row.data) : undefined });
+  /* Reads asked for in the same moment (the pages of a category, the background reads) go out as one request */
+  let queue = null;
+  function readRow(path) {
+    if (!queue) { queue = new Map(); setTimeout(flush, 0); }
+    let q = queue.get(path);
+    if (!q) { q = {}; q.p = new Promise((res, rej) => { q.res = res; q.rej = rej; }); queue.set(path, q); }
+    return q.p;
+  }
+  async function flush() {
+    const q = queue; queue = null;
+    try {
+      const { data, error } = await sb.from('docs').select('path,data,version,updated_at,updated_by,updated_by_name').in('path', [...q.keys()]);
+      if (error) throw dbErr(error);
+      const by = new Map((data || []).map(r => [r.path, r]));
+      q.forEach((x, path) => x.res(by.get(path) || null));
+    } catch (e) { const err = e && e.code ? e : dbErr(e); q.forEach(x => x.rej(err)); }
+  }
+  /* The head script may have read a document already (BC_PRE): its answer is used once, and read again when Realtime joins */
+  const early = window.BC_PRE || {}, fromEarly = new Set();
   async function fetchDoc(path) {
-    const { data, error } = await sb.from('docs').select('data,version,updated_at,updated_by,updated_by_name').eq('path', path).maybeSingle();
-    if (error) throw dbErr(error);
-    return toSnap(path, data);
+    const pre = early[path];
+    if (pre) { delete early[path]; const row = await pre; if (row) { fromEarly.add(path); return toSnap(path, row); } }
+    return toSnap(path, await readRow(path));
   }
   /* Fetches can come back out of order: never hand out a version older than one already seen (0 means deleted). */
   function deliver(path, snap, only) {
@@ -1983,6 +2031,7 @@ function supabaseBackend(sb, cfg) {
       .subscribe((st) => {
         if (st !== 'SUBSCRIBED') return;
         if (joinedOnce) watch.forEach((_, path) => refresh(path)); /* catch up on what was missed while offline */
+        else fromEarly.forEach(path => { if (watch.has(path)) refresh(path); }); /* and on what changed since the early reads */
         joinedOnce = true;
       });
   }
@@ -2260,6 +2309,8 @@ async function startSupabase(cfg) {
   Cloud = supabaseBackend(sb, cfg);
   B.db = Cloud.db; B.assets = Cloud.assets; B.versioned = true;
   S.backend = 'supabase';
+  /* optimized image copies on the published site (https); bc.opt = '1' or '0' forces them (tests, a quick comparison) */
+  { const force = ls.get('opt'); Opt.on = force ? force === '1' : location.protocol === 'https:'; }
   let session = null;
   try { session = await Cloud.auth.session(); } catch {}
   authCleanUrl(back);
@@ -2311,7 +2362,8 @@ async function setUser(session, why) {
   S.canEdit = can;
   if (S.started && can !== was) {
     /* Sections read under the other rights may be missing (or showing) locked pages: read them again */
-    S.pages.forEach((_, id) => { if (!S.subsc.has(id)) S.pages.delete(id); });
+    S.pages.forEach((_, id) => { if (!S.subsc.has(id)) { S.pages.delete(id); S.loaded.delete(id); } });
+    S.prefetched = false;
     Cloud.refetch();
     applyMode(can ? (ls.get('mode') === 'viewer' ? 'viewer' : 'admin') : 'viewer');
   }
@@ -2350,6 +2402,8 @@ const PEER_COLORS = ['#002FA7', '#E5484D', '#12A594', '#F76B15', '#8E4EC6', '#D6
 const peerColor = (id) => { let h = 0; for (const c of String(id || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PEER_COLORS[h % PEER_COLORS.length]; };
 function renderPeers() { updateRailState(); refreshRowTools(); }
 function onTree() {
+  /* for the next visit: which pages the head script reads early (open categories only; see the head script) */
+  ls.set('nav', JSON.stringify(cats().filter(c => !c.locked).map(c => ({ id: c.id, subs: c.subs.map(x => x.id) }))));
   renderLogos();
   { const sig = JSON.stringify(animStyles()); if (sig !== Motion.stSig) { const first = Motion.stSig == null; Motion.stSig = sig; if (!first) Motion.resetAll(); } }
   const cur = currentCat();
@@ -2406,7 +2460,7 @@ function logoHTML(editable) {
   const logo = S.tree.logo;
   const edit = (label) => editable ? `<button type="button" class="logo-edit admin-only" data-action="logo" aria-label="${label}" title="${label}">${icon('edit')}</button>` : '';
   if (logo && logo.id) {
-    return `<button type="button" class="logo" data-action="home" aria-label="Inicio"${logo.mono !== false ? ' data-mono' : ''}><img src="${esc(assetUrl(logo.id))}" alt="Logo de la marca"${logo.w ? ` width="${logo.w}" height="${logo.h}"` : ''}></button>` + edit('Cambiar logo');
+    return `<button type="button" class="logo" data-action="home" aria-label="Inicio"${logo.mono !== false ? ' data-mono' : ''}><img src="${esc(mediaUrl(logo.id, 200, logo.w))}" alt="Logo de la marca"${logo.w ? ` width="${logo.w}" height="${logo.h}"` : ''}></button>` + edit('Cambiar logo');
   }
   /* No logo uploaded: the brand name in the display font, so everyone always has the way back Home */
   return `<button type="button" class="logo logo-word" data-action="home" aria-label="Inicio">belo</button>` + edit('Subir logo');
@@ -2515,8 +2569,27 @@ function ago(at) {
 function syncSubscriptions() {
   const cat = currentCat();
   const want = new Set(cat ? cat.subs.map(s => s.id) : []);
-  S.subsc.forEach((un, id) => { if (!want.has(id)) { un(); S.subsc.delete(id); S.loaded.delete(id); } });
+  /* a category left keeps what was read (S.pages, S.loaded): coming back shows it at once, and its subscription then
+     brings any newer version */
+  S.subsc.forEach((un, id) => { if (!want.has(id)) { un(); S.subsc.delete(id); if (!S.pages.has(id)) S.loaded.delete(id); } });
   want.forEach(id => { if (!S.subsc.has(id)) S.subsc.set(id, subscribePage(id)); });
+}
+/* Once the open category is in, the pages of the other categories are read in the background (one request), so that
+   opening one shows it at once; their images still load only when they come near the screen */
+function prefetchPages() {
+  const cat = currentCat();
+  if (S.prefetched || !cat || !cat.subs.every(x => S.loaded.has(x.id))) return;
+  S.prefetched = true;
+  const ids = openCats().flatMap(c => c.subs.map(x => x.id)).filter(id => !S.loaded.has(id) && !S.subsc.has(id));
+  const go = () => ids.forEach(async id => {
+    try {
+      const snap = await B.db.doc('pages/' + id).get();
+      if (S.loaded.has(id) || S.subsc.has(id)) return;
+      const d = snap.exists ? snap.data() : null;
+      S.pages.set(id, d && Array.isArray(d.rows) ? d.rows.map(normRow) : []); S.loaded.add(id);
+    } catch {}
+  });
+  if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 2000 }); else setTimeout(go, 400);
 }
 function subscribePage(id) {
   return watchDoc('pages/' + id, d => {
@@ -2528,6 +2601,7 @@ function subscribePage(id) {
     S.pages.set(id, rows);
     if (!first) noticeRemoteEdit(id, rows);
     if (inCurrent(id)) { renderStage(); updateRailState(); renderStatus(); }
+    prefetchPages();
   }, () => { S.loaded.add(id); if (inCurrent(id)) renderStage(); });
 }
 /* Someone else saved the block that is open here: say so once, since confirming will replace their version. */
@@ -2955,25 +3029,99 @@ function mediaFrame(s, tag) {
 const XO = () => S.backend === 'supabase' ? ' crossorigin="anonymous"' : '';
 document.addEventListener('error', (ev) => {
   const el = ev.target;
+  /* an optimized copy that failed: the originals from now on (see mediaUrl) */
+  if (el && el.tagName === 'IMG' && el.dataset.oid && OPT_RE.test(el.getAttribute('src') || '')) {
+    ev.stopPropagation();
+    Opt.off = true;
+    const id = el.dataset.oid; delete el.dataset.oid; delete el.dataset.w;
+    el.src = assetUrl(id);
+    return;
+  }
   if (!el || (el.tagName !== 'IMG' && el.tagName !== 'VIDEO') || !el.hasAttribute('crossorigin') || el.dataset.xo) return;
   ev.stopPropagation();
   el.dataset.xo = '1'; el.removeAttribute('crossorigin');
   const src = el.getAttribute('src'); el.setAttribute('src', src);
   if (el.tagName === 'VIDEO') el.load();
 }, true);
+
+/* ---------- Loading media: display copies and lazy loading ---------- */
+/* On the published site (Vercel), images are shown through its Image Optimization (/_vercel/image, set up in vercel.json
+   "images"): each one at the width the page draws it (times the screen density, up to 2x), as WebP, cached at the edge.
+   The file in the store is never touched: downloads, the editor's framing ghost and SVG / GIF use it as it is. If an
+   optimized copy ever fails (the optimizer missing on another host, over its quota), the originals load for the rest of
+   the visit. Elsewhere (local preview, the artifact, the tests) the originals load as before. */
+const IMG_W = [384, 640, 960, 1280, 1920, 2560]; /* the same list as images.sizes in vercel.json */
+const IMG_Q = 80, OPT_RE = /\/_vercel\/image\?/;
+const Opt = { on: false, off: false };
+const optable = (id) => /\.(jpe?g|png|webp)$/i.test(String(id || ''));
+/* the width to ask for: the drawn width at the screen density, never past the original's own */
+function pickW(css, ow) {
+  const need = css * Math.min(window.devicePixelRatio || 1, 2), top = IMG_W[IMG_W.length - 1];
+  let w = IMG_W.find(x => x >= need) || top;
+  if (ow > 0) w = Math.min(w, IMG_W.find(x => x >= ow) || top);
+  return w;
+}
+function mediaUrl(id, css, ow) {
+  const url = assetUrl(id);
+  return url && Opt.on && !Opt.off && optable(id) ? `/_vercel/image?url=${encodeURIComponent(url)}&w=${pickW(css, ow)}&q=${IMG_Q}` : url;
+}
+/* Images and videos load when they come within a screen of the viewport; the ones on screen ask first (high priority),
+   so what is visible never waits behind what is further down. A carousel or a strip loads all its images together when
+   it comes near. Each image asks for the width it is drawn at (its box is known before it loads: width and height are
+   set from the stored size). If the window grows, the images that now need more are swapped for larger copies. */
+const Lazy = {
+  io: 'IntersectionObserver' in window ? new IntersectionObserver((en) => en.forEach(e => {
+    if (e.isIntersecting) { Lazy.io.unobserve(e.target); Lazy.load(e.target); }
+  }), { rootMargin: '100% 0px 100% 0px' }) : null,
+  watch(el) { if (this.io) this.io.observe(el); else this.load(el); },
+  load(el) {
+    const list = el.dataset.lazy ? [el] : $$('[data-lazy]', el);
+    const r = el.getBoundingClientRect(), now = r.bottom > 0 && r.top < innerHeight;
+    list.forEach(m => {
+      const id = m.dataset.lazy; delete m.dataset.lazy;
+      if (m.tagName === 'VIDEO') {
+        m.preload = 'metadata'; m.src = assetUrl(id);
+        if (now && !m.dataset.userPaused) m.play().catch(() => {});
+        return;
+      }
+      if (now) m.fetchPriority = 'high';
+      this.size(m, id);
+    });
+  },
+  /* the drawn width: the image's box, or its frame's while it has none */
+  css(m) { const a = m.getBoundingClientRect().width, b = m.parentElement ? m.parentElement.getBoundingClientRect().width : 0; return Math.max(a, b) || innerWidth / 2; },
+  size(m, id) {
+    const ow = +m.dataset.ow || 0, url = mediaUrl(id, this.css(m), ow);
+    if (OPT_RE.test(url)) { m.dataset.oid = id; m.dataset.w = pickW(this.css(m), ow); } else { delete m.dataset.oid; delete m.dataset.w; }
+    m.src = url;
+  },
+  upgrade() {
+    $$('img[data-oid][data-w]').forEach(m => {
+      const ow = +m.dataset.ow || 0, w = pickW(Lazy.css(m), ow);
+      if (w <= +m.dataset.w || !m.complete) return;
+      const url = mediaUrl(m.dataset.oid, Lazy.css(m), ow); if (!OPT_RE.test(url)) return;
+      const pre = new Image(); pre.decoding = 'async'; pre.src = url;
+      (pre.decode ? pre.decode() : Promise.resolve()).then(() => { if (m.isConnected && m.dataset.oid) { m.src = url; m.dataset.w = w; } }).catch(() => {});
+    });
+  },
+  upgradeSoon() { clearTimeout(this.ut); this.ut = setTimeout(() => this.upgrade(), 400); }
+};
+addEventListener('resize', () => Lazy.upgradeSoon());
+/* An image of the page: loads lazily (see Lazy); ow is the original's width when it is known */
 function imgEl(id, w, h, alt = '') {
   const img = new Image(); img.alt = alt; img.decoding = 'async'; img.draggable = false;
   if (XO()) img.crossOrigin = 'anonymous';
-  if (w && h) { img.width = w; img.height = h; }
-  img.src = assetUrl(id); watchMedia(img); return img;
+  if (w && h) { img.width = w; img.height = h; img.dataset.ow = w; }
+  img.dataset.lazy = id; watchMedia(img); Lazy.watch(img); return img;
 }
+/* A video of the page: nothing is fetched until it comes near (see Lazy); it plays while it is on screen (VIO) */
 function videoEl(s) {
   const v = document.createElement('video');
-  v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'metadata';
+  v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'none';
   v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
   if (XO()) v.crossOrigin = 'anonymous';
   if (s.w && s.h) { v.width = s.w; v.height = s.h; }
-  v.src = assetUrl(s.asset); watchMedia(v); VIO && VIO.observe(v);
+  v.dataset.lazy = s.asset; watchMedia(v); Lazy.watch(v); VIO && VIO.observe(v);
   v.addEventListener('timeupdate', () => Ink.schedule());
   return v;
 }
@@ -3003,6 +3151,7 @@ function applyFrame(el, s) {
   }
   el.style.setProperty('--fx', f.x); el.style.setProperty('--fy', f.y); el.style.setProperty('--fz', f.zoom / 100);
   el.dataset.fit = f.fit;
+  Lazy.upgradeSoon(); /* scaled up, it may need a larger copy */
   if (!el.classList.contains('media') || el.classList.contains('is-fixed') || el.dataset.nat) return;
   const img = $(':scope > img', el);
   const nat = (w, h) => { if (w && h && el.classList.contains('is-framed')) { el.style.aspectRatio = `${w}/${h}`; el.dataset.nat = '1'; } };
@@ -3152,9 +3301,9 @@ function buildCarousel(s, editing) {
   if (s.ratio && s.ratio !== 'auto') root.style.aspectRatio = s.ratio;
   else if (imgs[0] && imgs[0].w && imgs[0].h) root.style.setProperty('--ar', `${imgs[0].w}/${imgs[0].h}`);
   const many = imgs.length > 1;
-  root.innerHTML = `<div class="car-viewport"><div class="car-track">${imgs.map((im, i) => `<div class="car-slide" role="group" aria-roledescription="imagen" aria-label="${i + 1} de ${imgs.length}"><img src="${esc(assetUrl(im.id))}" alt="" draggable="false" decoding="async"${XO()}${i > 1 ? ' loading="lazy"' : ''}></div>`).join('')}</div></div>
+  root.innerHTML = `<div class="car-viewport"><div class="car-track">${imgs.map((im, i) => `<div class="car-slide" role="group" aria-roledescription="imagen" aria-label="${i + 1} de ${imgs.length}"><img data-lazy="${esc(im.id)}"${im.w ? ` data-ow="${im.w}"` : ''} alt="" draggable="false" decoding="async"${XO()}></div>`).join('')}</div></div>
     ${many ? `<button type="button" class="car-arrow prev" aria-label="Imagen anterior">${icon('left')}</button><button type="button" class="car-arrow next" aria-label="Imagen siguiente">${icon('right')}</button>` : ''}`;
-  $$('img', root).forEach(watchMedia);
+  $$('img', root).forEach(watchMedia); Lazy.watch(root);
   if (!(s.ratio && s.ratio !== 'auto') && !(imgs[0] && imgs[0].w)) {
     const f = $('img', root); f && f.addEventListener('load', () => root.style.setProperty('--ar', `${f.naturalWidth}/${f.naturalHeight}`), { once: true });
   }
@@ -3290,10 +3439,10 @@ function buildStrip(s, editing) {
   root.setAttribute('role', 'region'); root.setAttribute('aria-roledescription', 'carrusel'); root.setAttribute('aria-label', `Tira de ${imgs.length} imágenes`);
   if (s.sal) root.dataset.sal = s.sal;
   setVar(root, '--sg', s.sgap);
-  root.innerHTML = `<div class="car-strip" data-lenis-prevent-horizontal>${imgs.map((im, i) => `<figure class="cs-item${i === sel ? ' is-sel' : ''}" data-i="${i}"${editing ? ` data-action="cs-item" data-slot="${s.id}"` : ''} role="group" aria-roledescription="imagen" aria-label="${i + 1} de ${imgs.length}"><div class="cs-frame"><img src="${esc(assetUrl(im.id))}" alt="" draggable="false" decoding="async"${XO()}${i > 2 ? ' loading="lazy"' : ''}></div>${i === sel ? '<span class="cs-rz" data-csrz title="Arrastra para cambiar el tamaño (Shift mantiene la proporción)"></span>' : ''}</figure>`).join('')}</div>
+  root.innerHTML = `<div class="car-strip" data-lenis-prevent-horizontal>${imgs.map((im, i) => `<figure class="cs-item${i === sel ? ' is-sel' : ''}" data-i="${i}"${editing ? ` data-action="cs-item" data-slot="${s.id}"` : ''} role="group" aria-roledescription="imagen" aria-label="${i + 1} de ${imgs.length}"><div class="cs-frame"><img data-lazy="${esc(im.id)}"${im.w ? ` data-ow="${im.w}"` : ''} alt="" draggable="false" decoding="async"${XO()}></div>${i === sel ? '<span class="cs-rz" data-csrz title="Arrastra para cambiar el tamaño (Shift mantiene la proporción)"></span>' : ''}</figure>`).join('')}</div>
     ${imgs.length > 1 ? `<button type="button" class="car-arrow prev" aria-label="Anterior">${icon('left')}</button><button type="button" class="car-arrow next" aria-label="Siguiente">${icon('right')}</button>` : ''}`;
   $$('.cs-item', root).forEach((f, i) => paintStripItem(f, imgs[i]));
-  $$('img', root).forEach(watchMedia);
+  $$('img', root).forEach(watchMedia); Lazy.watch(root);
   const c = new Strip(root);
   CAR.set(root, c); CRO && CRO.observe(root);
   return root;
@@ -3558,7 +3707,7 @@ function buildCarouselEdit(s) {
   const strip = document.createElement('div'); strip.className = 'thumbs'; strip.dataset.slot = s.id; strip.setAttribute('role', 'list');
   const up = S.uploading.get(s.id);
   const csel = carSel(s);
-  strip.innerHTML = s.images.map((im, i) => `<div class="thumb${i === csel ? ' is-sel' : ''}" tabindex="0" data-index="${i}" role="listitem" aria-label="Imagen ${i + 1}. Arrastra o usa Alt y las flechas para reordenar."><img src="${esc(assetUrl(im.id))}" alt="" draggable="false"><span class="thumb-n">${i + 1}</span><button type="button" class="thumb-x" data-action="thumb-remove" data-slot="${s.id}" data-index="${i}" aria-label="Quitar imagen ${i + 1}">${icon('x')}</button></div>`).join('')
+  strip.innerHTML = s.images.map((im, i) => `<div class="thumb${i === csel ? ' is-sel' : ''}" tabindex="0" data-index="${i}" role="listitem" aria-label="Imagen ${i + 1}. Arrastra o usa Alt y las flechas para reordenar."><img src="${esc(mediaUrl(im.id, 76, im.w))}" alt="" draggable="false"><span class="thumb-n">${i + 1}</span><button type="button" class="thumb-x" data-action="thumb-remove" data-slot="${s.id}" data-index="${i}" aria-label="Quitar imagen ${i + 1}">${icon('x')}</button></div>`).join('')
     + (up ? Array.from({ length: up.count || 1 }, () => `<div class="thumb is-pending"><span class="spinner"></span></div>`).join('') : '')
     + `<label class="thumb thumb-add" title="Añadir imágenes">${icon('plus')}<span class="sr-only">Añadir imágenes</span><input type="file" class="sr-only" data-upload="${s.id}" accept="${ACCEPT.carousel}" multiple></label>`;
   const hint = document.createElement('p'); hint.className = 'thumb-hint'; hint.textContent = s.mode === 'strip' ? 'Toca una imagen para ajustarla. Arrastra las miniaturas para cambiar el orden.' : 'Arrastra las miniaturas para cambiar el orden.';
@@ -4587,7 +4736,7 @@ function secPadding(c) {
 function secMediaFile(c) {
   const s = c.slot, meta = s.name ? esc(s.name) + (s.size ? ' · ' + fmtSize(s.size) : '') : s.type === 'image' ? 'Imagen cargada' : 'Video cargado';
   return `<div class="insp-sec"><h4>Archivo${s.w ? `<span>${s.w} × ${s.h}</span>` : ''}</h4>
-      ${s.asset ? `<div class="file-row"><span class="file-thumb">${s.type === 'image' ? `<img src="${esc(assetUrl(s.asset))}" alt="">` : icon('video')}</span><span class="file-meta">${meta}</span></div>` : ''}
+      ${s.asset ? `<div class="file-row"><span class="file-thumb">${s.type === 'image' ? `<img src="${esc(mediaUrl(s.asset, 40, s.w))}" alt="">` : icon('video')}</span><span class="file-meta">${meta}</span></div>` : ''}
       <div class="insp-row"><label class="btn ghost sm grow">${icon('upload')}${s.asset ? 'Reemplazar' : 'Subir archivo'}<input type="file" class="sr-only" data-upload="${s.id}" accept="${ACCEPT[s.type]}"></label></div>
     </div>`;
 }
@@ -4721,7 +4870,7 @@ function actView(c) {
     h += `<div class="insp-sec"><h4>Modal</h4>
       <div class="fld txt"><input id="f-acttitle" type="text" data-f="acttitle" value="${esc(a.title || '')}" placeholder="Título" maxlength="140" autocomplete="off" aria-label="Título del modal"></div>
       <textarea id="f-actbody" class="txa" data-f="actbody" rows="5" maxlength="6000" placeholder="Texto. Deja una línea en blanco entre párrafos." aria-label="Texto del modal">${esc(a.body || '')}</textarea>
-      <div class="mthumbs" role="list" aria-label="Imágenes del modal">${media.map((m, i) => `<div class="thumb" role="listitem"><img src="${esc(assetUrl(m.id))}" alt="" draggable="false"><button type="button" class="thumb-x" data-action="modal-media-remove" data-slot="${s.id}" data-i="${i}" aria-label="Quitar imagen ${i + 1}">${icon('x')}</button></div>`).join('')}${up ? Array.from({ length: up.count || 1 }, () => '<div class="thumb is-pending"><span class="spinner"></span></div>').join('') : ''}<label class="thumb thumb-add" title="Añadir imágenes">${icon('plus')}<span class="sr-only">Añadir imágenes al modal</span><input type="file" class="sr-only" data-modal-media="${s.id}" accept="${ACCEPT.image}" multiple></label></div>
+      <div class="mthumbs" role="list" aria-label="Imágenes del modal">${media.map((m, i) => `<div class="thumb" role="listitem"><img src="${esc(mediaUrl(m.id, 62, m.w))}" alt="" draggable="false"><button type="button" class="thumb-x" data-action="modal-media-remove" data-slot="${s.id}" data-i="${i}" aria-label="Quitar imagen ${i + 1}">${icon('x')}</button></div>`).join('')}${up ? Array.from({ length: up.count || 1 }, () => '<div class="thumb is-pending"><span class="spinner"></span></div>').join('') : ''}<label class="thumb thumb-add" title="Añadir imágenes">${icon('plus')}<span class="sr-only">Añadir imágenes al modal</span><input type="file" class="sr-only" data-modal-media="${s.id}" accept="${ACCEPT.image}" multiple></label></div>
       <p class="insp-hint">Las imágenes son opcionales y van debajo del texto.</p></div>`;
   }
   if (cur === 'download') h += `<div class="insp-sec"><h4>Archivos para descargar${s.files && s.files.length ? `<span>${s.files.length}</span>` : ''}</h4>${filesBlock(s)}</div>`;
@@ -6315,9 +6464,11 @@ const Slider = {
     const i = k % this.m, it = this.items[i];
     let body;
     if (it.ph != null) body = `<div class="hs-media" data-ph="${it.ph}">${PH_B[it.ph] ? '<i class="hs-b" aria-hidden="true">b</i>' : ''}</div>`;
+    else if (it.kind === 'video') body = `<div class="hs-media"><video data-src="${esc(assetUrl(it.id))}#t=0.1" muted loop playsinline preload="none" disablepictureinpicture${XO()}></video></div>`;
     else {
-      const url = esc(assetUrl(it.id));
-      body = `<div class="hs-media">${it.kind === 'video' ? `<video src="${url}#t=0.1" muted loop playsinline preload="metadata" disablepictureinpicture${XO()}></video>` : `<img src="${url}" alt="" decoding="async" draggable="false"${XO()}>`}</div>`;
+      /* a copy at the card's size (a little more, for the card in focus) */
+      const css = Math.min(this.maxW || innerWidth / 2, (this.H || 420) * this.aspect(it)) * 1.2, url = mediaUrl(it.id, css, it.w);
+      body = `<div class="hs-media"><img src="${esc(url)}"${OPT_RE.test(url) ? ` data-oid="${esc(it.id)}" data-w="${pickW(css, it.w)}"${it.w ? ` data-ow="${it.w}"` : ''}` : ''} alt="" decoding="async" draggable="false"${XO()}></div>`;
     }
     return `<div class="hs-card" data-k="${k}" data-i="${i}">${body}</div>`;
   },
@@ -6355,6 +6506,19 @@ const Slider = {
       if (c.v) { c.v.muted = true; c.v.addEventListener('loadeddata', () => { c.v.classList.add('is-loaded'); this.natural(c, c.v.videoWidth, c.v.videoHeight); this.kick(); }, { once: true }); }
     });
     this.built = true;
+    this.wakeVideos();
+  },
+  /* The videos of the ring wait for its images, which would otherwise share the bandwidth with them (3 s at most) */
+  wakeVideos() {
+    clearTimeout(this.vt);
+    const vids = this.cards.filter(c => c.v && c.v.dataset.src); if (!vids.length) return;
+    const go = () => {
+      clearTimeout(this.vt);
+      vids.forEach(c => { if (!c.v.dataset.src) return; c.v.preload = 'metadata'; c.v.src = c.v.dataset.src; delete c.v.dataset.src; c.playing = false; });
+      if (this.cards.includes(vids[0])) this.media();
+    };
+    const wait = this.cards.filter(c => c.img && !(c.img.complete && c.img.naturalWidth)).map(c => new Promise(r => { c.img.addEventListener('load', r, { once: true }); c.img.addEventListener('error', r, { once: true }); }));
+    Promise.all(wait).then(go); this.vt = setTimeout(go, 3000);
   },
   /* A card's proportions: the shape picked for it, else the file's own (clamped to sane bounds) */
   aspect(it) {
@@ -6765,10 +6929,11 @@ const Lightbox = {
     Slider.under(true);
     const ph = this.ph = item.ph != null;
     this.ar = item.w && item.h ? item.w / item.h : ph ? 1 : Slider.nat.get(item.id) || c.w / c.h; /* the file's own shape, whatever the card's */
-    const url = item.id ? esc(assetUrl(item.id)) : '';
+    const cardImg = $('img', mediaEl), url = !item.id ? '' : esc(item.kind !== 'video' && cardImg ? cardImg.getAttribute('src') : assetUrl(item.id));
     const cap = item.title || item.desc ? `<div class="hlb-cap">${item.title ? `<p class="hlb-t">${esc(item.title)}</p>` : ''}${item.desc ? `<p class="hlb-d">${esc(item.desc)}</p>` : ''}</div>` : '';
     const body = ph ? `<div class="hlb-ph"><i class="hs-b" aria-hidden="true">b</i><p>${S.mode === 'admin' ? 'Este espacio es para las imágenes y videos de la marca. Añádelos desde «Galería».' : 'Pronto, imágenes y videos de la marca en este espacio.'}</p></div>`
-      : item.kind === 'video' ? `<video src="${url}" muted loop playsinline controls${RM ? '' : ' autoplay'}></video>` : `<img src="${url}" alt="${esc(item.title || '')}">`;
+      : item.kind === 'video' ? `<video src="${url}" muted loop playsinline controls${RM ? '' : ' autoplay'}></video>`
+      : `<img src="${url}" alt="${esc(item.title || '')}"${cardImg && cardImg.dataset.oid ? ` data-oid="${esc(item.id)}" data-w="${cardImg.dataset.w}"${item.w ? ` data-ow="${item.w}"` : ''}` : ''}>`;
     lb.innerHTML = `<div class="hlb-bg" data-action="home-lb-close"></div><div class="hlb-frame"${ph ? ` data-ph="${item.ph}"` : ''}>${body}</div>`
       + cap
       + `<button type="button" class="hlb-x" data-action="home-lb-close" aria-label="Cerrar">${icon('x')}</button>`;
@@ -6783,6 +6948,7 @@ const Lightbox = {
       const cap = $('.hlb-cap', lb); if (cap) cap.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 360, delay: 320, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' });
     }
     Slider.toCard(c.k); /* behind the veil, the card glides to the middle: it closes back there */
+    setTimeout(() => { if (this.on) Lazy.upgrade(); }, RM ? 0 : 680); /* once it has grown: the copy for its full size */
     /* the dialog takes the focus (Tab reaches the close button and the video controls); focusing the button itself
        would draw its focus ring after a mouse click */
     requestAnimationFrame(() => { if (this.on) lb.focus({ preventScroll: true }); });
@@ -6856,7 +7022,7 @@ const Gallery = {
     const sum = media.length ? [nImg ? count(nImg, 'imagen', 'imágenes') : '', nVid ? count(nVid, 'video', 'videos') : ''].filter(Boolean).join(' · ') : up ? `Subiendo ${count(up, 'archivo', 'archivos')}…` : 'Todavía no hay nada';
     const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
     const thumbs = media.map((m, i) => {
-      const url = esc(assetUrl(m.id)), what = m.kind === 'video' ? 'Video' : 'Imagen';
+      const url = esc(m.kind === 'video' ? assetUrl(m.id) : mediaUrl(m.id, 110, m.w)), what = m.kind === 'video' ? 'Video' : 'Imagen';
       return `<div class="hg-th" role="listitem" data-index="${i}" data-id="${esc(m.id)}" tabindex="0" aria-label="${what} ${i + 1} de ${media.length}. Arrastra o usa Alt y las flechas para reordenar">`
         + (m.kind === 'video' ? `<video src="${url}#t=0.1" muted playsinline preload="metadata"></video><span class="hg-kind" aria-hidden="true">${icon('video')}</span>` : `<img src="${url}" alt="" decoding="async">`)
         + `<span class="thumb-n" aria-hidden="true">${i + 1}</span><button type="button" class="thumb-x" data-action="home-remove" data-id="${esc(m.id)}" aria-label="Quitar ${what.toLowerCase()} ${i + 1}">${icon('x')}</button></div>`;
@@ -7077,7 +7243,7 @@ function renderMenu() {
   bgEl.style.background = bg.kind === 'color' ? bg.color : bg.kind === 'theme' ? 'var(--bg)' : '#0b0b0d';
   let img = $('img', bgEl), dim = $('.fs-dim', bgEl);
   if (bg.kind === 'image' && bg.asset) {
-    const src = assetUrl(bg.asset);
+    const src = mediaUrl(bg.asset, Math.max(innerWidth, innerHeight * 1.5), bg.w);
     if (!img) { img = new Image(); img.alt = ''; img.decoding = 'async'; if (XO()) img.crossOrigin = 'anonymous'; img.addEventListener('load', () => Ink.run()); bgEl.prepend(img); }
     if (img.getAttribute('src') !== src) img.src = src;
     if (!dim) { dim = document.createElement('div'); dim.className = 'fs-dim'; bgEl.append(dim); }
@@ -7459,7 +7625,7 @@ function openActModal(s, from) {
       <button type="button" class="amodal-x" data-action="amodal-close" aria-label="Cerrar">${icon('x')}</button>
       <h2 id="amodal-t"${a.title ? '' : ' class="sr-only"'}>${esc(a.title || 'Detalle')}</h2>
       ${paras ? `<div class="amodal-body">${paras}</div>` : ''}
-      ${media.length ? `<div class="amodal-media${media.length === 1 ? ' is-one' : ''}">${media.map(x => `<img src="${esc(assetUrl(x.id))}" alt="" decoding="async"${x.w && x.h ? ` width="${x.w}" height="${x.h}"` : ''}${XO()}>`).join('')}</div>` : ''}
+      ${media.length ? `<div class="amodal-media${media.length === 1 ? ' is-one' : ''}">${media.map(x => `<img src="${esc(mediaUrl(x.id, media.length === 1 ? 680 : 340, x.w))}" alt="" decoding="async"${x.w && x.h ? ` width="${x.w}" height="${x.h}"` : ''}${XO()}>`).join('')}</div>` : ''}
     </div>`;
   S.modal = { from: from || document.activeElement };
   closePop(true);
