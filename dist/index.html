@@ -1862,6 +1862,8 @@ function normTree(t) {
     if (title) o.title = title;
     if (desc) o.desc = desc;
     if (['16/9', '4/5', '1/1'].includes(m.ratio)) o.ratio = m.ratio; /* the card's shape; none = the file's own */
+    /* a still of a video (see videoStill): shown while the video itself loads */
+    if (o.kind === 'video' && typeof m.poster === 'string' && m.poster) o.poster = m.poster;
     return o;
   }) };
   if (isNum(home.radius)) t.home.radius = clamp(Math.round(home.radius), 0, 40); else delete t.home.radius; /* corners of the cards */
@@ -6375,12 +6377,19 @@ function makeRing(canvas) {
     texOf(c, scheme, done) {
       const it = c.item;
       if (it.ph != null) return phTex(it.ph, scheme);
-      const el = c.v || c.img; if (!el) return null;
-      const key = (c.v ? 'v:' : 'i:') + it.id; let t = tex.get(key);
-      if (done.has(key)) return t;
+      const v = c.v ? (c.lead && c.lead.v) || c.v : null;
+      if (!v && !c.img) return null;
+      if (v && !(v.readyState >= 2 && v.videoWidth)) {
+        /* no frame yet: the video's still, while there is one */
+        const key = 's:' + it.id; let t = tex.get(key);
+        if (!(t && t.ok) && !done.has(key) && c.still && c.stillReady) { done.add(key); t = upload(key, c.still, false); }
+        return t && t.ok ? t : null;
+      }
+      const key = (v ? 'v:' : 'i:') + it.id; let t = tex.get(key);
+      if (done.has(key)) return t && t.ok ? t : null;
       done.add(key);
-      if (c.v) { if (c.v.readyState >= 2 && c.v.videoWidth && (!t || !t.ok || t.vt !== c.v.currentTime)) t = upload(key, c.v, true); }
-      else if (c.img.complete && c.img.naturalWidth && (!t || !t.ok)) t = upload(key, c.img, false);
+      if (v) { if (!t || !t.ok || t.vt !== v.currentTime) t = upload(key, v, true); }
+      else if (c.ready && (!t || !t.ok)) t = upload(key, c.img, false);
       return t && t.ok ? t : null;
     },
     draw(S2) {
@@ -6412,6 +6421,48 @@ function makeRing(canvas) {
     destroy() { tex.forEach(t => gl.deleteTexture(t.tex)); tex.clear(); const e = gl.getExtension('WEBGL_lose_context'); lost = true; if (e) e.loseContext(); }
   };
   return ring;
+}
+
+/* ---------- Video stills ---------- */
+/* A still of each Home video (home.media[].poster): a JPEG of an early frame, at most 1600 px wide, so its card shows at
+   once while the video itself loads. Made from the file when it is uploaded; a video uploaded before stills existed gets
+   one the first time an editor's Home plays it. */
+function stillOf(v) {
+  return new Promise((res) => {
+    try {
+      const w = v.videoWidth, h = v.videoHeight; if (!w || !h) return res(null);
+      const k = Math.min(1, 1600 / w), c = document.createElement('canvas');
+      c.width = Math.round(w * k); c.height = Math.round(h * k);
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+      c.toBlob(b => res(b), 'image/jpeg', .86); /* a video without CORS taints the canvas: toBlob throws, no still */
+    } catch { res(null); }
+  });
+}
+/* the still of a local file, a moment in (the very first frame is often black) */
+function videoStill(file) {
+  return new Promise((res) => {
+    const v = document.createElement('video'), url = URL.createObjectURL(file);
+    const end = (b) => { clearTimeout(t); URL.revokeObjectURL(url); v.removeAttribute('src'); v.load(); res(b); };
+    const t = setTimeout(() => end(null), 15000);
+    v.muted = true; v.playsInline = true; v.preload = 'auto';
+    v.addEventListener('loadeddata', () => { v.currentTime = Math.min(.5, (v.duration || 1) / 4); }, { once: true });
+    v.addEventListener('seeked', () => stillOf(v).then(end), { once: true });
+    v.addEventListener('error', () => end(null), { once: true });
+    v.src = url;
+  });
+}
+async function uploadStill(file) {
+  try { const b = await videoStill(file); if (!b || !B.assets) return null; const r = await B.assets.upload(b, { type: 'image/jpeg' }); return r && r.id; } catch { return null; }
+}
+const stillsDone = new Set();
+async function backfillStill(item, v) {
+  if (!S.canEdit || !B.assets || item.poster || stillsDone.has(item.id)) return;
+  stillsDone.add(item.id);
+  const b = await stillOf(v); if (!b) return;
+  let id = null; try { const r = await B.assets.upload(b, { type: 'image/jpeg' }); id = r && r.id; } catch {}
+  if (!id) return;
+  if (!homeMedia().some(m => m.id === item.id && !m.poster)) { dropAssets([id]); return; }
+  mutateTree(t => { const x = t.home.media.find(m => m.id === item.id); if (x && !x.poster) x.poster = id; });
 }
 
 /* ---------- Slider ---------- */
@@ -6451,7 +6502,7 @@ const Slider = {
   setMedia(media, radius, speed) {
     this.speed = speed ?? HOME_SPEED; if (!this.speedLive) this.drift = this.speed;
     const items = media.length ? media : PH_SEQ.map(([ph, ratio]) => ({ ph, ratio }));
-    const sig = media.map(m => m.kind + ':' + m.id).join('|');
+    const sig = media.map(m => m.kind + ':' + m.id + (m.poster ? ':' + m.poster : '')).join('|'); /* a still arriving rebuilds the cards */
     const look = items.map(m => m.ratio || '').join('|') + '|' + radius;
     if (sig === this.sig && look === this.look) { this.items = items; this.cards.forEach(c => { c.item = items[c.i]; }); this.media(); this.kick(); return; }
     const first = this.sig == null;
@@ -6464,7 +6515,10 @@ const Slider = {
     const i = k % this.m, it = this.items[i];
     let body;
     if (it.ph != null) body = `<div class="hs-media" data-ph="${it.ph}">${PH_B[it.ph] ? '<i class="hs-b" aria-hidden="true">b</i>' : ''}</div>`;
-    else if (it.kind === 'video') body = `<div class="hs-media"><video data-src="${esc(assetUrl(it.id))}#t=0.1" muted loop playsinline preload="none" disablepictureinpicture${XO()}></video></div>`;
+    else if (it.kind === 'video') {
+      const css = Math.min(this.maxW || innerWidth / 2, (this.H || 420) * this.aspect(it)) * 1.2, still = it.poster ? mediaUrl(it.poster, css) : '';
+      body = `<div class="hs-media">${still ? `<img class="hs-still" src="${esc(still)}" alt="" decoding="async" draggable="false"${XO()}>` : ''}<video data-src="${esc(assetUrl(it.id))}#t=0.1"${still ? ` poster="${esc(still)}"` : ''} muted loop playsinline preload="none" disablepictureinpicture${XO()}></video></div>`;
+    }
     else {
       /* a copy at the card's size (a little more, for the card in focus) */
       const css = Math.min(this.maxW || innerWidth / 2, (this.H || 420) * this.aspect(it)) * 1.2, url = mediaUrl(it.id, css, it.w);
@@ -6489,7 +6543,7 @@ const Slider = {
     const g = this.gl; this.gl = null; $('#hs').classList.remove('is-gl');
     try { g.destroy(); } catch {}
     this.cards.forEach(c => { c.box = ''; c.tf = ''; c.el.style.transform = ''; });
-    if (this.built) { this.layout(); this.render(); }
+    if (this.built) { this.layout(); this.render(); this.wakeVideos(); }
   },
   build(N) {
     this.glInit();
@@ -6497,13 +6551,17 @@ const Slider = {
     if (this.hover) this.setHover(null);
     st.innerHTML = Array.from({ length: N }, (_, k) => this.cardHTML(k)).join('');
     this.N = N; this.mid = null;
-    this.cards = $$('.hs-card', st).map((el, k) => ({ el, k, i: k % this.m, item: this.items[k % this.m], l: 0, s: 0, c: 0, w: 0, h: 0, r: 0, ph: 0, box: '', tf: '', zi: '', off: null, q: null, zc: 0, v: $('video', el), img: $('img', el), playing: false }));
+    this.cards = $$('.hs-card', st).map((el, k) => ({ el, k, i: k % this.m, item: this.items[k % this.m], l: 0, s: 0, c: 0, w: 0, h: 0, r: 0, ph: 0, box: '', tf: '', zi: '', off: null, q: null, zc: 0, v: $('video', el), img: $('img:not(.hs-still)', el), still: $('img.hs-still', el), playing: false }));
+    /* The ring repeats the gallery: with WebGL the cards of one video share a texture, so only the first of them (its
+       lead) loads and plays the file; drawn as DOM cards, each one plays its own */
+    const leads = new Map();
+    this.cards.forEach(c => { if (c.v) { const l = leads.get(c.item.id); if (l) c.lead = l; else leads.set(c.item.id, c); } });
+    /* an image becomes a texture once decoded (decoding inside the draw would stall a frame) */
+    const ready = (img, then) => { const go = () => (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(then); if (img.complete && img.naturalWidth) go(); else img.addEventListener('load', go, { once: true }); };
     this.cards.forEach(c => {
-      if (c.img) {
-        const done = () => { c.img.classList.add('is-loaded'); this.natural(c, c.img.naturalWidth, c.img.naturalHeight); this.kick(); };
-        if (c.img.complete && c.img.naturalWidth) done(); else c.img.addEventListener('load', done, { once: true });
-      }
-      if (c.v) { c.v.muted = true; c.v.addEventListener('loadeddata', () => { c.v.classList.add('is-loaded'); this.natural(c, c.v.videoWidth, c.v.videoHeight); this.kick(); }, { once: true }); }
+      if (c.img) ready(c.img, () => { c.ready = true; c.img.classList.add('is-loaded'); this.natural(c, c.img.naturalWidth, c.img.naturalHeight); this.kick(); });
+      if (c.still) ready(c.still, () => { c.stillReady = true; c.still.classList.add('is-loaded'); this.natural(c, c.still.naturalWidth, c.still.naturalHeight); this.kick(); });
+      if (c.v) { c.v.muted = true; c.v.addEventListener('loadeddata', () => { c.v.classList.add('is-loaded'); this.natural(c, c.v.videoWidth, c.v.videoHeight); this.kick(); if (!c.lead) setTimeout(() => backfillStill(c.item, c.v), 1200); }, { once: true }); }
     });
     this.built = true;
     this.wakeVideos();
@@ -6511,7 +6569,7 @@ const Slider = {
   /* The videos of the ring wait for its images, which would otherwise share the bandwidth with them (3 s at most) */
   wakeVideos() {
     clearTimeout(this.vt);
-    const vids = this.cards.filter(c => c.v && c.v.dataset.src); if (!vids.length) return;
+    const vids = this.cards.filter(c => c.v && c.v.dataset.src && (!this.gl || !c.lead)); if (!vids.length) return;
     const go = () => {
       clearTimeout(this.vt);
       vids.forEach(c => { if (!c.v.dataset.src) return; c.v.preload = 'metadata'; c.v.src = c.v.dataset.src; delete c.v.dataset.src; c.playing = false; });
@@ -6678,9 +6736,11 @@ const Slider = {
   /* Videos play (muted, looping) only on the cards in view while Home is shown; the rest hold their first frame */
   media() {
     const on = this.built && S.view === 'home' && !document.hidden && !this.held && !this.covered && !RM;
+    const gl = !!this.gl, lead = new Set();
+    if (gl && on) this.cards.forEach(c => { if (c.v && !c.off) lead.add(c.lead || c); });
     for (const c of this.cards) {
       if (!c.v) continue;
-      const play = on && !c.off;
+      const play = gl ? lead.has(c) : on && !c.off;
       if (play === c.playing) continue;
       c.playing = play;
       if (play) c.v.play().catch(() => {}); else c.v.pause();
@@ -6932,7 +6992,7 @@ const Lightbox = {
     const cardImg = $('img', mediaEl), url = !item.id ? '' : esc(item.kind !== 'video' && cardImg ? cardImg.getAttribute('src') : assetUrl(item.id));
     const cap = item.title || item.desc ? `<div class="hlb-cap">${item.title ? `<p class="hlb-t">${esc(item.title)}</p>` : ''}${item.desc ? `<p class="hlb-d">${esc(item.desc)}</p>` : ''}</div>` : '';
     const body = ph ? `<div class="hlb-ph"><i class="hs-b" aria-hidden="true">b</i><p>${S.mode === 'admin' ? 'Este espacio es para las imágenes y videos de la marca. Añádelos desde «Galería».' : 'Pronto, imágenes y videos de la marca en este espacio.'}</p></div>`
-      : item.kind === 'video' ? `<video src="${url}" muted loop playsinline controls${RM ? '' : ' autoplay'}></video>`
+      : item.kind === 'video' ? `<video src="${url}"${cardImg ? ` poster="${esc(cardImg.getAttribute('src'))}"` : ''} muted loop playsinline controls${RM ? '' : ' autoplay'}></video>`
       : `<img src="${url}" alt="${esc(item.title || '')}"${cardImg && cardImg.dataset.oid ? ` data-oid="${esc(item.id)}" data-w="${cardImg.dataset.w}"${item.w ? ` data-ow="${item.w}"` : ''}` : ''}>`;
     lb.innerHTML = `<div class="hlb-bg" data-action="home-lb-close"></div><div class="hlb-frame"${ph ? ` data-ph="${item.ph}"` : ''}>${body}</div>`
       + cap
@@ -7006,6 +7066,7 @@ const Gallery = {
     if (!this.removed.size) return;
     const have = new Set(homeMedia().map(m => m.id));
     const gone = [...this.removed.keys()].filter(id => !have.has(id));
+    gone.slice().forEach(id => { const p = (this.removed.get(id) || {}).poster; if (p) gone.push(p); }); /* their stills too */
     this.removed = new Map();
     if (!gone.length) return;
     this.hist = this.hist.filter(h => h.kind !== 'remove' || !gone.includes(h.item.id));
@@ -7112,7 +7173,7 @@ function homeRemove(id) {
   const item = clone(media[i]);
   if (Gallery.isOpen) { Gallery.hist.push({ kind: 'remove', item, index: i }); Gallery.removed.set(id, item); }
   mutateTree(t => { t.home.media = t.home.media.filter(m => m.id !== id); });
-  if (!Gallery.isOpen) safeDrop([id]);
+  if (!Gallery.isOpen) safeDrop([id, item.poster].filter(Boolean));
   /* keep the keyboard in the grid */
   const n = $(`#home-gal .hg-th[data-index="${Math.min(i, homeMedia().length - 1)}"]`) || $('#home-file');
   if (n) n.focus({ preventScroll: true });
@@ -7158,7 +7219,17 @@ async function uploadHome(fileList) {
   const key = 'home:' + uid('u');
   S.uploading.set(key, { label: ok.length === 1 ? ok[0].f.name : `${ok.length} archivos`, count: ok.length });
   renderStatus(); renderHome();
-  const got = (await Promise.all(ok.map(async x => { const r = await uploadOne(x.f, x.t); return r && { id: r.id, kind: x.kind, w: r.w, h: r.h }; }))).filter(Boolean);
+  /* a video's still is made and stored alongside; the video joins the gallery without waiting for it */
+  const got = (await Promise.all(ok.map(async x => {
+    const still = x.kind === 'video' ? uploadStill(x.f) : null, r = await uploadOne(x.f, x.t);
+    if (!r) { if (still) still.then(p => p && dropAssets([p])); return null; }
+    if (still) still.then(p => {
+      if (!p) return;
+      if (!homeMedia().some(m => m.id === r.id && !m.poster)) { dropAssets([p]); return; }
+      mutateTree(t => { const m = t.home.media.find(y => y.id === r.id); if (m && !m.poster) m.poster = p; });
+    });
+    return { id: r.id, kind: x.kind, w: r.w, h: r.h };
+  }))).filter(Boolean);
   S.uploading.delete(key);
   renderStatus();
   if (!got.length) { renderHome(); return; }

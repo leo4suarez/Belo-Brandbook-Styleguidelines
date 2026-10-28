@@ -308,6 +308,10 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   const shape = (i) => page.evaluate((i) => [...document.querySelectorAll(`#hs-stage .hs-card[data-i="${i}"]`)].map(e => Math.round(e.offsetWidth / e.offsetHeight * 100) / 100), i);
   check(await until(() => page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card')].every(e => { const i = e.querySelector('img'), v = e.querySelector('video'); const nw = i ? i.naturalWidth : v.videoWidth, nh = i ? i.naturalHeight : v.videoHeight; return nh && Math.abs(e.offsetWidth / e.offsetHeight - nw / nh) < .03; }))), 'each card keeps the proportions of its own file (the images and the video)');
   check(await page.evaluate(() => new Set([...document.querySelectorAll('#hs-stage .hs-card')].map(e => e.offsetHeight)).size === 1), 'all cards share one height; widths follow the files');
+  // Videos: a still made from the file on upload shows at once; with WebGL one card per video loads the file
+  check(await until(() => page.evaluate(() => { const vc = [...document.querySelectorAll('#hs-stage .hs-card')].filter(c => c.querySelector('video')); return vc.length > 1 && vc.every(c => { const st = c.querySelector('img.hs-still'); return st && st.naturalWidth > 0; }); })), 'each video card shows a still of its video until it plays');
+  const vload = await page.evaluate(() => ({ gl: document.querySelector('#hs').classList.contains('is-gl'), vids: document.querySelectorAll('#hs-stage .hs-card video').length, src: document.querySelectorAll('#hs-stage .hs-card video[src]').length }));
+  check(vload.vids > 1 && (vload.gl ? vload.src === 1 : vload.src === vload.vids), `the video file loads once for the ring, not once per card (${vload.src} of ${vload.vids} cards, ${vload.gl ? 'WebGL' : 'DOM'})`);
   const own0 = (await shape(0))[0];
   check(await page.evaluate(() => document.querySelector('#home-gal [data-action="home-ratio"][aria-pressed="true"]')?.dataset.v === 'auto'), 'the gallery shows "Original" for a new item');
   await page.click('#home-gal [data-action="home-ratio"][data-v="1/1"]'); await page.waitForTimeout(300);

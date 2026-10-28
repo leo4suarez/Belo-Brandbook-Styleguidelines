@@ -67,7 +67,12 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 - **Carga rápida:**
   - Las imágenes y los videos se piden recién cuando están a una pantalla de distancia, y los que ya se ven van primero, con prioridad alta: lo visible nunca espera a lo que está más abajo.
   - En el sitio publicado, cada imagen se pide al ancho al que se dibuja (por la densidad de la pantalla, hasta 2×), en WebP, a través de Vercel Image Optimization. El archivo original no se toca: las descargas siguen entregando el original. Si el optimizador falla, se cargan los originales. Los SVG y los GIF van siempre tal cual.
-  - En la Home, las tarjetas usan copias a su tamaño y los videos esperan a que carguen las imágenes, 3 segundos como máximo. El lightbox arranca con la copia de la tarjeta y la cambia por una más grande.
+  - En la Home:
+    - Las tarjetas usan copias a su tamaño, y las imágenes se decodifican antes de pasar a WebGL.
+    - Cada video tiene una portada (un cuadro del video) que se ve al instante mientras el video carga. Se hace al subirlo; los que se subieron antes la reciben la primera vez que la Home de un editor los reproduce.
+    - Con WebGL, cada video se descarga y se reproduce una sola vez, aunque el anillo lo repita en varias tarjetas.
+    - Los videos esperan a que carguen las imágenes, 3 segundos como máximo.
+    - El lightbox arranca con la copia de la tarjeta y la cambia por una más grande.
   - Al abrir la página, el árbol y las secciones de la categoría se piden en un solo pedido, antes de que lleguen los scripts. Las demás categorías se leen de fondo, así que abrir otra es inmediato. Volver a una categoría ya vista también es inmediato.
 - Scroll suave con Lenis. La barra de scroll de la página no tiene canaleta: solo se ve el indicador, finito, a la derecha, y se puede arrastrar.
 - Animaciones preset (GSAP + ScrollTrigger + SplitText), en la vista **Animación** del panel de edición (toggle Diseño / Animación):
@@ -115,7 +120,7 @@ node tests/run.cjs layout.cjs     # solo algunas suites
 - Las pruebas recorren los flujos principales: crear y editar bloques, panel, deshacer y rehacer, menú, buscador, temas y mobile.
 - `collab.cjs` prueba el guardado compartido con la librería real de Supabase contra un Supabase simulado (`tests/fake-supabase.cjs`): login con Google, permisos, cambios en vivo entre dos editores, conflictos, presencia, archivos, reintentos e importación.
 - `blocks.cjs` prueba duplicar, arrastrar dentro de una sección, a otra y sobre el sidebar, **Mover a…**, Esc para cancelar y que borrar un duplicado no borre los archivos del original.
-- `home.cjs` abre Chromium con la GPU habilitada (`--ignore-gpu-blocklist --enable-gpu`) para que el anillo se dibuje con WebGL, y comprueba sobre la captura que los bordes de todas las tarjetas caen sobre una misma curva; también prueba la versión sin WebGL. Prueba la Home: el slider (curva 3D sin tarjetas encimadas, movimiento automático y su pausa con el mouse o el toque, los dos botones redondos, teclado, rueda, arrastre con inercia), hover, lightbox de la tarjeta clickeada, galería (subir, titular y descripción con sus límites, formatos, esquinas, velocidad, ordenar, quitar y deshacer), los botones arriba a la derecha solo en la Home, movimiento reducido, mobile y el switch viewer/admin de las secciones.
+- `home.cjs` abre Chromium con la GPU habilitada (`--ignore-gpu-blocklist --enable-gpu`) para que el anillo se dibuje con WebGL, y comprueba sobre la captura que los bordes de todas las tarjetas caen sobre una misma curva; también prueba la versión sin WebGL. Prueba la Home: el slider (curva 3D sin tarjetas encimadas, movimiento automático y su pausa con el mouse o el toque, los dos botones redondos, teclado, rueda, arrastre con inercia), hover, lightbox de la tarjeta clickeada, galería (subir, titular y descripción con sus límites, formatos, esquinas, velocidad, ordenar, quitar y deshacer), las portadas de los videos y que cada video se descargue una sola vez, los botones arriba a la derecha solo en la Home, movimiento reducido, mobile y el switch viewer/admin de las secciones.
 - `editor.cjs` prueba el inspector contextual, el espaciado interno, los estilos de texto (también entre secciones y entre dos editores) y la paleta.
 - `media.cjs` prueba el encuadre, el módulo SVG, el módulo de color, las interacciones (copiar, modal y descarga) y los archivos descargables, también guardados en el Supabase simulado.
 - `layout.cjs` prueba el tema claro por visita, el título del sidebar y su lista de categorías, las categorías bloqueadas (en la página y en la base simulada), mover una subcategoría, los contenedores, grupos y divisores de los textos, el espaciado interno del auto layout, los bordes, el ancho de los bloques, la división de dos mitades y la tira del carrusel (con sus esquinas, su fondo y su espaciado interno), la barra de scroll de la página, el chip de las interacciones que sigue al cursor y la carga. Sobre la carga prueba que las secciones llegan en un pedido, las lecturas tempranas de la visita siguiente, las imágenes diferidas, las copias optimizadas a su ancho y la vuelta a los originales si el optimizador falla.
@@ -161,7 +166,7 @@ Hay dos tipos de documento (en Supabase y en la base del artifact):
   {
     logo: { id, w, h, mono } | null,
     menu: { bg: { kind: 'color', color } | { kind: 'image', asset, w, h, dim } },
-    home: { media: [{ id, kind: 'image' | 'video', w, h, title, desc, ratio }], radius, speed },  // la galería del slider, en orden
+    home: { media: [{ id, kind: 'image' | 'video', w, h, title, desc, ratio, poster }], radius, speed },  // la galería del slider, en orden; poster: id de la portada de un video
                                                                       // title (60) y desc (160): textos del lightbox, opcionales (un label viejo pasa a title)
                                                                       // ratio: '16/9' | '4/5' | '1/1' (sin ratio = la del archivo); radius: esquinas (0-40, por defecto 16)
                                                                       // speed: velocidad del movimiento automático (0-100, por defecto 24; 0 = quieto)
@@ -287,3 +292,11 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - En laboratorio (20 Mbps, 150 ms, caché vacía, pantalla 2×):
     - categoría con fotos de 4000 px: la primera imagen pasa de 6,1 s a 1,0 s;
     - Home: las tarjetas pasan de 11,4 s a 1,6 s.
+- **v7.5:** la Home más liviana.
+  - Portadas para los videos: la tarjeta se ve al instante mientras el video carga.
+  - Un solo video por elemento en el anillo con WebGL.
+  - Imágenes decodificadas antes de pasar a la GPU.
+  - Calidad 80 declarada para el optimizador (`qualities` en `vercel.json`).
+  - En laboratorio (20 Mbps, 150 ms, caché vacía):
+    - todas las tarjetas visibles pasan de 8,7 s a 1,6 s;
+    - con una galería chica que el anillo repite, de 12,7 s a 1,6 s, y los videos bajan de 36 MB a 17 MB en los primeros 10 s.
