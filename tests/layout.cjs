@@ -492,12 +492,19 @@ function watchErrors(page, label) {
     const blk = (t, size, weight, extra = {}) => ({ id: 'b' + Math.random().toString(36).slice(2, 8), text: t, font: 'jakarta', size, weight, lh: 120, ls: -1, align: 'left', upper: false, ...extra });
     const mod = (id, blocks, bg = { kind: 'none' }) => ({ id: 'r_' + id, layout: 'full', h: null, slots: [{ id: 'm_' + id, type: 'text', bg, align: 'start', ink: 'auto', blocks }] });
     const para = 'Queremos que una moneda, una frontera o un sistema no decidan hasta dónde puede llegar una persona. El poder ya está ahí.';
+    fake.files.set('hero.jpg', { body: fs.readFileSync(FIX + 'hero.jpg'), type: 'image/jpeg' });
+    fake.files.set('clip.webm', { body: fs.readFileSync(FIX + 'clip.webm'), type: 'video/webm' });
+    const hero = (k) => ({ id: 'r_' + k + 'h', layout: 'fullscreen', h: null, slots: [{ id: 'm_' + k + 'h', type: 'image', asset: 'hero.jpg', w: 1600, h: 1000 }],
+      overlay: { pos: 'br', width: 'content', slot: { id: 't_' + k + 'h', type: 'text', bg: { kind: 'none' }, align: 'end', ink: 'auto', blocks: [blk('VOICE & TONE', 120, 900, { font: 'phudu', upper: true, align: 'right' })] } } });
+    const video = (k) => ({ id: 'r_' + k + 'v', layout: 'full', h: null, slots: [{ id: 'm_' + k + 'v', type: 'video', asset: 'clip.webm', w: 640, h: 360 }] });
     const page = (k, name) => ({ rows: [
+      ...(k === 'a' ? [hero(k)] : []),
       mod(k + '1', [blk(name, 72, 600), blk('Propósito', 68, 600, { color: 'pc_light' }), blk(para, 16, 500, { color: 'pc_gray' })]),
       mod(k + '2', [blk('Color en imagen', 32, 600), blk('Más natural, igual de intencional', 14, 600), blk(para, 14, 500)]),
       mod(k + '3', [blk('PODER', 200, 900, { font: 'phudu', upper: true }), blk('Pone primero lo que la persona puede hacer.', 13, 600, { color: 'pc_gray' }), blk('Personas', 24, 600, { color: 'pc_gray' })]),
       mod(k + '4', [blk('Entendemos la complejidad', 48, 600), blk(para, 16, 500)], { kind: 'color', color: '#002fa7' }),
-      mod(k + '5', [blk(para + ' ' + para, 16, 500), blk(para, 16, 500, { box: { pl: 40, pr: 20 } }), blk(para, 16, 500)])
+      mod(k + '5', [blk(para + ' ' + para, 16, 500), blk(para, 16, 500, { box: { pl: 40, pr: 20 } }), blk(para, 16, 500)]),
+      ...(k === 'a' ? [video(k)] : [])
     ] });
     fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } },
       palette: [{ id: 'pc_azul', hex: '#002fa7', name: 'Azul Belo' }, { id: 'pc_gray', hex: '#868686', name: 'Gray' }, { id: 'pc_light', hex: '#bfbfbf', name: 'Light text Gray' }],
@@ -512,14 +519,19 @@ function watchErrors(page, label) {
     await M.goto(SUPA_BASE + '#s_a'); await M.waitForSelector('#s-s_c .tb'); await M.waitForTimeout(900);
     const styles = () => M.evaluate(() => [...document.querySelectorAll('#stage .tb[data-mr]')].map(t => {
       const cs = getComputedStyle(t), slot = t.closest('.slot-text');
-      return { mr: t.dataset.mr, font: t.dataset.font, gray: t.hasAttribute('data-gray'), fs: cs.fontSize, lh: cs.lineHeight, fw: cs.fontWeight, color: cs.color, ink: slot ? getComputedStyle(slot).color : null, x: Math.round(t.getBoundingClientRect().left), box: t.classList.contains('has-fill') || t.classList.contains('has-bst') };
+      return { hero: !!t.closest('.fs-overlay'), mr: t.dataset.mr, font: t.dataset.font, gray: t.hasAttribute('data-gray'), fs: cs.fontSize, lh: cs.lineHeight, fw: cs.fontWeight, color: cs.color, ink: slot ? getComputedStyle(slot).color : null, x: Math.round(t.getBoundingClientRect().left), box: t.classList.contains('has-fill') || t.classList.contains('has-bst') };
     }));
-    const ts = await styles(), by = (r) => ts.filter(t => t.mr === r);
+    const ts = (await styles()).filter(t => !t.hero), by = (r) => ts.filter(t => t.mr === r);
     const roles = await M.evaluate(() => Object.fromEntries([...document.querySelectorAll('#s-s_a .tb[data-mr]')].map(t => [t.textContent.slice(0, 24), t.dataset.mr])));
     const want = { 'Dirección estratégica': 't', 'Propósito': 't', 'PODER': 't', 'Entendemos la complejida': 't', 'Color en imagen': 't', 'Personas': 's', 'Más natural, igual de in': 's', 'Pone primero lo que la p': 'b', 'Queremos que una moneda,': 'b' };
     check(Object.entries(want).every(([k, v]) => roles[k] === v), 'each block takes its style by use: 28px and up as titles, smaller headings and bold labels as subtitles, gray notes and paragraphs as text ' + JSON.stringify(roles));
-    check(ts.every(t => t.fs === { t: '22px', s: '14px', b: '12px' }[t.mr]), 'on a phone: titles 22px, subtitles 14px, text 12px (' + [...new Set(ts.map(t => t.mr + ' ' + t.fs))].join(', ') + ')');
-    check(ts.every(t => Math.abs(parseFloat(t.lh) / parseFloat(t.fs) - 1.1) < .01), 'every text has its lines 110% apart (' + [...new Set(ts.map(t => t.mr + ' ' + t.lh))].join(', ') + ')');
+    check(ts.every(t => t.fs === (t.font === 'phudu' ? '40px' : { t: '22px', s: '14px', b: '14px' }[t.mr])), 'on a phone: titles 22px (40px in Phudu), subtitles and text 14px (' + [...new Set(ts.map(t => t.mr + ' ' + t.font + ' ' + t.fs))].join(', ') + ')');
+    check(ts.every(t => Math.abs(parseFloat(t.lh) / parseFloat(t.fs) - (t.mr === 't' ? 1.1 : 1.2)) < .01), 'titles have their lines 110% apart, subtitles and text 120% (' + [...new Set(ts.map(t => t.mr + ' ' + t.lh))].join(', ') + ')');
+    // The hero: no list of sections over it, its Phudu title big, on the left and white; videos without their buttons
+    const hv = await M.evaluate(() => { const t = document.querySelector('#s-s_a .fs-overlay .tb'), r = t.getBoundingClientRect(), rg = document.createRange(); rg.selectNodeContents(t); const g = rg.getClientRects()[0]; return { fs: getComputedStyle(t).fontSize, x: Math.round(g.left), color: getComputedStyle(t).color, nav: !!document.querySelector('#rail-nav').getClientRects().length, ctrls: [...document.querySelectorAll('#stage .media-ctrls')].map(c => !!c.getClientRects().length) }; });
+    check(!hv.nav, 'no list of sections on a phone');
+    check(hv.fs === '64px' && hv.x === 30 && hv.color === 'rgb(255, 255, 255)', `the hero title: 64px, from the left (${hv.x}px), white (${hv.fs}, ${hv.color})`);
+    check(hv.ctrls.length > 0 && hv.ctrls.every(v => !v), `videos show no pause or sound buttons (${hv.ctrls.length} video)`);
     check(by('t').every(t => t.font === 'phudu' || t.fw === '600') && by('s').every(t => t.fw === '600') && by('b').every(t => t.fw === '500'), 'titles and subtitles semibold, text medium');
     check(by('s').length >= 2 && by('s').every(t => t.color === t.ink), 'subtitles in the full ink of their module, never gray (a gray heading too)');
     check(by('b').some(t => t.gray && t.color === 'rgb(134, 134, 134)'), 'gray text stays gray');
@@ -536,6 +548,8 @@ function watchErrors(page, label) {
     const bar = () => M.evaluate(() => { const r = (s) => { const e = document.querySelector(s); const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, h: b.height, on: !!e.getClientRects().length, text: e.textContent.trim() }; }; return { secs: r('#btn-secs'), menu: r('#btn-menu'), search: r('#btn-search') }; });
     let b = await bar();
     check(b.secs.on && !b.search.on && b.secs.r <= b.menu.l - 6 && near(b.secs.t, b.menu.t, 1) && b.secs.h === 44, `the dropdown sits left of the menu, no search button (${Math.round(b.secs.l)}–${Math.round(b.secs.r)}, menu at ${Math.round(b.menu.l)})`);
+    const fills = await M.evaluate(() => ['#btn-secs', '#btn-menu'].map(s => { const cs = getComputedStyle(document.querySelector(s)); return cs.backgroundColor + ' ' + (cs.backdropFilter || cs.webkitBackdropFilter || 'none'); }));
+    check(fills.every(f => f === 'rgb(255, 255, 255) none'), 'the dropdown and the menu are solid white, no blur (' + fills.join(' | ') + ')');
     check(b.secs.text === 'Dirección estratégica', 'it shows the section in view (' + b.secs.text + ')');
     const pad = await M.evaluate(() => { const s = document.querySelector('#s-s_a .row[data-id="r_a4"] .slot-text'), t = s.querySelector('.tb'); return Math.round(t.getBoundingClientRect().left - s.getBoundingClientRect().left); });
     check(pad === 14, `on a colored module too the text starts 14px in (${pad}px)`);

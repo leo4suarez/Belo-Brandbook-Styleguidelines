@@ -143,7 +143,12 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     await page.click('#btn-menu'); await page.waitForTimeout(120);
     const rv = await page.evaluate(() => { const r = document.querySelector('#menu-reveal').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
     check(Math.abs(rv.x - c.x) < 2 && Math.abs(rv.y - c.y) < 2, 'the menu reveal grows from the menu button in its new corner');
-    await page.keyboard.press('Escape'); await page.waitForTimeout(600);
+    await page.waitForTimeout(800);
+    await page.click('#menu-close'); await page.waitForTimeout(30);
+    /* closing with the X, the circle ends inside the "Menú" pill (no circle wider than the button left over at the end) */
+    const end = await page.evaluate(() => { const rv = document.querySelector('#menu-reveal'), a = rv.getAnimations()[0], k = a && a.effect.getKeyframes().pop(), m = k && /scale\(([\d.e-]+)\)/.exec(k.transform), b = document.querySelector('#btn-menu').getBoundingClientRect(); return { d: m ? rv.offsetWidth * parseFloat(m[1]) : NaN, w: b.width, h: b.height }; });
+    check(end.d <= end.h + 1, `closing, the circle shrinks into the button (${Math.round(end.d)}px across, the pill is ${Math.round(end.w)}×${Math.round(end.h)})`);
+    await page.waitForTimeout(600);
   }
   {
     const cs = await cards(page), c = await center(page), W = 1512;

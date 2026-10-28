@@ -1234,20 +1234,25 @@ html.is-row-drag .page-mode{visibility:hidden}
   .rail-top::before{content:"";position:absolute;inset:0 0 -28px;z-index:-1;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent);mask-image:linear-gradient(to bottom,#000 55%,transparent);opacity:0;transition:opacity 220ms ease;pointer-events:none}
   html.is-scrolled .rail-top::before{opacity:1}
   .rail-nav{overflow:visible;-webkit-mask-image:none;mask-image:none;padding:calc(92px + env(safe-area-inset-top,0px)) 16px 12px}
-  .stage{padding-top:calc(var(--nav-h,300px) + 8px)}
+  /* no list of sections on a phone: the dropdown next to the menu does it, so the page starts under the top bar */
+  .rail-nav{display:none}
+  .stage{padding-top:calc(84px + env(safe-area-inset-top,0px))}
+  /* videos play without their pause and sound buttons */
+  .media-ctrls{display:none}
   .stage.starts-full{padding-top:0}
   .row[data-layout="half"] .row-grid{grid-template-columns:minmax(0,1fr)}
   /* Three text styles on a phone, whatever size a block has on a wide screen (applyBlockStyle sets data-mr):
-     titles 22px, subtitles 14px semibold in the module's full ink, text 12px, all with lines 110% apart. A block
-     being edited keeps its own.
-     The display title on a category cover (Phudu over the photo) stays a display: 40px. */
+     titles 22px with lines 110% apart, subtitles 14px semibold in the module's full ink and text 14px, both 120%.
+     A block being edited keeps its own.
+     Phudu titles are 40px, and the display title on a category cover (Phudu over the photo) 64px, on the left. */
   #stage .row:not(.is-editing) .tb[data-mr]{letter-spacing:-.02em!important}
   #stage .row:not(.is-editing) .tb[data-mr="t"]{font-size:22px;line-height:1.1!important;letter-spacing:-.03em!important}
   #stage .row:not(.is-editing) .tb[data-mr="t"]:not([data-font="phudu"]){font-weight:600!important}
-  #stage .row:not(.is-editing) .fs-overlay .tb[data-mr="t"][data-font="phudu"]{font-size:40px;line-height:1.1!important;letter-spacing:-.02em!important}
-  #stage .row:not(.is-editing) .tb[data-mr="s"]{font-size:14px;line-height:1.1!important;font-weight:600!important}
+  #stage .row:not(.is-editing) .tb[data-mr="t"][data-font="phudu"]{font-size:40px}
+  #stage .row:not(.is-editing) .fs-overlay .tb[data-mr="t"][data-font="phudu"]{font-size:64px;letter-spacing:-.01em!important;text-align:left!important;margin-left:0;align-self:flex-start}
+  #stage .row:not(.is-editing) .tb[data-mr="s"]{font-size:14px;line-height:1.2!important;font-weight:600!important}
   #stage .row:not(.is-editing) .tb[data-mr="s"][data-gray]{color:inherit!important}
-  #stage .row:not(.is-editing) .tb[data-mr="b"]{font-size:12px;line-height:1.1!important;font-weight:500!important}
+  #stage .row:not(.is-editing) .tb[data-mr="b"]{font-size:14px;line-height:1.2!important;font-weight:500!important}
   /* every text starts 30px in from the screen (the modules' 16px, then 14px inside them); a text box of its own only
      keeps its inner space on the left when it shows (a fill or a stroke) */
   #stage .slot-text .tpad{padding-left:14px}
@@ -1256,8 +1261,9 @@ html.is-row-drag .page-mode{visibility:hidden}
      in the open menu */
   .rbtn-search{display:none}
   .ov-find{display:grid}
-  html[data-view="cat"] .rbtn-secs:not([hidden]){display:flex;align-items:center;gap:6px;width:auto;max-width:min(54vw,240px);padding:0 12px 0 16px;border-radius:999px;font:600 14px/1 var(--font);letter-spacing:-.01em;background:color-mix(in srgb,var(--bg) 62%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
-  html[data-view="cat"] .rbtn-secs[data-ink="light"]{background:rgba(0,0,0,.22)}
+  html[data-view="cat"] .rbtn-secs:not([hidden]){display:flex;align-items:center;gap:6px;width:auto;max-width:min(54vw,240px);padding:0 12px 0 16px;border-radius:999px;font:600 14px/1 var(--font);letter-spacing:-.01em}
+  /* the dropdown and the menu: solid white whatever is behind them (a hairline keeps them on a white page) */
+  html[data-view="cat"] :is(.rbtn-secs,.rbtn-menu){background:#FFFFFF;color:#000000;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1);text-shadow:none}
   .rbtn-secs .rbtn-st{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rbtn-secs svg.i{flex:none;width:16px;height:16px;transition:transform 200ms var(--ease-out)}
   .rbtn-secs[aria-expanded="true"] svg.i{transform:rotate(180deg)}
@@ -1378,6 +1384,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const ROOT = document.documentElement;
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MOBILE = matchMedia('(max-width: 860px)');
+const TOUCH = matchMedia('(hover: none) and (pointer: coarse)');
 const MB = 1024 * 1024;
 const BRAND = '#002fa7';
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -1947,7 +1954,7 @@ const rubber = (o, dim, c = .55) => (o * dim * c) / (dim + c * Math.abs(o));
 /* ================= State ================= */
 const S = {
   backend: 'loading', mode: 'viewer', canEdit: false, tree: null,
-  cat: null, active: null,
+  cat: null, active: null, scrolledAt: -1e9,
   pages: new Map(), loaded: new Set(), subsc: new Map(),
   edit: null, adder: null, inline: null, focusInline: false,
   pop: null, confirmDelete: null, uploading: new Map(), justAdded: new Set(),
@@ -5975,9 +5982,11 @@ function mediaInk(mediaEl, rect) {
   const car = $('.carousel', mediaEl) || (mediaEl.classList.contains('carousel') ? mediaEl : null);
   if (car) { const c = CAR.get(car); src = c && c.currentImg(); }
   else src = $('img, video', mediaEl);
-  if (!src) return null;
+  /* a hero's photo or video that can't be read (not decoded yet, or refused by the browser) is taken as dark */
+  const hero = mediaEl.classList.contains('fs-media') && ['image', 'video'].includes(mediaEl.dataset.kind);
+  if (!src) return hero ? { ink: 'light', photo: true } : null;
   const L = regionLum(src, rect);
-  if (L == null) return null;
+  if (L == null) return hero ? { ink: 'light', photo: true } : null;
   let f = 1 - dim;
   if (mediaEl.dataset.scrim === '1') { const cx = (rect.left + rect.right) / 2, cy = (rect.top + rect.bottom) / 2; if (MOBILE.matches ? cy < innerHeight * .45 : cx < innerWidth * .36) f *= .6; }
   return { ink: inkOverPhoto(L * f), photo: true };
@@ -6028,6 +6037,8 @@ const Ink = {
       const r = el.getBoundingClientRect();
       if (ctx === 'ovtext') {
         const row = el.closest('.row'); const m = row && $('.fs-media', row);
+        /* on a phone the text over a hero's photo or video is always white (the crop under it changes with the screen) */
+        if (m && MOBILE.matches && ['image', 'video'].includes(m.dataset.kind)) { set(el, { ink: 'light', photo: true }); return; }
         set(el, m ? mediaInk(m, r) : null); return;
       }
       /* On Home the stage is hidden: the top bar sits on the page background (theme ink). A block being dragged
@@ -6127,8 +6138,12 @@ function addTextScroll(rowEl, tb, a) {
 function buildMotion(rowEl, row, { preview = false, onDone = null, onUpdate = null } = {}) {
   const vars = { onComplete: () => { Ink.schedule(); onDone && onDone(); } };
   if (onUpdate) vars.onUpdate = onUpdate;
-  if (preview) vars.paused = true; else vars.scrollTrigger = { trigger: rowEl, start: 'top 82%', once: true };
+  /* on a phone the text must never wait for its animation: a block starts as soon as its top comes into view and plays
+     2.5 times faster (and the word-by-word reading on scroll is left out) */
+  const phone = !preview && MOBILE.matches;
+  if (preview) vars.paused = true; else vars.scrollTrigger = { trigger: rowEl, start: phone ? 'top bottom' : 'top 82%', once: true };
   const tl = Motion.g.timeline(vars);
+  if (phone) tl.timeScale(2.5);
   motionPlan(row).forEach(m => {
     const el = $(`.slot[data-slot="${m.s.id}"]`, rowEl); if (!el) return;
     const sp = SCROLL[m.a.scroll] || {};
@@ -6137,7 +6152,7 @@ function buildMotion(rowEl, row, { preview = false, onDone = null, onUpdate = nu
     m.blocks.forEach(t => {
       const tb = $(`.tb[data-block="${t.b.id}"]`, el); if (!tb) return;
       addTextEnter(tl, tb, t.a, t.at);
-      if (!preview) addTextScroll(rowEl, tb, t.a);
+      if (!preview && !phone) addTextScroll(rowEl, tb, t.a);
     });
   });
   return tl;
@@ -6169,7 +6184,14 @@ const Motion = {
     this.refresh();
   },
   resetAll() { this.live.forEach(ctx => ctx.revert()); this.live.clear(); this.sync(); },
-  refresh() { if (!this.g) return; clearTimeout(this.rq); this.rq = setTimeout(() => window.ScrollTrigger.refresh(), 120); },
+  /* ScrollTrigger re-measures after images load or blocks change. A refresh sets the scroll position back when it is
+     done, and on a touch screen that stops a flick dead: there it waits until the page has stopped scrolling */
+  refresh() {
+    if (!this.g) return;
+    clearTimeout(this.rq);
+    const go = () => { if (TOUCH.matches && performance.now() - S.scrolledAt < 300) { this.rq = setTimeout(go, 200); return; } window.ScrollTrigger.refresh(); };
+    this.rq = setTimeout(go, 120);
+  },
   /* Preview of the block being edited: plays it, or holds it paused at a point of the scrub bar */
   preview({ held = false } = {}) {
     this.stopPreview(false);
@@ -6271,6 +6293,7 @@ function scrollIntoViewSoft(el) {
 }
 function flashRow(el) { if (!el) return; el.classList.remove('is-flash'); void el.offsetWidth; el.classList.add('is-flash'); setTimeout(() => el.classList.remove('is-flash'), 1700); }
 function onScroll() {
+  S.scrolledAt = performance.now();
   Ink.schedule(); spySchedule(); ghostSoon();
   if (rdrag && rdrag.active) rowDragTarget(rdrag);
   ROOT.classList.toggle('is-scrolled', scrollY > 8);
@@ -7512,7 +7535,8 @@ let ovReturn = null, ovTimer = 0;
    finished by the safety timer, the menu is fully drawn. */
 function revealGeom() {
   const b = $('#btn-menu').getBoundingClientRect(); const x = b.left + b.width / 2, y = b.top + b.height / 2;
-  return { x, y, r0: Math.max(b.width / 2, 10), R: Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 4 };
+  /* the circle starts and ends inside the button: half its height (the Home's "Menú" pill is wider than tall) */
+  return { x, y, r0: Math.max(Math.min(b.width, b.height) / 2, 10), R: Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 4 };
 }
 function settle(ov) { ov.getAnimations({ subtree: true }).forEach(a => { try { a.finish(); } catch { try { a.cancel(); } catch {} } }); }
 document.addEventListener('visibilitychange', () => { if (document.hidden) $$('.ov.is-open').forEach(settle); });
