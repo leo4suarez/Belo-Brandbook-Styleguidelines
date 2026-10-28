@@ -160,6 +160,11 @@ html.ov-open.no-lenis{overflow:hidden}
 .rbtn svg.i{width:19px;height:19px;stroke-width:1.9}
 .rbtn-menu[data-ink="light"]{background:#FFFFFF;color:#000000;box-shadow:none}
 .rbtn-menu[data-ink="dark"]{background:transparent}
+.rbtn-l{display:none}
+/* Home: the menu is a labelled pill in the brand blue */
+html[data-view="home"] .rbtn-menu{width:auto;padding:0 18px 0 22px;display:flex;align-items:center;gap:12px;border-radius:999px;background:var(--brand);color:#FFFFFF;box-shadow:none;font:600 16px/1 var(--font);letter-spacing:-.01em}
+html[data-view="home"] .rbtn-menu .rbtn-l{display:inline}
+@media (hover:hover) and (pointer:fine){html[data-view="home"] .rbtn-menu:hover{background:color-mix(in srgb,var(--brand) 86%,#000000);box-shadow:none}}
 
 .logo-wrap{position:relative;display:flex;align-items:center;min-width:0}
 .logo{display:flex;align-items:center;height:44px;border-radius:10px;transition:transform 140ms var(--ease-out)}
@@ -1040,7 +1045,7 @@ html[data-view="home"]{overscroll-behavior:none;background:var(--home-bg)}
 .hs.is-gl:focus-visible .hs-card.is-mid .hs-media{box-shadow:0 0 0 3px var(--focus)!important}
 /* A card is the image or video itself (size and place set by Slider.layout); its title and description show in the lightbox */
 .hs-card{position:absolute;left:0;top:0;transform-origin:50% 50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform}
-.hs-card.is-off{visibility:hidden}
+.hs-card.is-off{visibility:hidden;will-change:auto} /* out of view: no compositing layer (the ring repeats dozens of cards) */
 .hs-card.is-out > *{visibility:hidden} /* in the lightbox: its place on the curve waits for it to come back */
 .hs-media{position:absolute;inset:0;border-radius:var(--hs-r,16px);overflow:hidden;background:var(--ph-0);container-type:size;isolation:isolate;box-shadow:var(--hs-shadow);transition:box-shadow 420ms ease}
 .hs-card.is-hover .hs-media{box-shadow:var(--hs-shadow-up);transition-duration:300ms}
@@ -2284,7 +2289,7 @@ function setScheme(next, persist = true) {
 /* ================= Boot ================= */
 async function boot() {
   $('#btn-search').innerHTML = icon('search');
-  $('#btn-menu').innerHTML = icon('burger');
+  $('#btn-menu').innerHTML = `<span class="rbtn-l">Menú</span>${icon('burger')}`;
   $('#menu-close').innerHTML = icon('x');
   $('#search-close').innerHTML = icon('x');
   $('#search-ico').innerHTML = icon('search');
@@ -6335,7 +6340,10 @@ void main() {
 }`;
 function makeRing(canvas) {
   let gl = null;
-  try { gl = canvas.getContext('webgl2', { premultipliedAlpha: true, antialias: true }) || canvas.getContext('webgl', { premultipliedAlpha: true, antialias: true }); } catch {}
+  /* no multisampling: the fragment shader smooths every visible edge itself (the corners' distance field), and the mesh's
+     own edges fall where the shadow has already faded out. On a 2x screen that is 4 samples a pixel the GPU never fills */
+  const opts = { premultipliedAlpha: true, antialias: false };
+  try { gl = canvas.getContext('webgl2', opts) || canvas.getContext('webgl', opts); } catch {}
   if (!gl) return null;
   const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null; };
   const vs = sh(gl.VERTEX_SHADER, HS_VS), fs = sh(gl.FRAGMENT_SHADER, HS_FS); if (!vs || !fs) return null;
@@ -6351,11 +6359,15 @@ function makeRing(canvas) {
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost = true; ring.failed = true; Slider.glFail(); });
   const css = (n) => getComputedStyle(ROOT).getPropertyValue(n).trim();
   const rgb = (v) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = v || '#000'; const h = c.fillStyle; if (h[0] === '#') return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255); const m = h.match(/[\d.]+/g) || [0, 0, 0]; return m.slice(0, 3).map(x => +x / 255); };
-  /* big files are scaled down first (a texture never needs more than ~1600px here); that also keeps mipmaps cheap */
+  /* big files are scaled down first (a texture never needs more than ~1600px here); that also keeps mipmaps cheap. A
+     video's frames go through one canvas of its own at that size: uploading a 4K frame on every frame is what drops them */
+  const vcan = new WeakMap();
   const fit = (el) => {
     const w = el.naturalWidth || el.videoWidth || el.width, h = el.naturalHeight || el.videoHeight || el.height, k = Math.min(1, 1600 / Math.max(w, h));
-    if (k >= 1 || el.tagName === 'VIDEO') return { src: el, w, h };
-    const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+    const video = el.tagName === 'VIDEO';
+    if (k >= 1 || (video && k > .75)) return { src: el, w, h }; /* a 1080p video goes straight up: the extra pass pays off from 4K */
+    let c = video && vcan.get(el);
+    if (!c || c.width !== Math.round(w * k)) { c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k); if (video) vcan.set(el, c); }
     c.getContext('2d').drawImage(el, 0, 0, c.width, c.height);
     return { src: c, w: c.width, h: c.height };
   };
@@ -6371,7 +6383,7 @@ function makeRing(canvas) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mip ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    t.w = f.w; t.h = f.h; t.ok = true; if (video) t.vt = el.currentTime;
+    t.w = f.w; t.h = f.h; t.ok = true; if (video) { t.vt = el.currentTime; t.at = performance.now(); t.big = f.src !== el; }
     return t;
   };
   /* placeholder looks, drawn once per theme: the token color (or the blue gradient) and the small "b" */
@@ -6384,7 +6396,7 @@ function makeRing(canvas) {
     return upload(key, c, false);
   };
   const ring = {
-    failed: false, g2,
+    failed: false, g2, base: {},
     resize(w, h, dpr) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); this.w = w; this.h = h; },
     /* the texture of a card, uploaded when it is ready (videos: a new frame per draw while they play) */
     texOf(c, scheme, done) {
@@ -6401,7 +6413,7 @@ function makeRing(canvas) {
       const key = (v ? 'v:' : 'i:') + it.id; let t = tex.get(key);
       if (done.has(key)) return t && t.ok ? t : null;
       done.add(key);
-      if (v) { if (!t || !t.ok || t.vt !== v.currentTime) t = upload(key, v, true); }
+      if (v) { if (!t || !t.ok || (t.vt !== v.currentTime && (!t.big || performance.now() - t.at > 28))) t = upload(key, v, true); } /* a 4K one: ~33 frames a second at most */
       else if (c.ready && (!t || !t.ok)) t = upload(key, c.img, false);
       return t && t.ok ? t : null;
     },
@@ -6415,7 +6427,7 @@ function makeRing(canvas) {
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.uniform2f(U.u_view, this.w, this.h); gl.uniform4f(U.u_cam, R, P, cx, cy); gl.uniform1f(U.u_bulge, HS_BULGE);
       gl.uniform1f(U.u_rad, rad); gl.uniform1i(U.u_tex, 0); gl.activeTexture(gl.TEXTURE0);
-      const pad = Math.round(H * .09), base = rgb(css('--ph-0')), sc = dark ? [0, 0, 0] : [0, .06, .25], scheme = dark ? 'd' : 'l';
+      const scheme = dark ? 'd' : 'l', pad = Math.round(H * .09), base = this.base[scheme] || (this.base[scheme] = rgb(css('--ph-0'))), sc = dark ? [0, 0, 0] : [0, .06, .25];
       const done = new Set(), list = cards.filter(c => !c.off && !c.el.classList.contains('is-out'));
       const each = (c) => { gl.uniform4f(U.u_card, c.s, c.w, c.h, pad); gl.uniform1f(U.u_lift, HS_LIFT * H * c.l); gl.uniform1f(U.u_scale, 1 + .03 * c.l); };
       gl.uniform1f(U.u_mode, 0);

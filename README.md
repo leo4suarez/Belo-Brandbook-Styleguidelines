@@ -24,7 +24,7 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
   - Se navega con dos botones redondos abajo al centro, con flechas finas (**Anterior** / **Siguiente**, sin puntos ni contador), con las flechas del teclado, con la rueda o el trackpad, y arrastrando o deslizando: la fila sigue con inercia y se acomoda en la tarjeta más cercana.
   - Al pasar el mouse, la tarjeta se acerca un poco. Al hacer clic en cualquier tarjeta, se agranda hasta un lightbox centrado (con su proporción original) mientras la tarjeta se desliza al centro detrás; se cierra con la X, Esc o un clic afuera. Debajo de la imagen, centrados, van el **titular** (14 px, semibold) y la **descripción** (14 px, regular, en un tono más suave), si los tiene.
   - En Admin, el botón **Galería** (abajo a la izquierda) abre el panel para sumar imágenes o videos (también soltándolos), quitarlos y ordenarlos arrastrando; para el elemento elegido, su formato (Original / Horizontal / Vertical / Cuadrada), su **Titular** (hasta 60 caracteres) y su **Descripción** (hasta 160), con contador; y para todas, las **Esquinas** (0 a 40) y la **Velocidad** del movimiento (0 a 100; mientras se ajusta, el slider se mueve a esa velocidad aunque la galería esté abierta). Elegir una miniatura lleva su tarjeta al centro y todo se puede deshacer. Sin contenido, el slider muestra tarjetas de muestra en azul Belo, blanco y grises.
-  - En la Home, los botones de búsqueda y menú van arriba a la derecha (con el mismo margen que el logo a la izquierda); en las secciones vuelven al lado de la lista, deslizándose al cambiar de vista. El logo (o la palabra "belo" si no hay logo cargado) siempre vuelve a la Home. Con `prefers-reduced-motion` no se mueve sola, el cambio de tarjeta es instantáneo, sin inercia, y los videos no arrancan solos.
+  - En la Home, los botones de búsqueda y menú van arriba a la derecha (con el mismo margen que el logo a la izquierda); el de menú es una pastilla azul Belo con «Menú» y el ícono; en las secciones vuelven al lado de la lista, deslizándose al cambiar de vista. El logo (o la palabra "belo" si no hay logo cargado) siempre vuelve a la Home. Con `prefers-reduced-motion` no se mueve sola, el cambio de tarjeta es instantáneo, sin inercia, y los videos no arrancan solos.
   - Cada visita arranca en modo claro. El switch claro/oscuro vale solo para esa visita (esa pestaña).
 - Menú de pantalla completa, desde el botón de arriba:
   - Categorías grandes abajo a la izquierda.
@@ -74,6 +74,7 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
     - Primero cargan las tarjetas a la vista y dos de cada lado; el resto del anillo sigue cuando esas están (o a los 2,5 s). Los videos esperan a eso y se piden recién cuando su tarjeta se acerca. Suenan como mucho 3 a la vez, los más cercanos al centro.
     - **Versiones livianas:** arrastrar a la Galería un archivo `<archivo>.web.mp4` (una copia más liviana, por ejemplo 1080p H.264) o `<archivo>.still.jpg` (una portada), con el nombre del archivo del video sin su extensión, lo engancha a ese video en vez de sumarlo a la galería. El anillo y el lightbox reproducen la copia; el original queda en el almacén.
     - El lightbox arranca con la copia de la tarjeta y la cambia por una más grande.
+    - El anillo sube a la GPU los videos 4K achicados a 1600 px, a lo sumo un cuadro nuevo cada 28 ms (las versiones livianas, a su ritmo); dibuja sin multisampling (los bordes se suavizan en el shader); las tarjetas que no se ven no ocupan capas del navegador.
   - El navegador guarda el último árbol del catálogo (`bc.tree`): en las visitas siguientes el menú y la Home se dibujan al instante, y el árbol guardado se reemplaza apenas llega el de la base.
   - Al abrir la página, el árbol y las secciones de la categoría se piden en un solo pedido, antes de que lleguen los scripts. Las demás categorías se leen de fondo, así que abrir otra es inmediato. Volver a una categoría ya vista también es inmediato.
 - Scroll suave con Lenis. La barra de scroll de la página no tiene canaleta: solo se ve el indicador, finito, a la derecha, y se puede arrastrar.
@@ -312,3 +313,12 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
     - video en los primeros 10 s: de 27 MB a 5 MB.
   - Los 15 videos comprimidos a 1080p H.264 (60 cuadros, SSIM 0,99 contra el original) pasan de 113 MB a 22 MB.
 - **v7.7:** la página se declara en español y pide no ser traducida (`lang="es"`, `translate="no"`, `<meta name="google" content="notranslate">`). Chrome tomaba los títulos en inglés como señal de una página en inglés y la "traducía": la animación por palabras mostraba la traducción y al terminar devolvía el texto real.
+- **v7.8:**
+  - Botón **Menú** en la Home: pastilla azul Belo con el texto y el ícono, al lado de la búsqueda. En las secciones sigue siendo el botón redondo.
+  - Menos cuadros perdidos en el anillo de la Home:
+    - los videos 4K se achican a 1600 px antes de pasar a la GPU (la tarjeta nunca se dibuja más grande);
+    - de esos videos 4K sube un cuadro nuevo cada 28 ms como máximo; las versiones livianas de 1080p suben directo y a su ritmo (60 cuadros);
+    - el lienzo WebGL ya no usa multisampling: los bordes redondeados se suavizan en el shader, así que la placa de video procesa 4 veces menos muestras por cuadro;
+    - el color de fondo se calcula una vez por tema, no en cada cuadro;
+    - las tarjetas que no se ven no ocupan capas del navegador.
+  - En el banco de pruebas (WebGL por software, sin placa de video) el anillo en movimiento pasa de 19 a 26 cuadros por segundo.
