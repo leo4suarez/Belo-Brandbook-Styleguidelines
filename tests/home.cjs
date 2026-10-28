@@ -312,6 +312,15 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   check(await until(() => page.evaluate(() => { const vc = [...document.querySelectorAll('#hs-stage .hs-card')].filter(c => c.querySelector('video')); return vc.length > 1 && vc.every(c => { const st = c.querySelector('img.hs-still'); return st && st.naturalWidth > 0; }); })), 'each video card shows a still of its video until it plays');
   const vload = await page.evaluate(() => ({ gl: document.querySelector('#hs').classList.contains('is-gl'), vids: document.querySelectorAll('#hs-stage .hs-card video').length, src: document.querySelectorAll('#hs-stage .hs-card video[src]').length }));
   check(vload.vids > 1 && (vload.gl ? vload.src === 1 : vload.src === vload.vids), `the video file loads once for the ring, not once per card (${vload.src} of ${vload.vids} cards, ${vload.gl ? 'WebGL' : 'DOM'})`);
+  // A lighter copy made outside ("<file>.web.mp4", named after the video's file) attaches to that video, not as a new item
+  {
+    const vid = await page.evaluate(() => { const v = document.querySelector('#hs-stage .hs-card video'); const c = v.closest('.hs-card'); return [...document.querySelectorAll('#home-gal .hg-th[data-id]')][+c.dataset.i].dataset.id; });
+    const before = await page.evaluate(() => [...document.querySelectorAll('#hs-stage .hs-card video')].map(v => v.getAttribute('src') || v.dataset.src).find(Boolean));
+    const copy = T + vid.replace(/\.[^.]+$/, '') + '.web.mp4'; require('fs').copyFileSync(FIX + 'clip.webm', copy);
+    await page.setInputFiles('#home-file', copy);
+    const after = await until(() => page.evaluate((b) => { const a = [...document.querySelectorAll('#hs-stage .hs-card video')].map(v => v.getAttribute('src') || v.dataset.src).find(Boolean); return !!a && a !== b && document.querySelectorAll('#home-gal .hg-th[data-id]').length === 4; }, before));
+    check(after, 'a lighter copy named after a video attaches to it (the ring plays it) instead of joining the gallery');
+  }
   const own0 = (await shape(0))[0];
   check(await page.evaluate(() => document.querySelector('#home-gal [data-action="home-ratio"][aria-pressed="true"]')?.dataset.v === 'auto'), 'the gallery shows "Original" for a new item');
   await page.click('#home-gal [data-action="home-ratio"][data-v="1/1"]'); await page.waitForTimeout(300);

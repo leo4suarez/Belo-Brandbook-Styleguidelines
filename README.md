@@ -71,8 +71,10 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
     - Las tarjetas usan copias a su tamaño, y las imágenes se decodifican antes de pasar a WebGL.
     - Cada video tiene una portada (un cuadro del video) que se ve al instante mientras el video carga. Se hace al subirlo; los que se subieron antes la reciben la primera vez que la Home de un editor los reproduce.
     - Con WebGL, cada video se descarga y se reproduce una sola vez, aunque el anillo lo repita en varias tarjetas.
-    - Los videos esperan a que carguen las imágenes, 3 segundos como máximo.
+    - Primero cargan las tarjetas a la vista y dos de cada lado; el resto del anillo sigue cuando esas están (o a los 2,5 s). Los videos esperan a eso y se piden recién cuando su tarjeta se acerca. Suenan como mucho 3 a la vez, los más cercanos al centro.
+    - **Versiones livianas:** arrastrar a la Galería un archivo `<archivo>.web.mp4` (una copia más liviana, por ejemplo 1080p H.264) o `<archivo>.still.jpg` (una portada), con el nombre del archivo del video sin su extensión, lo engancha a ese video en vez de sumarlo a la galería. El anillo y el lightbox reproducen la copia; el original queda en el almacén.
     - El lightbox arranca con la copia de la tarjeta y la cambia por una más grande.
+  - El navegador guarda el último árbol del catálogo (`bc.tree`): en las visitas siguientes el menú y la Home se dibujan al instante, y el árbol guardado se reemplaza apenas llega el de la base.
   - Al abrir la página, el árbol y las secciones de la categoría se piden en un solo pedido, antes de que lleguen los scripts. Las demás categorías se leen de fondo, así que abrir otra es inmediato. Volver a una categoría ya vista también es inmediato.
 - Scroll suave con Lenis. La barra de scroll de la página no tiene canaleta: solo se ve el indicador, finito, a la derecha, y se puede arrastrar.
 - Animaciones preset (GSAP + ScrollTrigger + SplitText), en la vista **Animación** del panel de edición (toggle Diseño / Animación):
@@ -166,7 +168,7 @@ Hay dos tipos de documento (en Supabase y en la base del artifact):
   {
     logo: { id, w, h, mono } | null,
     menu: { bg: { kind: 'color', color } | { kind: 'image', asset, w, h, dim } },
-    home: { media: [{ id, kind: 'image' | 'video', w, h, title, desc, ratio, poster }], radius, speed },  // la galería del slider, en orden; poster: id de la portada de un video
+    home: { media: [{ id, kind: 'image' | 'video', w, h, title, desc, ratio, poster, web }], radius, speed },  // la galería del slider, en orden; poster: id de la portada de un video; web: id de su copia liviana
                                                                       // title (60) y desc (160): textos del lightbox, opcionales (un label viejo pasa a title)
                                                                       // ratio: '16/9' | '4/5' | '1/1' (sin ratio = la del archivo); radius: esquinas (0-40, por defecto 16)
                                                                       // speed: velocidad del movimiento automático (0-100, por defecto 24; 0 = quieto)
@@ -300,3 +302,12 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - En laboratorio (20 Mbps, 150 ms, caché vacía):
     - todas las tarjetas visibles pasan de 8,7 s a 1,6 s;
     - con una galería chica que el anillo repite, de 12,7 s a 1,6 s, y los videos bajan de 36 MB a 17 MB en los primeros 10 s.
+- **v7.6:** la Home con el catálogo real (46 elementos, 15 videos en 4K).
+  - El anillo carga por cercanía: primero lo que se ve.
+  - Videos solo cerca de la vista, 3 sonando a la vez como máximo.
+  - Árbol guardado en el navegador para las visitas siguientes.
+  - Versiones livianas de los videos enganchadas por nombre desde la Galería.
+  - Medido contra Supabase y el optimizador de Vercel reales:
+    - tarjetas a la vista: de 3,9 s a 1,8 s (segunda visita: de 3,2 s a 1,25 s);
+    - video en los primeros 10 s: de 27 MB a 5 MB.
+  - Los 15 videos comprimidos a 1080p H.264 (60 cuadros, SSIM 0,99 contra el original) pasan de 113 MB a 22 MB.

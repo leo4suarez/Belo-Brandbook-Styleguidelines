@@ -1864,6 +1864,8 @@ function normTree(t) {
     if (['16/9', '4/5', '1/1'].includes(m.ratio)) o.ratio = m.ratio; /* the card's shape; none = the file's own */
     /* a still of a video (see videoStill): shown while the video itself loads */
     if (o.kind === 'video' && typeof m.poster === 'string' && m.poster) o.poster = m.poster;
+    /* a lighter copy of a video (1080p H.264, see attachVersions): the ring and the lightbox play it; the original stays */
+    if (o.kind === 'video' && typeof m.web === 'string' && m.web) o.web = m.web;
     return o;
   }) };
   if (isNum(home.radius)) t.home.radius = clamp(Math.round(home.radius), 0, 40); else delete t.home.radius; /* corners of the cards */
@@ -2254,7 +2256,8 @@ const palByHex = (hex) => { const h = String(hex || '').toLowerCase(); return pa
 const blockColor = (b) => { const c = b && b.color && palById(b.color); return c ? c.hex : null; };
 function mutateTree(fn) {
   commit('catalog/tree', d => { const t = normTree(d); fn(t); return normTree(t); });
-  S.tree = normTree(viewOf('catalog/tree'));
+  /* before the stored tree has arrived the page shows the saved copy: the change shows on it, and is saved on the stored one */
+  S.tree = docOf('catalog/tree').base === undefined && S.tree ? (() => { const t = clone(S.tree); fn(t); return normTree(t); })() : normTree(viewOf('catalog/tree'));
   syncSubscriptions();
   renderLogos(); renderRail(); renderStage();
   if (S.overlay === 'menu') renderMenu();
@@ -2326,8 +2329,13 @@ function start() {
   const pref = ls.get('mode');
   S.started = true;
   applyMode(S.canEdit ? (pref === 'viewer' ? 'viewer' : 'admin') : 'viewer', false);
+  /* The last tree this browser saw (bc.tree) draws the rail and the Home at once; the stored one replaces it when it
+     arrives (and a change made meanwhile is saved on top of the stored one, see mutateTree) */
+  const keep = S.backend === 'supabase'; /* the shared catalog only (the local preview starts from its seed every time) */
+  if (keep && !S.tree) { try { const t = JSON.parse(ls.get('tree') || 'null'); if (t && Array.isArray(t.categories)) { S.tree = normTree(t); onTree(); } } catch {} }
   watchDoc('catalog/tree', data => {
     const t = normTree(data);
+    if (keep && data) ls.set('tree', JSON.stringify(t));
     if (S.tree && same(t, S.tree)) return;
     S.tree = t;
     onTree();
@@ -6488,6 +6496,7 @@ const HS_MAXW = .4;     /* the widest a card gets, in viewport widths (desktop) 
 const HS_SPRING = 11;   /* stiffness of the glide to a card (critically damped: no bounce) */
 const HS_THROW = .28;   /* how far a flick carries, in seconds of its speed */
 const HS_LIFT = .05;    /* hover: toward the axis, in card heights */
+const HS_PLAY = 3;     /* videos of the ring playing at once, at most */
 const HOME_SPEED = 24;  /* default autoplay speed (tree.home.speed, 0-100): 0 holds still, 100 is fast */
 const hsDriftPx = (speed, H) => speed * .8 * H / 320; /* px/s along the curve: the default is ~19 px/s on a 320px card */
 const HS_HOLD = 2500;   /* after a touch or a key the drift waits this long (ms) before it starts again */
@@ -6502,7 +6511,7 @@ const Slider = {
   setMedia(media, radius, speed) {
     this.speed = speed ?? HOME_SPEED; if (!this.speedLive) this.drift = this.speed;
     const items = media.length ? media : PH_SEQ.map(([ph, ratio]) => ({ ph, ratio }));
-    const sig = media.map(m => m.kind + ':' + m.id + (m.poster ? ':' + m.poster : '')).join('|'); /* a still arriving rebuilds the cards */
+    const sig = media.map(m => [m.kind, m.id, m.poster || '', m.web || ''].join(':')).join('|'); /* a still or a lighter copy arriving rebuilds the cards */
     const look = items.map(m => m.ratio || '').join('|') + '|' + radius;
     if (sig === this.sig && look === this.look) { this.items = items; this.cards.forEach(c => { c.item = items[c.i]; }); this.media(); this.kick(); return; }
     const first = this.sig == null;
@@ -6517,12 +6526,12 @@ const Slider = {
     if (it.ph != null) body = `<div class="hs-media" data-ph="${it.ph}">${PH_B[it.ph] ? '<i class="hs-b" aria-hidden="true">b</i>' : ''}</div>`;
     else if (it.kind === 'video') {
       const css = Math.min(this.maxW || innerWidth / 2, (this.H || 420) * this.aspect(it)) * 1.2, still = it.poster ? mediaUrl(it.poster, css) : '';
-      body = `<div class="hs-media">${still ? `<img class="hs-still" src="${esc(still)}" alt="" decoding="async" draggable="false"${XO()}>` : ''}<video data-src="${esc(assetUrl(it.id))}#t=0.1"${still ? ` poster="${esc(still)}"` : ''} muted loop playsinline preload="none" disablepictureinpicture${XO()}></video></div>`;
+      body = `<div class="hs-media">${still ? `<img class="hs-still" data-src="${esc(still)}" alt="" decoding="async" draggable="false"${XO()}>` : ''}<video data-src="${esc(assetUrl(it.web || it.id))}#t=0.1" muted loop playsinline preload="none" disablepictureinpicture${XO()}></video></div>`;
     }
     else {
       /* a copy at the card's size (a little more, for the card in focus) */
       const css = Math.min(this.maxW || innerWidth / 2, (this.H || 420) * this.aspect(it)) * 1.2, url = mediaUrl(it.id, css, it.w);
-      body = `<div class="hs-media"><img src="${esc(url)}"${OPT_RE.test(url) ? ` data-oid="${esc(it.id)}" data-w="${pickW(css, it.w)}"${it.w ? ` data-ow="${it.w}"` : ''}` : ''} alt="" decoding="async" draggable="false"${XO()}></div>`;
+      body = `<div class="hs-media"><img data-src="${esc(url)}"${OPT_RE.test(url) ? ` data-oid="${esc(it.id)}" data-w="${pickW(css, it.w)}"${it.w ? ` data-ow="${it.w}"` : ''}` : ''} alt="" decoding="async" draggable="false"${XO()}></div>`;
     }
     return `<div class="hs-card" data-k="${k}" data-i="${i}">${body}</div>`;
   },
@@ -6543,7 +6552,7 @@ const Slider = {
     const g = this.gl; this.gl = null; $('#hs').classList.remove('is-gl');
     try { g.destroy(); } catch {}
     this.cards.forEach(c => { c.box = ''; c.tf = ''; c.el.style.transform = ''; });
-    if (this.built) { this.layout(); this.render(); this.wakeVideos(); }
+    if (this.built) { this.layout(); this.render(); this.feed(); }
   },
   build(N) {
     this.glInit();
@@ -6564,19 +6573,39 @@ const Slider = {
       if (c.v) { c.v.muted = true; c.v.addEventListener('loadeddata', () => { c.v.classList.add('is-loaded'); this.natural(c, c.v.videoWidth, c.v.videoHeight); this.kick(); if (!c.lead) setTimeout(() => backfillStill(c.item, c.v), 1200); }, { once: true }); }
     });
     this.built = true;
-    this.wakeVideos();
+    clearTimeout(this.restAt); this.restAt = 0; this.restDone = false; this.vidsOk = false;
   },
-  /* The videos of the ring wait for its images, which would otherwise share the bandwidth with them (3 s at most) */
-  wakeVideos() {
-    clearTimeout(this.vt);
-    const vids = this.cards.filter(c => c.v && c.v.dataset.src && (!this.gl || !c.lead)); if (!vids.length) return;
-    const go = () => {
-      clearTimeout(this.vt);
-      vids.forEach(c => { if (!c.v.dataset.src) return; c.v.preload = 'metadata'; c.v.src = c.v.dataset.src; delete c.v.dataset.src; c.playing = false; });
-      if (this.cards.includes(vids[0])) this.media();
-    };
-    const wait = this.cards.filter(c => c.img && !(c.img.complete && c.img.naturalWidth)).map(c => new Promise(r => { c.img.addEventListener('load', r, { once: true }); c.img.addEventListener('error', r, { once: true }); }));
-    Promise.all(wait).then(go); this.vt = setTimeout(go, 3000);
+  /* What the ring loads, and when (the gallery can hold dozens of files). The cards in view and two on each side ask
+     first, at high priority; the rest of the ring follows once those are in (or after 2.5 s), so the drift always
+     brings ready cards. Videos wait for that too, and then load as their cards come near (with WebGL, one file per
+     video: its lead card's). */
+  feed() {
+    const N = this.cards.length; if (!N || !this.built) return;
+    const near = new Set();
+    this.cards.forEach(c => { if (c.off === false) for (let d = -2; d <= 2; d++) near.add(this.cards[(c.k + d + N) % N]); });
+    near.forEach(c => this.fetchCard(c, true));
+    let woke = false;
+    if (this.vidsOk) near.forEach(c => { woke = this.wakeVideo(c) || woke; });
+    if (!this.restAt && near.size) {
+      this.restAt = setTimeout(() => this.fetchRest(), 2500);
+      const wait = [...near].map(c => c.img || c.still).filter(m => m && !(m.complete && m.naturalWidth));
+      Promise.all(wait.map(m => new Promise(r => { m.addEventListener('load', r, { once: true }); m.addEventListener('error', r, { once: true }); }))).then(() => this.fetchRest());
+    }
+    if (woke) this.media();
+  },
+  fetchCard(c, now) { [c.img, c.still].forEach(m => { if (m && m.dataset.src) { m.fetchPriority = now ? 'high' : 'low'; m.src = m.dataset.src; delete m.dataset.src; } }); },
+  fetchRest() {
+    clearTimeout(this.restAt); this.restAt = this.restAt || 1;
+    if (this.restDone || !this.built) return;
+    this.restDone = true; this.vidsOk = true;
+    this.cards.forEach(c => this.fetchCard(c, false));
+    this.feed();
+  },
+  wakeVideo(c) {
+    const t = this.gl ? c.lead || c : c, v = t.v;
+    if (!v || !v.dataset.src) return false;
+    v.preload = 'metadata'; v.src = v.dataset.src; delete v.dataset.src; t.playing = false;
+    return true;
   },
   /* A card's proportions: the shape picked for it, else the file's own (clamped to sane bounds) */
   aspect(it) {
@@ -6699,7 +6728,7 @@ const Slider = {
     const n = this.nearest(this.pos), mid = n && this.cards[n.k];
     if (mid) this.cur = mid.i; /* the item in the middle, for the screen reader status */
     if (mid !== this.mid) { if (this.mid) this.mid.el.classList.remove('is-mid'); this.mid = mid; if (mid) mid.el.classList.add('is-mid'); }
-    if (changed) this.media();
+    if (changed) { this.feed(); this.media(); }
   },
   /* WebGL: outlines for picking, the stand-ins laid over each card's box on screen, then the ring itself */
   renderGL() {
@@ -6736,11 +6765,13 @@ const Slider = {
   /* Videos play (muted, looping) only on the cards in view while Home is shown; the rest hold their first frame */
   media() {
     const on = this.built && S.view === 'home' && !document.hidden && !this.held && !this.covered && !RM;
-    const gl = !!this.gl, lead = new Set();
-    if (gl && on) this.cards.forEach(c => { if (c.v && !c.off) lead.add(c.lead || c); });
+    /* the videos in view, nearest the middle first; at most HS_PLAY play at once (each one is a stream and a decoder) */
+    const gl = !!this.gl, near = new Map();
+    if (on) this.cards.forEach(c => { if (!c.v || c.off) return; const t = gl ? c.lead || c : c, d = Math.abs(c.s || 0); if (!near.has(t) || d < near.get(t)) near.set(t, d); });
+    const playing = new Set([...near].sort((a, b) => a[1] - b[1]).slice(0, HS_PLAY).map(e => e[0]));
     for (const c of this.cards) {
       if (!c.v) continue;
-      const play = gl ? lead.has(c) : on && !c.off;
+      const play = playing.has(c) && !c.v.dataset.src;
       if (play === c.playing) continue;
       c.playing = play;
       if (play) c.v.play().catch(() => {}); else c.v.pause();
@@ -6989,10 +7020,11 @@ const Lightbox = {
     Slider.under(true);
     const ph = this.ph = item.ph != null;
     this.ar = item.w && item.h ? item.w / item.h : ph ? 1 : Slider.nat.get(item.id) || c.w / c.h; /* the file's own shape, whatever the card's */
-    const cardImg = $('img', mediaEl), url = !item.id ? '' : esc(item.kind !== 'video' && cardImg ? cardImg.getAttribute('src') : assetUrl(item.id));
+    const cardImg = $('img', mediaEl), cardSrc = cardImg ? cardImg.getAttribute('src') || cardImg.dataset.src : '';
+    const url = !item.id ? '' : esc(item.kind !== 'video' && cardSrc ? cardSrc : assetUrl(item.web || item.id));
     const cap = item.title || item.desc ? `<div class="hlb-cap">${item.title ? `<p class="hlb-t">${esc(item.title)}</p>` : ''}${item.desc ? `<p class="hlb-d">${esc(item.desc)}</p>` : ''}</div>` : '';
     const body = ph ? `<div class="hlb-ph"><i class="hs-b" aria-hidden="true">b</i><p>${S.mode === 'admin' ? 'Este espacio es para las imágenes y videos de la marca. Añádelos desde «Galería».' : 'Pronto, imágenes y videos de la marca en este espacio.'}</p></div>`
-      : item.kind === 'video' ? `<video src="${url}"${cardImg ? ` poster="${esc(cardImg.getAttribute('src'))}"` : ''} muted loop playsinline controls${RM ? '' : ' autoplay'}></video>`
+      : item.kind === 'video' ? `<video src="${url}"${cardSrc ? ` poster="${esc(cardSrc)}"` : ''} muted loop playsinline controls${RM ? '' : ' autoplay'}></video>`
       : `<img src="${url}" alt="${esc(item.title || '')}"${cardImg && cardImg.dataset.oid ? ` data-oid="${esc(item.id)}" data-w="${cardImg.dataset.w}"${item.w ? ` data-ow="${item.w}"` : ''}` : ''}>`;
     lb.innerHTML = `<div class="hlb-bg" data-action="home-lb-close"></div><div class="hlb-frame"${ph ? ` data-ph="${item.ph}"` : ''}>${body}</div>`
       + cap
@@ -7066,7 +7098,7 @@ const Gallery = {
     if (!this.removed.size) return;
     const have = new Set(homeMedia().map(m => m.id));
     const gone = [...this.removed.keys()].filter(id => !have.has(id));
-    gone.slice().forEach(id => { const p = (this.removed.get(id) || {}).poster; if (p) gone.push(p); }); /* their stills too */
+    gone.slice().forEach(id => { const x = this.removed.get(id) || {}; [x.poster, x.web].forEach(p => { if (p) gone.push(p); }); }); /* their stills and copies too */
     this.removed = new Map();
     if (!gone.length) return;
     this.hist = this.hist.filter(h => h.kind !== 'remove' || !gone.includes(h.item.id));
@@ -7083,7 +7115,7 @@ const Gallery = {
     const sum = media.length ? [nImg ? count(nImg, 'imagen', 'imágenes') : '', nVid ? count(nVid, 'video', 'videos') : ''].filter(Boolean).join(' · ') : up ? `Subiendo ${count(up, 'archivo', 'archivos')}…` : 'Todavía no hay nada';
     const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
     const thumbs = media.map((m, i) => {
-      const url = esc(m.kind === 'video' ? assetUrl(m.id) : mediaUrl(m.id, 110, m.w)), what = m.kind === 'video' ? 'Video' : 'Imagen';
+      const url = esc(m.kind === 'video' ? assetUrl(m.web || m.id) : mediaUrl(m.id, 110, m.w)), what = m.kind === 'video' ? 'Video' : 'Imagen';
       return `<div class="hg-th" role="listitem" data-index="${i}" data-id="${esc(m.id)}" tabindex="0" aria-label="${what} ${i + 1} de ${media.length}. Arrastra o usa Alt y las flechas para reordenar">`
         + (m.kind === 'video' ? `<video src="${url}#t=0.1" muted playsinline preload="metadata"></video><span class="hg-kind" aria-hidden="true">${icon('video')}</span>` : `<img src="${url}" alt="" decoding="async">`)
         + `<span class="thumb-n" aria-hidden="true">${i + 1}</span><button type="button" class="thumb-x" data-action="home-remove" data-id="${esc(m.id)}" aria-label="Quitar ${what.toLowerCase()} ${i + 1}">${icon('x')}</button></div>`;
@@ -7173,7 +7205,7 @@ function homeRemove(id) {
   const item = clone(media[i]);
   if (Gallery.isOpen) { Gallery.hist.push({ kind: 'remove', item, index: i }); Gallery.removed.set(id, item); }
   mutateTree(t => { t.home.media = t.home.media.filter(m => m.id !== id); });
-  if (!Gallery.isOpen) safeDrop([id, item.poster].filter(Boolean));
+  if (!Gallery.isOpen) safeDrop([id, item.poster, item.web].filter(Boolean));
   /* keep the keyboard in the grid */
   const n = $(`#home-gal .hg-th[data-index="${Math.min(i, homeMedia().length - 1)}"]`) || $('#home-file');
   if (n) n.focus({ preventScroll: true });
@@ -7213,6 +7245,18 @@ function homeUndo() {
 /* Same checks as every other upload (accept + uploadOne); images and videos in one go, added in the order picked */
 async function uploadHome(fileList) {
   if (S.mode !== 'admin' || !S.tree) return;
+  /* "<file>.web.mp4" (a lighter copy) and "<file>.still.jpg" (a still), named after a gallery video's file without its
+     extension, attach to that video instead of joining the gallery */
+  const stem = (id) => String(id).replace(/\.[^.]+$/, ''), byStem = new Map(homeMedia().filter(m => m.kind === 'video').map(m => [stem(m.id), m]));
+  const versions = [];
+  fileList = [...fileList].filter(f => {
+    const m = /^(.+)\.(web|still)\.(mp4|jpe?g)$/i.exec(f.name || ''), it = m && byStem.get(m[1]);
+    if (!it) return true;
+    versions.push({ f, id: it.id, field: m[2].toLowerCase() === 'web' ? 'web' : 'poster', kind: m[2].toLowerCase() === 'web' ? 'video' : 'image' });
+    return false;
+  });
+  if (versions.length) attachVersions(versions);
+  if (!fileList.length) return;
   const ok = [...fileList].map(f => { const kind = VID_TYPES.includes(fileType(f)) ? 'video' : 'image'; const t = accept(f, kind); return t ? { f, t, kind } : null; }).filter(Boolean);
   if (!ok.length) return;
   Gallery.open();
@@ -7236,6 +7280,26 @@ async function uploadHome(fileList) {
   const items = got.map(g => (g.w && g.h ? { id: g.id, kind: g.kind, w: g.w, h: g.h } : { id: g.id, kind: g.kind }));
   if (Gallery.isOpen) Gallery.hist.push({ kind: 'add', ids: items.map(m => m.id) });
   mutateTree(t => { const have = new Set(t.home.media.map(m => m.id)); items.forEach(m => { if (!have.has(m.id)) t.home.media.push(clone(m)); }); });
+}
+async function attachVersions(list) {
+  Gallery.open();
+  const key = 'home:' + uid('u');
+  S.uploading.set(key, { label: `${list.length} versiones`, count: list.length });
+  renderStatus(); renderHome();
+  let done = 0;
+  const one = async (x) => {
+    const t = accept(x.f, x.kind); if (!t) return;
+    const r = await uploadOne(x.f, t); if (!r) return;
+    const old = (homeMedia().find(m => m.id === x.id) || {})[x.field];
+    if (!homeMedia().some(m => m.id === x.id)) { dropAssets([r.id]); return; }
+    mutateTree(tr => { const m = tr.home.media.find(y => y.id === x.id); if (m) m[x.field] = r.id; });
+    if (old && old !== r.id) safeDrop([old]);
+    done++;
+  };
+  const queue = list.slice(); await Promise.all([1, 2, 3].map(async () => { while (queue.length) await one(queue.shift()); }));
+  S.uploading.delete(key);
+  renderStatus(); renderHome();
+  toast(done ? (done === 1 ? 'Se sumó 1 versión liviana o portada a la galería.' : `Se sumaron ${done} versiones livianas y portadas a la galería.`) : 'No se pudo subir ninguna versión.');
 }
 function homeDropZone(ev) {
   if (S.view !== 'home' || S.mode !== 'admin' || !S.tree || S.edit || !ev.dataTransfer || ![...ev.dataTransfer.types].includes('Files')) return null;
