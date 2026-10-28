@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Belo Brand Catalog</title>
+<!doctype html><html lang="es" translate="no" class="notranslate"><head><meta charset="utf-8"><meta name="google" content="notranslate"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Belo Brand Catalog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap">
@@ -10,6 +10,11 @@
   try { s = sessionStorage.getItem('bc.scheme'); } catch (e) {}
   try { back = sessionStorage.getItem('bc.authHash') || ''; } catch (e) {}
   /* Light unless the visitor picked a theme with the switch: neither the OS nor the host page decide it. */
+  /* The catalog is in Spanish and is never machine-translated (also where the page is wrapped for us, as in the artifact):
+     a browser that took its English titles for an English page would rewrite the texts, and an animation that splits a
+     text into words would show the translation before putting the real words back */
+  h.setAttribute('lang', 'es'); h.setAttribute('translate', 'no'); h.classList.add('notranslate');
+  try { if (!document.querySelector('meta[name="google"]')) { var nt = document.createElement('meta'); nt.name = 'google'; nt.content = 'notranslate'; (document.head || h).appendChild(nt); } } catch (e) {}
   h.setAttribute('data-scheme', s === 'dark' ? 'dark' : 'light');
   h.setAttribute('data-mode', 'viewer');
   /* Home is the opening screen, unless the link points at a section (or a sign-in is coming back to one).

@@ -311,3 +311,4 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
     - tarjetas a la vista: de 3,9 s a 1,8 s (segunda visita: de 3,2 s a 1,25 s);
     - video en los primeros 10 s: de 27 MB a 5 MB.
   - Los 15 videos comprimidos a 1080p H.264 (60 cuadros, SSIM 0,99 contra el original) pasan de 113 MB a 22 MB.
+- **v7.7:** la página se declara en español y pide no ser traducida (`lang="es"`, `translate="no"`, `<meta name="google" content="notranslate">`). Chrome tomaba los títulos en inglés como señal de una página en inglés y la "traducía": la animación por palabras mostraba la traducción y al terminar devolvía el texto real.

@@ -53,7 +53,9 @@ export function build({ outDir = join(root, 'dist'), supabase = supabaseConfig()
   const artifact = src.replace('__PHUDU_B64__', font).replace('/*__SUPABASE__*/null', cfg);
 
   // Mirrors the skeleton Claude wraps around an artifact page at publish time.
-  const page = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
+  // Spanish, and never machine-translated: Chrome took the mixed English titles for an English page and "translated" it,
+  // and the word animations then showed the translation before giving the real text back.
+  const page = '<!doctype html><html lang="es" translate="no" class="notranslate"><head><meta charset="utf-8"><meta name="google" content="notranslate"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
     + '<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>'
     + '</head><body>' + artifact + '</body></html>';
 

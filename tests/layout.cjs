@@ -63,6 +63,8 @@ function watchErrors(page, label) {
   {
     const p = await localPage('#s_direccion', () => { try { if (!sessionStorage.getItem('t.seeded')) { localStorage.setItem('bc.scheme', 'dark'); sessionStorage.setItem('t.seeded', '1'); } } catch {} });
     check(await p.evaluate(() => document.documentElement.dataset.scheme) === 'light', 'opens light even with a dark theme saved by an earlier version');
+    // Spanish, never machine-translated (a browser "translating" it rewrote the texts the word animations then put back)
+    check(await p.evaluate(() => { const h = document.documentElement, m = document.querySelector('meta[name="google"]'); return h.lang === 'es' && h.getAttribute('translate') === 'no' && h.classList.contains('notranslate') && !!m && m.content === 'notranslate'; }), 'the page says it is in Spanish and asks browsers not to translate it');
     check(await p.evaluate(() => localStorage.getItem('bc.scheme')) === null, 'the old saved theme is dropped');
     await openMenu(p);
     await p.click('#menu [data-action="scheme"][data-scheme="dark"]'); await p.waitForTimeout(400);

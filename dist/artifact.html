@@ -10,6 +10,11 @@
   try { s = sessionStorage.getItem('bc.scheme'); } catch (e) {}
   try { back = sessionStorage.getItem('bc.authHash') || ''; } catch (e) {}
   /* Light unless the visitor picked a theme with the switch: neither the OS nor the host page decide it. */
+  /* The catalog is in Spanish and is never machine-translated (also where the page is wrapped for us, as in the artifact):
+     a browser that took its English titles for an English page would rewrite the texts, and an animation that splits a
+     text into words would show the translation before putting the real words back */
+  h.setAttribute('lang', 'es'); h.setAttribute('translate', 'no'); h.classList.add('notranslate');
+  try { if (!document.querySelector('meta[name="google"]')) { var nt = document.createElement('meta'); nt.name = 'google'; nt.content = 'notranslate'; (document.head || h).appendChild(nt); } } catch (e) {}
   h.setAttribute('data-scheme', s === 'dark' ? 'dark' : 'light');
   h.setAttribute('data-mode', 'viewer');
   /* Home is the opening screen, unless the link points at a section (or a sign-in is coming back to one).
