@@ -497,7 +497,7 @@ function watchErrors(page, label) {
       mod(k + '2', [blk('Color en imagen', 32, 600), blk('Más natural, igual de intencional', 14, 600), blk(para, 14, 500)]),
       mod(k + '3', [blk('PODER', 200, 900, { font: 'phudu', upper: true }), blk('Pone primero lo que la persona puede hacer.', 13, 600, { color: 'pc_gray' }), blk('Personas', 24, 600, { color: 'pc_gray' })]),
       mod(k + '4', [blk('Entendemos la complejidad', 48, 600), blk(para, 16, 500)], { kind: 'color', color: '#002fa7' }),
-      mod(k + '5', [blk(para + ' ' + para, 16, 500), blk(para, 16, 500), blk(para, 16, 500)])
+      mod(k + '5', [blk(para + ' ' + para, 16, 500), blk(para, 16, 500, { box: { pl: 40, pr: 20 } }), blk(para, 16, 500)])
     ] });
     fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } },
       palette: [{ id: 'pc_azul', hex: '#002fa7', name: 'Azul Belo' }, { id: 'pc_gray', hex: '#868686', name: 'Gray' }, { id: 'pc_light', hex: '#bfbfbf', name: 'Light text Gray' }],
@@ -512,18 +512,21 @@ function watchErrors(page, label) {
     await M.goto(SUPA_BASE + '#s_a'); await M.waitForSelector('#s-s_c .tb'); await M.waitForTimeout(900);
     const styles = () => M.evaluate(() => [...document.querySelectorAll('#stage .tb[data-mr]')].map(t => {
       const cs = getComputedStyle(t), slot = t.closest('.slot-text');
-      return { mr: t.dataset.mr, font: t.dataset.font, gray: t.hasAttribute('data-gray'), fs: cs.fontSize, fw: cs.fontWeight, color: cs.color, ink: slot ? getComputedStyle(slot).color : null };
+      return { mr: t.dataset.mr, font: t.dataset.font, gray: t.hasAttribute('data-gray'), fs: cs.fontSize, lh: cs.lineHeight, fw: cs.fontWeight, color: cs.color, ink: slot ? getComputedStyle(slot).color : null, x: Math.round(t.getBoundingClientRect().left), box: t.classList.contains('has-fill') || t.classList.contains('has-bst') };
     }));
     const ts = await styles(), by = (r) => ts.filter(t => t.mr === r);
     const roles = await M.evaluate(() => Object.fromEntries([...document.querySelectorAll('#s-s_a .tb[data-mr]')].map(t => [t.textContent.slice(0, 24), t.dataset.mr])));
-    const want = { 'Dirección estratégica': 't', 'Propósito': 't', 'PODER': 't', 'Entendemos la complejida': 't', 'Color en imagen': 's', 'Personas': 's', 'Más natural, igual de in': 's', 'Pone primero lo que la p': 'b', 'Queremos que una moneda,': 'b' };
-    check(Object.entries(want).every(([k, v]) => roles[k] === v), 'each block takes its style by use: big titles, headings and bold labels as subtitles, gray notes and paragraphs as text ' + JSON.stringify(roles));
-    check(new Set(ts.map(t => t.fs)).size === 2 && ts.every(t => t.fs === (t.mr === 't' ? '20px' : '14px')), 'on a phone there are only two sizes: titles 20px, subtitles and text 14px (' + [...new Set(ts.map(t => t.mr + ' ' + t.fs))].join(', ') + ')');
+    const want = { 'Dirección estratégica': 't', 'Propósito': 't', 'PODER': 't', 'Entendemos la complejida': 't', 'Color en imagen': 't', 'Personas': 's', 'Más natural, igual de in': 's', 'Pone primero lo que la p': 'b', 'Queremos que una moneda,': 'b' };
+    check(Object.entries(want).every(([k, v]) => roles[k] === v), 'each block takes its style by use: 28px and up as titles, smaller headings and bold labels as subtitles, gray notes and paragraphs as text ' + JSON.stringify(roles));
+    check(ts.every(t => t.fs === { t: '22px', s: '14px', b: '12px' }[t.mr]), 'on a phone: titles 22px, subtitles 14px, text 12px (' + [...new Set(ts.map(t => t.mr + ' ' + t.fs))].join(', ') + ')');
+    check(ts.every(t => Math.abs(parseFloat(t.lh) / parseFloat(t.fs) - 1.1) < .01), 'every text has its lines 110% apart (' + [...new Set(ts.map(t => t.mr + ' ' + t.lh))].join(', ') + ')');
     check(by('t').every(t => t.font === 'phudu' || t.fw === '600') && by('s').every(t => t.fw === '600') && by('b').every(t => t.fw === '500'), 'titles and subtitles semibold, text medium');
-    check(by('s').length >= 3 && by('s').every(t => t.color === t.ink), 'subtitles in the full ink of their module, never gray (a gray heading too)');
+    check(by('s').length >= 2 && by('s').every(t => t.color === t.ink), 'subtitles in the full ink of their module, never gray (a gray heading too)');
     check(by('b').some(t => t.gray && t.color === 'rgb(134, 134, 134)'), 'gray text stays gray');
     const pads = await M.evaluate(() => [...document.querySelectorAll('#stage .slot-text .tpad')].map(p => getComputedStyle(p).paddingLeft));
-    check(pads.length && pads.every(v => v === '8px'), `every text module has 8px of inner space on the left (${pads.length} modules)`);
+    check(pads.length && pads.every(v => v === '14px'), `every text module has 14px of inner space on the left (${pads.length} modules)`);
+    const xs = [...new Set(ts.filter(t => !t.box).map(t => t.x))];
+    check(xs.length === 1 && xs[0] === 30, `every text starts 30px in from the screen, its own box padding too (${xs.join(', ')})`);
     // The same blocks keep their own size on a wide screen
     await M.setViewportSize({ width: 1512, height: 900 }); await M.waitForTimeout(500);
     const wide = await styles();
@@ -535,7 +538,7 @@ function watchErrors(page, label) {
     check(b.secs.on && !b.search.on && b.secs.r <= b.menu.l - 6 && near(b.secs.t, b.menu.t, 1) && b.secs.h === 44, `the dropdown sits left of the menu, no search button (${Math.round(b.secs.l)}–${Math.round(b.secs.r)}, menu at ${Math.round(b.menu.l)})`);
     check(b.secs.text === 'Dirección estratégica', 'it shows the section in view (' + b.secs.text + ')');
     const pad = await M.evaluate(() => { const s = document.querySelector('#s-s_a .row[data-id="r_a4"] .slot-text'), t = s.querySelector('.tb'); return Math.round(t.getBoundingClientRect().left - s.getBoundingClientRect().left); });
-    check(pad === 8, `on a colored module too the text starts 8px in (${pad}px)`);
+    check(pad === 14, `on a colored module too the text starts 14px in (${pad}px)`);
     // Scrolling to another section: it stays where it is and changes its name
     await M.evaluate(() => window.scrollTo(0, document.getElementById('s-s_c').getBoundingClientRect().top + scrollY - 120)); await M.waitForTimeout(900);
     const b2 = await bar();

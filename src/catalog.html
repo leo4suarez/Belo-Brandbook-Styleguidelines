@@ -1238,15 +1238,20 @@ html.is-row-drag .page-mode{visibility:hidden}
   .stage.starts-full{padding-top:0}
   .row[data-layout="half"] .row-grid{grid-template-columns:minmax(0,1fr)}
   /* Three text styles on a phone, whatever size a block has on a wide screen (applyBlockStyle sets data-mr):
-     titles 20px, subtitles 14px semibold in the module's full ink, text 14px. A block being edited keeps its own. */
-  #stage .row:not(.is-editing) .tb[data-mr]{letter-spacing:0!important}
-  #stage .row:not(.is-editing) .tb[data-mr="t"]{font-size:20px;line-height:1.2!important;letter-spacing:-.01em!important}
+     titles 22px, subtitles 14px semibold in the module's full ink, text 12px, all with lines 110% apart. A block
+     being edited keeps its own.
+     The display title on a category cover (Phudu over the photo) stays a display: 40px. */
+  #stage .row:not(.is-editing) .tb[data-mr]{letter-spacing:-.02em!important}
+  #stage .row:not(.is-editing) .tb[data-mr="t"]{font-size:22px;line-height:1.1!important;letter-spacing:-.03em!important}
   #stage .row:not(.is-editing) .tb[data-mr="t"]:not([data-font="phudu"]){font-weight:600!important}
-  #stage .row:not(.is-editing) .tb[data-mr="s"]{font-size:14px;line-height:1.4!important;font-weight:600!important}
+  #stage .row:not(.is-editing) .fs-overlay .tb[data-mr="t"][data-font="phudu"]{font-size:40px;line-height:1.1!important;letter-spacing:-.02em!important}
+  #stage .row:not(.is-editing) .tb[data-mr="s"]{font-size:14px;line-height:1.1!important;font-weight:600!important}
   #stage .row:not(.is-editing) .tb[data-mr="s"][data-gray]{color:inherit!important}
-  #stage .row:not(.is-editing) .tb[data-mr="b"]{font-size:14px;line-height:1.5!important;font-weight:500!important}
-  /* every text module starts its text 8px in from its left edge */
-  #stage .slot-text .tpad{padding-left:8px}
+  #stage .row:not(.is-editing) .tb[data-mr="b"]{font-size:12px;line-height:1.1!important;font-weight:500!important}
+  /* every text starts 30px in from the screen (the modules' 16px, then 14px inside them); a text box of its own only
+     keeps its inner space on the left when it shows (a fill or a stroke) */
+  #stage .slot-text .tpad{padding-left:14px}
+  #stage .row:not(.is-editing) .tblocks .lx.has-pad:not(.has-fill):not(.has-bst){padding-left:0}
   /* Top right on a phone: the sections of the category (a dropdown that follows the scroll) and the menu; search lives
      in the open menu */
   .rbtn-search{display:none}
@@ -2959,7 +2964,7 @@ function applyBlockStyle(el, b) {
   el.classList.toggle('is-copy', b.size <= 28);
   /* on a phone every block takes one of three styles (see .tb[data-mr]): its role by size, weight and color */
   const gray = isGray(blockColor(b));
-  el.dataset.mr = b.size >= 40 ? 't' : b.size >= 20 || (b.weight >= 600 && !gray) ? 's' : 'b';
+  el.dataset.mr = b.size >= 28 ? 't' : b.size >= 20 || (b.weight >= 600 && !gray) ? 's' : 'b';
   el.dataset.font = b.font;
   el.toggleAttribute('data-gray', gray);
   paintBox(el, b.box);
