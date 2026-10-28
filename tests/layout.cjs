@@ -1,6 +1,7 @@
 // v7: the theme opens light, the rail title and its category list, locked categories (in the page and in the
 // database), moving a subcategory, the items of a text module (containers, auto-layout groups, dividers), module
-// strokes, the width of a block and the split of a half row, and the carousel strip.
+// strokes, the width of a block and the split of a half row, the carousel strip, and phones (three text styles, the
+// sections dropdown, search in the menu).
 // Runs on the local demo (BASE_URL) and on the fake Supabase project (SUPA_BASE_URL). Usage: through tests/run.cjs.
 const { chromium } = require('playwright');
 const path = require('path');
@@ -481,6 +482,91 @@ function watchErrors(page, label) {
     const errs = [...L.errors, ...F.errors.filter(e => !/status of 404/.test(e))]; /* the failed copies themselves are expected */
     check(!errs.length, 'no page errors while loading' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await fctx.close();
+  }
+
+  /* ---------- 11. Phones: three text styles, text 8px in, the sections dropdown, search in the menu ---------- */
+  {
+    /* blocks like the real catalog's: big titles (one in light gray, one in Phudu), headings, bold labels, gray bold
+       notes, text in gray and in ink; one module on a color */
+    const fake = new FakeSupabase(SUPA_URL);
+    const blk = (t, size, weight, extra = {}) => ({ id: 'b' + Math.random().toString(36).slice(2, 8), text: t, font: 'jakarta', size, weight, lh: 120, ls: -1, align: 'left', upper: false, ...extra });
+    const mod = (id, blocks, bg = { kind: 'none' }) => ({ id: 'r_' + id, layout: 'full', h: null, slots: [{ id: 'm_' + id, type: 'text', bg, align: 'start', ink: 'auto', blocks }] });
+    const para = 'Queremos que una moneda, una frontera o un sistema no decidan hasta dónde puede llegar una persona. El poder ya está ahí.';
+    const page = (k, name) => ({ rows: [
+      mod(k + '1', [blk(name, 72, 600), blk('Propósito', 68, 600, { color: 'pc_light' }), blk(para, 16, 500, { color: 'pc_gray' })]),
+      mod(k + '2', [blk('Color en imagen', 32, 600), blk('Más natural, igual de intencional', 14, 600), blk(para, 14, 500)]),
+      mod(k + '3', [blk('PODER', 200, 900, { font: 'phudu', upper: true }), blk('Pone primero lo que la persona puede hacer.', 13, 600, { color: 'pc_gray' }), blk('Personas', 24, 600, { color: 'pc_gray' })]),
+      mod(k + '4', [blk('Entendemos la complejidad', 48, 600), blk(para, 16, 500)], { kind: 'color', color: '#002fa7' }),
+      mod(k + '5', [blk(para + ' ' + para, 16, 500), blk(para, 16, 500), blk(para, 16, 500)])
+    ] });
+    fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } },
+      palette: [{ id: 'pc_azul', hex: '#002fa7', name: 'Azul Belo' }, { id: 'pc_gray', hex: '#868686', name: 'Gray' }, { id: 'pc_light', hex: '#bfbfbf', name: 'Light text Gray' }],
+      categories: [{ id: 'c_f', name: 'Foundations', subs: [{ id: 's_a', name: 'Dirección estratégica' }, { id: 's_b', name: 'Pilares creativos' }, { id: 's_c', name: 'Propósito, misión y visión' }] }] });
+    fake.seed('pages/s_a', page('a', 'Dirección estratégica'));
+    fake.seed('pages/s_b', page('b', 'Pilares creativos'));
+    fake.seed('pages/s_c', page('c', 'Propósito, misión y visión'));
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await fake.attach(ctx, 'phone'); await routes(ctx);
+    await ctx.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\/dist\/umd\/supabase\.js/, r => r.fulfill({ path: SB_JS, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+    const M = await ctx.newPage(); watchErrors(M, 'phone');
+    await M.goto(SUPA_BASE + '#s_a'); await M.waitForSelector('#s-s_c .tb'); await M.waitForTimeout(900);
+    const styles = () => M.evaluate(() => [...document.querySelectorAll('#stage .tb[data-mr]')].map(t => {
+      const cs = getComputedStyle(t), slot = t.closest('.slot-text');
+      return { mr: t.dataset.mr, font: t.dataset.font, gray: t.hasAttribute('data-gray'), fs: cs.fontSize, fw: cs.fontWeight, color: cs.color, ink: slot ? getComputedStyle(slot).color : null };
+    }));
+    const ts = await styles(), by = (r) => ts.filter(t => t.mr === r);
+    const roles = await M.evaluate(() => Object.fromEntries([...document.querySelectorAll('#s-s_a .tb[data-mr]')].map(t => [t.textContent.slice(0, 24), t.dataset.mr])));
+    const want = { 'Dirección estratégica': 't', 'Propósito': 't', 'PODER': 't', 'Entendemos la complejida': 't', 'Color en imagen': 's', 'Personas': 's', 'Más natural, igual de in': 's', 'Pone primero lo que la p': 'b', 'Queremos que una moneda,': 'b' };
+    check(Object.entries(want).every(([k, v]) => roles[k] === v), 'each block takes its style by use: big titles, headings and bold labels as subtitles, gray notes and paragraphs as text ' + JSON.stringify(roles));
+    check(new Set(ts.map(t => t.fs)).size === 2 && ts.every(t => t.fs === (t.mr === 't' ? '20px' : '14px')), 'on a phone there are only two sizes: titles 20px, subtitles and text 14px (' + [...new Set(ts.map(t => t.mr + ' ' + t.fs))].join(', ') + ')');
+    check(by('t').every(t => t.font === 'phudu' || t.fw === '600') && by('s').every(t => t.fw === '600') && by('b').every(t => t.fw === '500'), 'titles and subtitles semibold, text medium');
+    check(by('s').length >= 3 && by('s').every(t => t.color === t.ink), 'subtitles in the full ink of their module, never gray (a gray heading too)');
+    check(by('b').some(t => t.gray && t.color === 'rgb(134, 134, 134)'), 'gray text stays gray');
+    const pads = await M.evaluate(() => [...document.querySelectorAll('#stage .slot-text .tpad')].map(p => getComputedStyle(p).paddingLeft));
+    check(pads.length && pads.every(v => v === '8px'), `every text module has 8px of inner space on the left (${pads.length} modules)`);
+    // The same blocks keep their own size on a wide screen
+    await M.setViewportSize({ width: 1512, height: 900 }); await M.waitForTimeout(500);
+    const wide = await styles();
+    check(wide.some(t => t.mr === 't' && parseFloat(t.fs) > 20), 'on a wide screen the titles keep their own size');
+    await M.setViewportSize({ width: 390, height: 844 }); await M.waitForTimeout(500);
+    // Top right: the sections dropdown next to the menu; no search button there
+    const bar = () => M.evaluate(() => { const r = (s) => { const e = document.querySelector(s); const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, h: b.height, on: !!e.getClientRects().length, text: e.textContent.trim() }; }; return { secs: r('#btn-secs'), menu: r('#btn-menu'), search: r('#btn-search') }; });
+    let b = await bar();
+    check(b.secs.on && !b.search.on && b.secs.r <= b.menu.l - 6 && near(b.secs.t, b.menu.t, 1) && b.secs.h === 44, `the dropdown sits left of the menu, no search button (${Math.round(b.secs.l)}–${Math.round(b.secs.r)}, menu at ${Math.round(b.menu.l)})`);
+    check(b.secs.text === 'Dirección estratégica', 'it shows the section in view (' + b.secs.text + ')');
+    const pad = await M.evaluate(() => { const s = document.querySelector('#s-s_a .row[data-id="r_a4"] .slot-text'), t = s.querySelector('.tb'); return Math.round(t.getBoundingClientRect().left - s.getBoundingClientRect().left); });
+    check(pad === 8, `on a colored module too the text starts 8px in (${pad}px)`);
+    // Scrolling to another section: it stays where it is and changes its name
+    await M.evaluate(() => window.scrollTo(0, document.getElementById('s-s_c').getBoundingClientRect().top + scrollY - 120)); await M.waitForTimeout(900);
+    const b2 = await bar();
+    check(b2.secs.on && near(b2.secs.t, b.secs.t, .5), 'scrolling, the dropdown stays in the corner');
+    check(b2.secs.text === 'Propósito, misión y visión', 'and reaching a section it takes its name (' + b2.secs.text + ')');
+    await M.screenshot({ path: T + 'v7-phone-section.png' });
+    // Picking a section from the list goes there
+    await M.tap('#btn-secs'); await M.waitForTimeout(300);
+    const items = await M.evaluate(() => [...document.querySelectorAll('#pop .mi[data-action="sec-go"]')].map(m => ({ id: m.dataset.id, on: m.getAttribute('aria-checked') === 'true' })));
+    check(items.length === 3 && (items.find(i => i.on) || {}).id === 's_c', `the list has every section of the category, the current one checked (${items.length})`);
+    await M.tap('#pop .mi[data-id="s_b"]'); await M.waitForTimeout(1800);
+    b = await bar();
+    const top = await M.evaluate(() => Math.round(document.getElementById('s-s_b').getBoundingClientRect().top));
+    check(b.secs.text === 'Pilares creativos' && top >= 0 && top < 200 && await M.evaluate(() => location.hash) === '#s_b', `picking one scrolls to it (top at ${top}px) and the dropdown follows`);
+    // Search lives in the open menu
+    await M.tap('#btn-menu'); await M.waitForTimeout(900);
+    check(await M.evaluate(() => !!document.querySelector('#menu-search').getClientRects().length), 'the open menu has the search button');
+    await M.tap('#menu-search'); await M.waitForTimeout(600);
+    check(await M.evaluate(() => document.querySelector('#search').classList.contains('is-open') && document.activeElement.id === 'search-input' && !document.querySelector('#menu').classList.contains('is-open')), 'it opens the search, ready to type');
+    await M.keyboard.press('Escape'); await M.waitForTimeout(500);
+    // Home has no sections: no dropdown
+    await M.tap('#rail-logo'); await M.waitForTimeout(1200);
+    b = await bar();
+    check(!b.secs.on && !b.search.on && b.menu.on, 'on Home only the menu is there');
+    await M.screenshot({ path: T + 'v7-phone-home.png' });
+    check(!M.errors.length, 'no page errors on the phone' + (M.errors.length ? ': ' + M.errors.join(' | ') : ''));
+    await ctx.close();
+    // A wide screen keeps its search button and has no dropdown
+    const D = await localPage('#s_direccion');
+    check(await D.evaluate(() => !!document.querySelector('#btn-search').getClientRects().length && !document.querySelector('#btn-secs').getClientRects().length && !document.querySelector('#menu-search').getClientRects().length), 'a wide screen keeps the search button in the top bar and no dropdown');
+    await D.context().close();
   }
 
   await browser.close();

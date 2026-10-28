@@ -635,7 +635,7 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     check(m.over <= 0 && m.w <= 390 * .8 && m.top > m.bar && m.bottom < m.navTop, `phone: the middle card fits between the top bar and the controls, no sideways scroll (${Math.round(m.w)}px wide)`);
     check(m.navL > m.toolsR && m.navR <= 390, 'phone: the controls and the gallery button share the bottom row without touching');
     { const [a, b] = await navBtns(p); check(a.w === 44 && b.w === 44 && a.radius === '50%' && b.l - a.r >= 16 && b.l - a.r <= 20 && Math.abs((a.l + b.r) / 2 - 195) < 1, `phone: the same two round buttons, 44px, centered (${a.w}px, ${Math.round(b.l - a.r)}px apart)`); }
-    { const b = await bar(p); check(Math.abs(b.right - 16) < 1 && Math.abs(b.logoLeft - 16) < 1, `phone: search and menu top right, 16px in like the logo (${Math.round(b.right)}px)`); }
+    { const b = await bar(p); check(Math.abs(b.right - 16) < 1 && Math.abs(b.logoLeft - 16) < 1, `phone: the menu top right, 16px in like the logo (${Math.round(b.right)}px)`); }
     await p.screenshot({ path: T + 'home-07-phone.png' });
     // a swipe (real touch events) moves to the next card
     const cdp = await c.newCDPSession(p);

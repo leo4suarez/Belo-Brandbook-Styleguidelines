@@ -161,6 +161,7 @@ html.ov-open.no-lenis{overflow:hidden}
 .rbtn-menu[data-ink="light"]{background:#FFFFFF;color:#000000;box-shadow:none}
 .rbtn-menu[data-ink="dark"]{background:transparent}
 .rbtn-l{display:none}
+.rbtn-secs,.ov-find{display:none}
 /* Home: the menu is a labelled pill in the brand blue */
 html[data-view="home"] .rbtn-menu{width:auto;padding:0 18px 0 22px;display:flex;align-items:center;gap:12px;border-radius:999px;background:var(--brand);color:#FFFFFF;box-shadow:none;font:600 16px/1 var(--font);letter-spacing:-.01em}
 html[data-view="home"] .rbtn-menu .rbtn-l{display:inline}
@@ -1236,6 +1237,25 @@ html.is-row-drag .page-mode{visibility:hidden}
   .stage{padding-top:calc(var(--nav-h,300px) + 8px)}
   .stage.starts-full{padding-top:0}
   .row[data-layout="half"] .row-grid{grid-template-columns:minmax(0,1fr)}
+  /* Three text styles on a phone, whatever size a block has on a wide screen (applyBlockStyle sets data-mr):
+     titles 20px, subtitles 14px semibold in the module's full ink, text 14px. A block being edited keeps its own. */
+  #stage .row:not(.is-editing) .tb[data-mr]{letter-spacing:0!important}
+  #stage .row:not(.is-editing) .tb[data-mr="t"]{font-size:20px;line-height:1.2!important;letter-spacing:-.01em!important}
+  #stage .row:not(.is-editing) .tb[data-mr="t"]:not([data-font="phudu"]){font-weight:600!important}
+  #stage .row:not(.is-editing) .tb[data-mr="s"]{font-size:14px;line-height:1.4!important;font-weight:600!important}
+  #stage .row:not(.is-editing) .tb[data-mr="s"][data-gray]{color:inherit!important}
+  #stage .row:not(.is-editing) .tb[data-mr="b"]{font-size:14px;line-height:1.5!important;font-weight:500!important}
+  /* every text module starts its text 8px in from its left edge */
+  #stage .slot-text .tpad{padding-left:8px}
+  /* Top right on a phone: the sections of the category (a dropdown that follows the scroll) and the menu; search lives
+     in the open menu */
+  .rbtn-search{display:none}
+  .ov-find{display:grid}
+  html[data-view="cat"] .rbtn-secs:not([hidden]){display:flex;align-items:center;gap:6px;width:auto;max-width:min(54vw,240px);padding:0 12px 0 16px;border-radius:999px;font:600 14px/1 var(--font);letter-spacing:-.01em;background:color-mix(in srgb,var(--bg) 62%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+  html[data-view="cat"] .rbtn-secs[data-ink="light"]{background:rgba(0,0,0,.22)}
+  .rbtn-secs .rbtn-st{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rbtn-secs svg.i{flex:none;width:16px;height:16px;transition:transform 200ms var(--ease-out)}
+  .rbtn-secs[aria-expanded="true"] svg.i{transform:rotate(180deg)}
   .sec .row.has-w:not([data-layout="fullscreen"]){width:auto;margin-left:var(--col-l);margin-right:var(--col-r)}
   .rzw,.rzs{display:none}
   .fs-overlay{padding-left:var(--ov-pl,16px);padding-right:var(--ov-pr,16px)}
@@ -1278,6 +1298,7 @@ html.is-row-drag .page-mode{visibility:hidden}
   <div class="rail-top">
     <div class="logo-wrap" id="rail-logo" data-adapt="rail"></div>
     <div class="rail-actions">
+      <button type="button" class="rbtn rbtn-secs" id="btn-secs" data-adapt="rail" data-action="secs-menu" aria-haspopup="menu" aria-expanded="false" hidden></button>
       <button type="button" class="rbtn rbtn-search" id="btn-search" data-adapt="rail" data-action="search-open" aria-label="Buscar"></button>
       <button type="button" class="rbtn rbtn-menu" id="btn-menu" data-adapt="rail" data-action="menu-open" aria-label="Abrir menú" aria-haspopup="dialog" aria-expanded="false"></button>
     </div>
@@ -1304,7 +1325,7 @@ html.is-row-drag .page-mode{visibility:hidden}
   <div class="ov-inner" data-lenis-prevent>
     <div class="ov-top">
       <div class="ov-tl"><div class="logo-wrap" data-adapt="menu" data-logo-slot></div></div>
-      <div class="ov-tr"><div id="menu-bgctl"></div><div id="menu-theme"></div><button type="button" class="ov-close" id="menu-close" data-adapt="menu" data-action="menu-close" aria-label="Cerrar menú"></button></div>
+      <div class="ov-tr"><div id="menu-bgctl"></div><div id="menu-theme"></div><button type="button" class="ov-close ov-find" id="menu-search" data-adapt="menu" data-action="search-open" aria-label="Buscar"></button><button type="button" class="ov-close" id="menu-close" data-adapt="menu" data-action="menu-close" aria-label="Cerrar menú"></button></div>
     </div>
     <nav class="ov-list" id="menu-list" aria-label="Categorías"></nav>
     <div class="ov-bottom" id="menu-bottom"></div>
@@ -2289,6 +2310,7 @@ function setScheme(next, persist = true) {
 /* ================= Boot ================= */
 async function boot() {
   $('#btn-search').innerHTML = icon('search');
+  $('#menu-search').innerHTML = icon('search');
   $('#btn-menu').innerHTML = `<span class="rbtn-l">Menú</span>${icon('burger')}`;
   $('#menu-close').innerHTML = icon('x');
   $('#search-close').innerHTML = icon('x');
@@ -2528,6 +2550,7 @@ function renderRail() {
   Ink.run();
 }
 function updateRailState() {
+  renderSecs();
   $$('#rail-nav .sub').forEach(b => {
     const id = b.dataset.id;
     const on = id === S.active;
@@ -2550,6 +2573,27 @@ function updateRailState() {
     tag.title = who.map(p => p.name).join(', ') + (who.length > 1 ? ' están editando aquí' : ' está editando aquí');
     tag.innerHTML = who.slice(0, 3).map(p => `<span class="peer" style="--pc:${peerColor(p.uid)}">${esc(initials(p.name))}</span>`).join('');
   });
+}
+
+/* The sections dropdown of a phone (top right, next to the menu): the section in view, kept up to date by the scroll spy */
+function renderSecs() {
+  const btn = $('#btn-secs'); if (!btn) return;
+  const cat = S.tree && currentCat(), sub = cat && (cat.subs.find(x => x.id === S.active) || cat.subs[0]);
+  btn.hidden = !sub;
+  if (!sub) { delete btn.dataset.html; return; }
+  const html = `<span class="rbtn-st">${esc(sub.name)}</span>${icon('down')}`;
+  if (btn.dataset.html === html) return;
+  const swap = !!btn.dataset.html;
+  btn.innerHTML = html; btn.dataset.html = html;
+  btn.setAttribute('aria-label', `Sección: ${sub.name}. Ver las secciones`);
+  if (swap && !RM && btn.getClientRects().length) $('.rbtn-st', btn).animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.23,1,.32,1)' });
+}
+function secsMenuPop(trigger) {
+  const cat = currentCat(); if (!cat) return;
+  openPop(trigger, `<p class="pal-h">${esc(cat.name)}</p>` + cat.subs.map(x => {
+    const empty = S.mode === 'viewer' && S.loaded.has(x.id) && !(S.pages.get(x.id) || []).length;
+    return `<button type="button" class="mi" role="menuitemradio" aria-checked="${x.id === S.active}" data-action="sec-go" data-id="${x.id}"${empty ? ' disabled' : ''}><span class="mi-t">${esc(x.name)}</span>${empty ? '<span class="mi-v">Próximamente</span>' : ''}</button>`;
+  }).join(''), { data: { kind: 'secs' } });
 }
 
 function renderStatus() {
@@ -2913,8 +2957,15 @@ function applyBlockStyle(el, b) {
   if (b.color) el.dataset.color = b.color; else delete el.dataset.color;
   el.dataset.align = b.align;
   el.classList.toggle('is-copy', b.size <= 28);
+  /* on a phone every block takes one of three styles (see .tb[data-mr]): its role by size, weight and color */
+  const gray = isGray(blockColor(b));
+  el.dataset.mr = b.size >= 40 ? 't' : b.size >= 20 || (b.weight >= 600 && !gray) ? 's' : 'b';
+  el.dataset.font = b.font;
+  el.toggleAttribute('data-gray', gray);
   paintBox(el, b.box);
 }
+/* a neutral gray of the palette (not black, not white): the color of secondary text */
+const isGray = (hex) => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || ''); if (!m) return false; const [r, g, b] = m.slice(1).map(x => parseInt(x, 16)); return Math.max(r, g, b) - Math.min(r, g, b) < 12 && r > 0x30 && r < 0xE8; };
 const setVar = (el, k, v) => { if (v === undefined || v === null || v === '') el.style.removeProperty(k); else el.style.setProperty(k, v); };
 /* The container of a text block or a group (see normBox), as data attributes and custom properties the CSS reads */
 function paintBox(el, box) {
@@ -7870,7 +7921,7 @@ function rowSubOf(a) {
 
 /* ================= Events ================= */
 /* Buttons that open (and close again) their own popover: an outside click does not close it first */
-const POP_TRIGGERS = ['item-menu', 'dd', 'pal-open', 'slot-act', 'row-move', 'row-more', 'cat-menu'];
+const POP_TRIGGERS = ['item-menu', 'dd', 'pal-open', 'slot-act', 'row-move', 'row-more', 'cat-menu', 'secs-menu'];
 document.addEventListener('click', (ev) => {
   const a = ev.target.closest('[data-action]');
   if (S.pop && !ev.target.closest('#pop') && !(a && POP_TRIGGERS.includes(a.dataset.action))) closePop();
@@ -7890,6 +7941,8 @@ document.addEventListener('click', (ev) => {
     case 'menu-open': openOverlay('menu'); break;
     case 'menu-close': closeOverlay(); break;
     case 'search-open': openOverlay('search'); break;
+    case 'secs-menu': ev.stopPropagation(); secsMenuPop(a); break;
+    case 'sec-go': closePop(true); if (!a.disabled) scrollToSub(id); break;
     case 'search-close': closeOverlay(); break;
     case 'menu-cat': {
       const c = cats().find(x => x.id === id);
