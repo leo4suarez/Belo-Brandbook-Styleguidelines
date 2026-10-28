@@ -330,3 +330,4 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Tres estilos de texto: titular 20 px, subtítulo 14 px semibold en color pleno y texto 14 px, asignados por tamaño, peso y color de cada bloque.
   - 8 px de espacio interno a la izquierda en todos los módulos de texto.
   - Desplegable de secciones fijo junto al menú, que sigue la sección en pantalla; la búsqueda pasa al menú abierto.
+- **v7.10:** arreglo del carrusel de la Home que perdía cuadros después del hover. Cada vez que el mouse pasaba a otra tarjeta se sumaba un segundo ciclo de dibujo que no se apagaba mientras hubiera videos sonando: después de recorrer unas tarjetas, el anillo se dibujaba muchas veces por cuadro (en la prueba, 90 dibujos en 6 cuadros). Ahora hay un solo ciclo: se dibuja una vez por cuadro, con o sin hover.

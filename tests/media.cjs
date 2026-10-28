@@ -286,7 +286,8 @@ function kit(page) {
   for (let i = 0; i < 3; i++) await page.keyboard.press('Tab');
   check(await page.evaluate(() => !!document.activeElement.closest('#amodal')), 'Tab stays inside the modal');
   await page.screenshot({ path: T + 'media-05-modal.png' });
-  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#amodal[hidden]', { state: 'attached', timeout: 3000 }).catch(() => {}); /* after its 160ms fade, however slow the frames */
   check(await page.locator('#amodal[hidden]').count() === 1 && await page.evaluate(() => document.activeElement && document.activeElement.dataset.act === 'modal'), 'Esc closes it and focus returns to the module');
   await page.keyboard.press('Enter');
   check(await until(() => page.locator('#amodal:not([hidden]) .amodal-panel').count().then(n => n === 1)), 'Enter on the focused module opens it again');

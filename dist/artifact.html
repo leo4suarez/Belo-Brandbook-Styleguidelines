@@ -6888,7 +6888,8 @@ const Slider = {
     if (!this.drag && !this.pd && Math.abs(this.target) > 4 * this.L) { const k = Math.floor(this.target / this.L) * this.L; this.pos -= k; this.target -= k; }
     this.render();
     this.hitTest();
-    if (busy) this.raf = requestAnimationFrame(this.tick);
+    /* hitTest() above may have kicked the next frame already (a new card under the mouse): one loop, never two */
+    if (busy && !this.raf) this.raf = requestAnimationFrame(this.tick);
   },
   /* glide to a point of the curve (a card's middle); a drift in progress hands its speed over */
   glide(t) {

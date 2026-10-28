@@ -97,7 +97,9 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
   const browser = await chromium.launch({ args: ['--ignore-gpu-blocklist', '--enable-gpu'] });
 
   // ---------- 1. Landing on Home (local demo, OS in dark mode: the page still starts light) ----------
-  const { page, ctx } = await open(browser, BASE, { colorScheme: 'dark' });
+  /* the ring's draws are counted (one clear per draw), to check it never draws twice in a frame */
+  const countDraws = (c) => c.addInitScript(() => { window.__draws = 0; for (const P of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) { if (!P) continue; const f = P.prototype.clear; P.prototype.clear = function (...a) { window.__draws++; return f.apply(this, a); }; } });
+  const { page, ctx } = await open(browser, BASE, { colorScheme: 'dark' }, countDraws);
   await page.waitForSelector('#home .hs-card');
   await settled(page, 1800); /* the intro sweep settles */
   const land = await page.evaluate(() => ({
@@ -235,6 +237,12 @@ const drag = async (p, x, y, dx, n = 10, ms = 16) => {
     check(await page.evaluate(() => (document.querySelector('#hs-stage .hs-card.is-hover') || {}).dataset?.k) === n.k, 'hover follows the pointer to a side card');
     await page.mouse.move(c.x, 140); await page.waitForTimeout(400);
     check(await page.evaluate(() => !document.querySelector('#hs-stage .hs-card.is-hover') && getComputedStyle(document.querySelector('#home')).cursor !== 'pointer'), 'off the cards nothing is lifted');
+    // Hovering from card to card never starts a second frame loop: once the mouse leaves, the drifting ring is drawn
+    // once a frame, not once per card it went over
+    for (let i = 0; i < 3; i++) for (const x of [300, 700, 1100, 700]) { await page.mouse.move(x, c.y); await page.waitForTimeout(90); }
+    await away(page); await page.waitForTimeout(1600);
+    const per = await page.evaluate(() => new Promise(res => { const d0 = window.__draws; let n = 0; const t0 = performance.now(); const f = (t) => { n++; if (t - t0 < 1500) requestAnimationFrame(f); else res({ draws: window.__draws - d0, frames: n }); }; requestAnimationFrame(f); }));
+    check(per.frames > 5 && per.draws <= per.frames + 1, `after hovering card after card, the ring is still drawn once a frame (${per.draws} draws in ${per.frames} frames)`);
   }
 
   // Click: the card grows into a centered lightbox; Esc, the X and the backdrop close it; the card glides to the middle
