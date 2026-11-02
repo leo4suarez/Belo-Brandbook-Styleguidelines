@@ -19,6 +19,7 @@ const ana = fake.addUser({ email: 'ana@paisanoscreando.com', name: 'Ana Gómez' 
 const leo = fake.addUser({ email: 'leo@paisanoscreando.com', name: 'Leo Suárez' });
 const pat = fake.addUser({ email: 'pat@gmail.com', name: 'Pat Outside' });
 const jo = fake.addUser({ email: 'jo@paisanos.io', name: 'Jo Venezia' });
+const bel = fake.addUser({ email: 'ana@belo.app', name: 'Ana Belo' });
 const text = (id, t) => ({ id, layout: 'full', h: null, slots: [{ id: 'm_' + id, type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b_' + id, text: t, font: 'jakarta', size: 40, weight: 600, lh: 110, ls: -1, align: 'left', upper: false }] }] });
 fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [{ id: 'c_brand', name: 'Our Brand', subs: [{ id: 's_intro', name: 'Intro' }, { id: 's_logo', name: 'Logotipo' }] }, { id: 'c_voice', name: 'Voice & Tone', subs: [] }] }, leo.id);
 fake.seed('pages/s_intro', { rows: [text('r_a', 'Hola Belo'), text('r_b', 'Segundo bloque')] }, leo.id);
@@ -125,6 +126,9 @@ const lc = async (p, sel) => String(await p.textContent(sel)).toLowerCase();
   const J = await open('jo', jo);
   check(await mode(J) === 'admin', 'Jo (@paisanos.io) opens in Admin');
   await J.close();
+  const BA = await open('belo', bel);
+  check(await mode(BA) === 'admin', 'Ana (@belo.app) opens in Admin');
+  await BA.close();
   // Opening the menu with the button: the background lands even when every animation frame stalls.
   await L.keyboard.press('Escape'); await L.waitForTimeout(400);
   await L.evaluate(() => { const o = Element.prototype.animate; window.__stall = true; Element.prototype.animate = function (...a) { const an = o.apply(this, a); if (window.__stall && this.closest && this.closest('.ov')) an.pause(); return an; }; });

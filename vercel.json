@@ -10,5 +10,6 @@
     "qualities": [80],
     "minimumCacheTTL": 2678400,
     "remotePatterns": [{ "protocol": "https", "hostname": "tdrlxenjgfvnjzmuixhy.supabase.co" }]
-  }
+  },
+  "rewrites": [{ "source": "/((?!_vercel/)[^.]*)", "destination": "/index.html" }]
 }

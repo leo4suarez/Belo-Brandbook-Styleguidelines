@@ -15,7 +15,11 @@ export function serve(port = 8765, dir = dist) {
     try {
       const body = await readFile(file);
       res.writeHead(200, { 'content-type': types[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' }).end(body);
-    } catch { res.writeHead(404).end('Not found'); }
+    } catch {
+      /* a section's path (/voice-tone/como-hablamos) is the page itself, as on Vercel (see vercel.json rewrites) */
+      if (!extname(path)) { try { res.writeHead(200, { 'content-type': types['.html'], 'cache-control': 'no-store' }).end(await readFile(join(dir, 'index.html'))); return; } catch {} }
+      res.writeHead(404).end('Not found');
+    }
   });
   return new Promise(resolve => server.listen(port, () => resolve(server)));
 }

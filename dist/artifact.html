@@ -17,9 +17,13 @@
   try { if (!document.querySelector('meta[name="google"]')) { var nt = document.createElement('meta'); nt.name = 'google'; nt.content = 'notranslate'; (document.head || h).appendChild(nt); } } catch (e) {}
   h.setAttribute('data-scheme', s === 'dark' ? 'dark' : 'light');
   h.setAttribute('data-mode', 'viewer');
+  /* Section links: on the published site a section is a path (/voice-tone, /voice-tone/como-hablamos); a page opened
+     as a file (index.html, the artifact) keeps the section in the hash. Old #s_… links open their section anywhere. */
+  var paths = window.BC_PATHS = /^https?:$/.test(location.protocol) && !/\.html?$/i.test(location.pathname) && !window.claude;
   /* Home is the opening screen, unless the link points at a section (or a sign-in is coming back to one).
      Set before the first paint so the page never flashes the other view. */
-  h.setAttribute('data-view', location.hash.length < 2 && back.length < 2 ? 'home' : 'cat');
+  var atRoot = !paths || location.pathname.replace(/\/+$/, '') === '';
+  h.setAttribute('data-view', location.hash.length < 2 && back.length < 2 && atRoot ? 'home' : 'cat');
 })();
 /* Shared storage (filled in by scripts/build.mjs) and the supabase-js build the page loads */
 window.BC_SUPA = {"url":"https://tdrlxenjgfvnjzmuixhy.supabase.co","key":"sb_publishable_1yjnpyjiCsFbT1ELqwZSkg_1VyDeeBA"};
@@ -37,9 +41,11 @@ window.BC_SB = { src: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.
   var want = ['catalog/tree'], nav = null, last = null, sub = '';
   try { nav = JSON.parse(localStorage.getItem('bc.nav') || 'null'); last = localStorage.getItem('bc.cat'); } catch (e) {}
   try { sub = decodeURIComponent(location.hash.slice(1)); } catch (e) {}
+  var seg = ''; /* the category of a path link, by the name in its path (bc.nav keeps it) */
+  try { if (window.BC_PATHS) seg = decodeURIComponent(location.pathname.split('/')[1] || '').toLowerCase(); } catch (e) {}
   if (nav && nav.length) {
     var cat = null;
-    for (var i = 0; i < nav.length && !cat; i++) if (nav[i].subs.indexOf(sub) >= 0) cat = nav[i];
+    for (var i = 0; i < nav.length && !cat; i++) if (nav[i].subs.indexOf(sub) >= 0 || (seg && nav[i].s === seg)) cat = nav[i];
     for (var j = 0; j < nav.length && !cat; j++) if (nav[j].id === last) cat = nav[j];
     (cat || nav[0]).subs.forEach(function (id) { want.push('pages/' + id); });
   }
@@ -2128,7 +2134,7 @@ function supabaseBackend(sb, cfg) {
   const auth = {
     async session() { const { data } = await sb.auth.getSession(); return (data && data.session) || null; },
     onChange(fn) { sb.auth.onAuthStateChange((ev, s) => setTimeout(() => fn(ev, s), 0)); },
-    signIn() { return sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: 'select_account' } } }); },
+    signIn() { return sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + (PATHS ? '/' : location.pathname), queryParams: { prompt: 'select_account' } } }); },
     signOut() { return sb.auth.signOut({ scope: 'local' }); },
     async canEdit() { const { data, error } = await sb.rpc('can_edit'); return !error && data === true; }
   };
@@ -2389,7 +2395,8 @@ function start() {
 
 /* ================= Accounts (Supabase only) ================= */
 /* Google sign-in uses the PKCE flow: Google sends the visitor back with ?code=…, which supabase-js exchanges for a session.
-   The section hash is kept aside during the round trip because the redirect URL cannot carry it. */
+   The section (its path, or its hash) is kept aside during the round trip: the redirect goes to the root, the one
+   address Supabase is set to allow, and cannot carry a hash. */
 function authReturn() {
   const q = new URLSearchParams(location.search);
   let hash = '';
@@ -2401,7 +2408,9 @@ function authCleanUrl(back) {
   if (!['code', 'error', 'error_code', 'error_description'].some(k => q.has(k))) return;
   ['code', 'error', 'error_code', 'error_description'].forEach(k => q.delete(k));
   const s = q.toString();
-  try { history.replaceState(null, '', location.pathname + (s ? '?' + s : '') + (location.hash || back.hash || '')); } catch {}
+  /* the section the sign-in started from: a path on the published site, a hash elsewhere */
+  const was = back.hash || '', path = was[0] === '/' ? was.replace(/#.*$/, '') : location.pathname, hash = was[0] === '/' ? (/#.*$/.exec(was) || [''])[0] : was;
+  try { history.replaceState(null, '', path + (s ? '?' + s : '') + (location.hash || hash)); } catch {}
 }
 const personName = (u) => { const m = (u && u.user_metadata) || {}; return String(m.full_name || m.name || (u && u.email ? u.email.split('@')[0] : '') || '').trim(); };
 const firstName = (n) => String(n || '').split(/\s+/)[0] || '';
@@ -2429,7 +2438,7 @@ async function setUser(session, why) {
 }
 async function signIn() {
   if (!Cloud) return;
-  try { sessionStorage.setItem('bc.authHash', location.hash || ''); } catch {}
+  try { sessionStorage.setItem('bc.authHash', PATHS && location.pathname.length > 1 ? location.pathname + location.hash : location.hash || ''); } catch {}
   try { const { error } = await Cloud.auth.signIn(); if (error) throw error; }
   catch { toast('No se pudo iniciar sesión. Inténtalo de nuevo.'); }
 }
@@ -2457,13 +2466,13 @@ const peerColor = (id) => { let h = 0; for (const c of String(id || '')) h = (h 
 function renderPeers() { updateRailState(); refreshRowTools(); }
 function onTree() {
   /* for the next visit: which pages the head script reads early (open categories only; see the head script) */
-  ls.set('nav', JSON.stringify(cats().filter(c => !c.locked).map(c => ({ id: c.id, subs: c.subs.map(x => x.id) }))));
+  ls.set('nav', JSON.stringify(cats().filter(c => !c.locked).map(c => ({ id: c.id, s: routes().catSlug.get(c.id), subs: c.subs.map(x => x.id) }))));
   renderLogos();
   { const sig = JSON.stringify(animStyles()); if (sig !== Motion.stSig) { const first = Motion.stSig == null; Motion.stSig = sig; if (!first) Motion.resetAll(); } }
   const cur = currentCat();
   if (cur && !catOpen(cur)) { closedCategory(cur); }
   else if (!cur) {
-    const hashSub = decodeURIComponent((location.hash || '').slice(1));
+    const hashSub = linkedSub();
     const hc = hashSub && catOf(hashSub);
     const last = ls.get('cat');
     const pick = (catOpen(hc) && hc.id) || (last && catOpen(cats().find(c => c.id === last)) ? last : null) || (openCats()[0] && openCats()[0].id) || null;
@@ -2713,8 +2722,42 @@ function openCategory(catId, { to = null, row = null, instant = false } = {}) {
   if (to && cat) whenLoaded(cat).then(() => requestAnimationFrame(() => scrollToSub(to, { row, instant: instant || changed })));
   setHash(S.active);
 }
+/* ---------- Section links ----------
+   On the published site (PATHS) each section has a path made from its names: a category's first section is the
+   category (/voice-tone), the others hang from it (/voice-tone/como-hablamos); the same name twice gets -2. Renaming
+   a section changes its path; a path that no longer matches opens its category. Pages opened as a file keep #id. */
+const PATHS = !!window.BC_PATHS;
+const slugify = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'seccion';
+let RT = null, RTtree = null;
+function routes() {
+  if (RT && RTtree === S.tree) return RT;
+  const byId = new Map(), byPath = new Map(), byCat = new Map(), catSlug = new Map(), taken = new Set();
+  const unique = (base, used) => { let k = base, n = 2; while (used.has(k)) k = base + '-' + n++; used.add(k); return k; };
+  cats().forEach(c => {
+    const cs = unique(slugify(c.name), taken), used = new Set();
+    catSlug.set(c.id, cs);
+    c.subs.forEach((x, i) => {
+      const ss = unique(slugify(x.name), used), p = i ? `/${cs}/${ss}` : `/${cs}`;
+      byId.set(x.id, p); byPath.set(p, x.id); byPath.set(`/${cs}/${ss}`, x.id);
+      if (!i) byCat.set(cs, x.id);
+    });
+  });
+  RTtree = S.tree;
+  return (RT = { byId, byPath, byCat, catSlug });
+}
+/* The section a link points at: an #id (old links, pages opened as a file) or, on the published site, its path */
+function linkedSub() {
+  let h = ''; try { h = decodeURIComponent((location.hash || '').slice(1)); } catch {}
+  if (h || !PATHS) return h;
+  let p = ''; try { p = decodeURI(location.pathname).toLowerCase().replace(/\/+$/, ''); } catch {}
+  if (!p) return '';
+  const R = routes();
+  return R.byPath.get(p) || R.byCat.get(p.split('/')[1]) || '';
+}
+const homeUrl = () => (PATHS ? '/' : location.pathname) + location.search;
+const urlFor = (id) => !id ? homeUrl() : PATHS ? (routes().byId.get(id) || location.pathname) + location.search : location.pathname + location.search + '#' + id;
 /* Home has no hash: a category opened behind it (at load, or a deleted current one) must not write one. */
-function setHash(id) { if (S.view === 'home') return; try { history.replaceState(null, '', id ? '#' + id : location.pathname + location.search); } catch {} }
+function setHash(id) { if (S.view === 'home') return; try { history.replaceState(null, '', id ? urlFor(id) : location.pathname + location.search); } catch {} }
 
 const displayRows = (subId) => {
   const rows = S.pages.get(subId) || [];
@@ -6138,12 +6181,8 @@ function addTextScroll(rowEl, tb, a) {
 function buildMotion(rowEl, row, { preview = false, onDone = null, onUpdate = null } = {}) {
   const vars = { onComplete: () => { Ink.schedule(); onDone && onDone(); } };
   if (onUpdate) vars.onUpdate = onUpdate;
-  /* on a phone the text must never wait for its animation: a block starts as soon as its top comes into view and plays
-     2.5 times faster (and the word-by-word reading on scroll is left out) */
-  const phone = !preview && MOBILE.matches;
-  if (preview) vars.paused = true; else vars.scrollTrigger = { trigger: rowEl, start: phone ? 'top bottom' : 'top 82%', once: true };
+  if (preview) vars.paused = true; else vars.scrollTrigger = { trigger: rowEl, start: 'top 82%', once: true };
   const tl = Motion.g.timeline(vars);
-  if (phone) tl.timeScale(2.5);
   motionPlan(row).forEach(m => {
     const el = $(`.slot[data-slot="${m.s.id}"]`, rowEl); if (!el) return;
     const sp = SCROLL[m.a.scroll] || {};
@@ -6152,7 +6191,7 @@ function buildMotion(rowEl, row, { preview = false, onDone = null, onUpdate = nu
     m.blocks.forEach(t => {
       const tb = $(`.tb[data-block="${t.b.id}"]`, el); if (!tb) return;
       addTextEnter(tl, tb, t.a, t.at);
-      if (!preview && !phone) addTextScroll(rowEl, tb, t.a);
+      if (!preview) addTextScroll(rowEl, tb, t.a);
     });
   });
   return tl;
@@ -6170,7 +6209,8 @@ const Motion = {
     const go = () => { this.ready = true; this.sync(); };
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go);
   },
-  on() { return !!this.g && !RM; },
+  /* no animations on a phone: the text and the images are simply there */
+  on() { return !!this.g && !RM && !MOBILE.matches; },
   sync() {
     if (!this.ready) return;
     this.live.forEach((ctx, el) => { if (!el.isConnected || el.classList.contains('is-editing')) { ctx.revert(); this.live.delete(el); } });
@@ -6278,6 +6318,8 @@ function scrollToSub(id, { row = null, instant = false } = {}) {
   S.active = id; updateRailState(); setHash(id); renderStatus();
   const off = row ? (target.dataset.layout === 'fullscreen' ? 0 : (MOBILE.matches ? -96 : -40)) : sectionOffset(sec);
   const y = Math.max(0, target.getBoundingClientRect().top + scrollY + off);
+  /* the page may have just grown (its sections arriving after a link opened it): Lenis would clamp to its old height */
+  if (lenis) lenis.resize();
   S.spyLock = performance.now() + (instant ? 200 : 1500);
   const done = () => { S.spyLock = 0; if (row) flashRow(target); };
   if (lenis && !instant && !RM) lenis.scrollTo(y, { duration: 1.15, easing: (t) => 1 - Math.pow(1 - t, 4), onComplete: done });
@@ -6303,7 +6345,7 @@ addEventListener('scroll', onScroll, { passive: true });
 addEventListener('resize', () => { closePop(true); Ink.schedule(); measureNav(); markStartsFull(); ghostSoon(); Slider.size(); Lightbox.fit(); });
 function measureNav() { if (!MOBILE.matches) return; ROOT.style.setProperty('--nav-h', $('#rail').offsetHeight + 'px'); }
 if ('ResizeObserver' in window) new ResizeObserver(() => { measureNav(); Ink.schedule(); }).observe($('#rail-nav'));
-MOBILE.addEventListener('change', () => { measureNav(); renderInspector(); Ink.schedule(); Slider.size(); });
+MOBILE.addEventListener('change', () => { measureNav(); renderInspector(); Ink.schedule(); Slider.size(); Motion.resetAll(); });
 
 /* ================= Home ================= */
 /* The opening view: a spatial slider of the gallery media (tree.home.media), cards on the inside of a curve in CSS 3D.
@@ -6333,7 +6375,7 @@ function showHome({ push = true } = {}) {
   if (S.overlay) closeOverlay(true);
   if (S.view === 'home') { Slider.toItem(0); return; } /* the logo on Home goes back to the first card */
   moveRailActions(() => { S.view = 'home'; ROOT.dataset.view = 'home'; });
-  if (push) { try { history.pushState(null, '', location.pathname + location.search); } catch {} }
+  if (push) { try { history.pushState(null, '', homeUrl()); } catch {} }
   scrollTop();
   const built = Slider.built;
   renderHome(); renderPageMode();
@@ -6346,7 +6388,7 @@ function leaveHome({ push = true } = {}) {
   moveRailActions(() => { S.view = 'cat'; ROOT.dataset.view = 'cat'; });
   if (lenis) lenis.resize(); /* the page just got its height back: scrolls to a section right after must not be clamped */
   Slider.stop();
-  if (push) { try { history.pushState(null, '', location.pathname + location.search + (S.active ? '#' + S.active : '')); } catch {} }
+  if (push) { try { history.pushState(null, '', S.active ? urlFor(S.active) : location.pathname + location.search); } catch {} }
   measureNav(); markStartsFull();
   Motion.resetAll(); /* the enter animations wait until the page shows */
   renderPageMode();
@@ -6356,7 +6398,7 @@ addEventListener('popstate', () => {
   if (S.edit) return; /* the open block keeps the page; the next spy update rewrites the hash */
   Lightbox.close(true); closePop(true);
   if (S.overlay) closeOverlay(true);
-  const h = decodeURIComponent((location.hash || '').slice(1));
+  const h = linkedSub();
   if (!h) { showHome({ push: false }); return; }
   const c = catOf(h);
   leaveHome({ push: false });

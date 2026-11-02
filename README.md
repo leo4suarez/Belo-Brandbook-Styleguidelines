@@ -18,6 +18,11 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 
 ### Funciones principales
 
+- **Links de cada sección:** en el sitio publicado cada sección tiene su dirección, hecha con los nombres: la primera sección de una categoría es la categoría (`/voice-tone`), las demás cuelgan de ella (`/voice-tone/como-hablamos`). La dirección sigue a la sección que se está viendo al scrollear, y el botón Atrás del navegador vuelve a la anterior. La raíz (`/`) es la Home.
+  - Sin acentos ni signos («Propósito, misión y visión» es `proposito-mision-y-vision`); un nombre repetido en la misma categoría suma `-2`.
+  - Renombrar una sección o una categoría cambia su dirección; un link viejo cuyo nombre ya no existe abre su categoría.
+  - Los links anteriores (`/#s_zyrlcvahgm`) siguen andando y pasan solos a la dirección nueva. Fuera del sitio (el archivo `index.html`, el artifact) la sección sigue en el `#`.
+  - Al iniciar sesión, Google vuelve a la raíz (la dirección que Supabase tiene permitida) y la página regresa a la sección de la que se salió.
 - **Home:** es la pantalla de inicio cuando se entra con el link (salvo que el link apunte a una sección). Un slider espacial de tarjetas: un anillo continuo visto desde adentro, dibujado con WebGL sin librerías. Las imágenes y los videos se curvan sobre la misma superficie (no son planos girados uno por uno): el borde de arriba y el de abajo de todas las tarjetas son tramos de los mismos dos arcos, con el mismo espacio entre tarjetas, y hacia los bordes de la pantalla el anillo envuelve la vista. Sin WebGL (o si un archivo no se puede usar como textura) se dibujan las tarjetas como planos en CSS 3D, con el mismo comportamiento.
   - Cada tarjeta es la imagen o el video mismo, sin marco y sin texto, con las esquinas redondeadas que se elijan. Todas comparten la altura y el ancho sale de la proporción: la del archivo, salvo que se elija Horizontal (16:9), Vertical (4:5) o Cuadrada. Los elementos se repiten en un loop infinito hasta llenar la curva. Los videos se reproducen (sin sonido, en loop) solo en las tarjetas que se ven.
   - Se mueve sola y sin parar, a la velocidad elegida en la galería (despacio por defecto; en 0 queda quieta). Con el mouse sobre las tarjetas (o sobre los controles) frena suavemente y, al salir, vuelve a arrancar; en pantallas táctiles arranca de nuevo un par de segundos después del último toque. También se pausa con la Home oculta, la pestaña en segundo plano, el lightbox o la galería abiertos.
@@ -30,7 +35,7 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
     - Heroes: sin la lista de secciones encima; el título en Phudu de la portada va a 64 px, a la izquierda y siempre en blanco sobre la foto o el video. El logo y los botones de arriba toman blanco sobre una foto de hero que no se puede leer todavía.
     - Arriba a la derecha, al lado del menú, un desplegable con las secciones de la categoría: queda fijo al scrollear, muestra el nombre de la sección que se está viendo y lleva a la que se elija. El desplegable y el menú son blancos plenos, sin blur. La búsqueda está dentro del menú abierto (en la Home queda solo el menú).
     - Los videos se reproducen sin los botones de pausa y sonido.
-    - Las animaciones de entrada arrancan apenas el bloque asoma y van 2,5 veces más rápido; la lectura palabra por palabra al scrollear no se usa: el texto nunca espera a su animación.
+    - Sin animaciones (de entrada ni con el scroll): los textos y las imágenes están desde el principio.
     - En pantallas táctiles, las animaciones con scroll se recalculan (cuando carga una imagen) recién cuando la página dejó de moverse: un recálculo vuelve a fijar la posición del scroll, y en el iPhone eso frenaba en seco un scroll lanzado.
   - En la Home, los botones de búsqueda y menú van arriba a la derecha (con el mismo margen que el logo a la izquierda); el de menú es una pastilla azul Belo con «Menú» y el ícono; en las secciones vuelven al lado de la lista, deslizándose al cambiar de vista. El logo (o la palabra "belo" si no hay logo cargado) siempre vuelve a la Home. Con `prefers-reduced-motion` no se mueve sola, el cambio de tarjeta es instantáneo, sin inercia, y los videos no arrancan solos.
   - Cada visita arranca en modo claro. El switch claro/oscuro vale solo para esa visita (esa pestaña).
@@ -144,7 +149,7 @@ node tests/run.cjs layout.cjs     # solo algunas suites
 - **Proyecto:** `belo-brandbook` (id `tdrlxenjgfvnjzmuixhy`, región São Paulo).
 - **Base:** una tabla `docs` con un documento JSON por ruta (`catalog/tree` y `pages/{subId}`), el mismo modelo que el artifact. El esquema está en `supabase/migrations/`.
 - **Quién ve:** cualquiera con el link, sin login. Las secciones de una categoría bloqueada solo las leen los editores (`private.page_locked`, en la regla de lectura de `docs`).
-- **Quién edita:** cuentas con email confirmado de `@paisanoscreando.com` o `@paisanos.io`. Se entra con Google desde el menú ("Iniciar sesión"). Una cuenta de otro dominio entra en "Solo lectura".
+- **Quién edita:** cuentas con email confirmado de `@paisanoscreando.com`, `@paisanos.io` o `@belo.app` (este último con `20261102120000_catalog_editors_belo_app.sql`). Se entra con Google desde el menú ("Iniciar sesión"). Una cuenta de otro dominio entra en "Solo lectura".
   - Para sumar a una persona puntual: `insert into private.editors (email) values ('alguien@belo.app');`
   - Para sumar un dominio entero: `insert into private.editor_domains (domain) values ('belo.app');`
 - **Archivos:** bucket público `assets`. Solo los editores suben y borran.
@@ -229,6 +234,7 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
 
 - El repo está conectado a Vercel (proyecto `belo-brandbook`): cada push a `main` se despliega solo, y cada rama tiene su preview.
 - `vercel.json` le indica que corra `node scripts/build.mjs`, que no hace falta instalar dependencias y que sirva la carpeta `dist/`.
+- Toda dirección sin extensión que no sea un archivo (`/voice-tone/como-hablamos`) sirve la página (`rewrites`); los archivos reales y `/_vercel/` siguen como están. `scripts/serve.mjs` hace lo mismo en local.
 - También configura **Image Optimization** (`images`):
   - Anchos 384, 640, 960, 1280, 1920 y 2560, iguales a `IMG_W` en `src/catalog.html`.
   - Salida en WebP y caché de 31 días.
@@ -343,3 +349,8 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Celular: el scroll lanzado ya no se frena solo (las animaciones se recalculaban en pleno scroll al cargar cada imagen; en la prueba, 6 veces en 4 s de scroll, ahora ninguna hasta que se detiene).
   - Celular: menú y desplegable blancos sin blur; texto de 14 px con 120% de interlineado; heroes sin lista de secciones, con el título Phudu a 64 px, a la izquierda y en blanco; títulos Phudu a 40 px; videos sin botones; animaciones de entrada antes y más rápidas.
   - Desktop: al cerrar el menú, el círculo se achica hasta adentro del botón (en la Home tomaba el ancho de la pastilla «Menú» y terminaba como un círculo grande).
+- **v7.13:**
+  - Cada sección con su dirección (`/voice-tone`, `/voice-tone/como-hablamos`) en vez de `/#s_…`; los links viejos siguen andando.
+  - Un link a una sección baja hasta ella también en la primera visita (el scroll suave todavía no conocía el alto de la página y se quedaba arriba).
+  - Celular: sin animaciones.
+  - Editores también con `@belo.app` (migración `20261102120000_catalog_editors_belo_app.sql`, pendiente de aplicar en Supabase).

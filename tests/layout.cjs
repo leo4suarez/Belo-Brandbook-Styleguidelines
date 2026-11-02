@@ -1,7 +1,7 @@
 // v7: the theme opens light, the rail title and its category list, locked categories (in the page and in the
 // database), moving a subcategory, the items of a text module (containers, auto-layout groups, dividers), module
 // strokes, the width of a block and the split of a half row, the carousel strip, and phones (three text styles, the
-// sections dropdown, search in the menu).
+// sections dropdown, search in the menu), and the section paths of the published site (/voice-tone/como-hablamos).
 // Runs on the local demo (BASE_URL) and on the fake Supabase project (SUPA_BASE_URL). Usage: through tests/run.cjs.
 const { chromium } = require('playwright');
 const path = require('path');
@@ -584,6 +584,51 @@ function watchErrors(page, label) {
     const D = await localPage('#s_direccion');
     check(await D.evaluate(() => !!document.querySelector('#btn-search').getClientRects().length && !document.querySelector('#btn-secs').getClientRects().length && !document.querySelector('#menu-search').getClientRects().length), 'a wide screen keeps the search button in the top bar and no dropdown');
     await D.context().close();
+  }
+
+  /* ---------- 12. Section links: /voice-tone, /voice-tone/como-hablamos (the published site); old #s_… links ---------- */
+  {
+    const fake = new FakeSupabase(SUPA_URL);
+    const tall = (id, t) => ({ id, layout: 'full', h: null, slots: [{ id: 'm_' + id, type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b_' + id, text: t + '\n' + 'Texto de la sección. '.repeat(60), font: 'jakarta', size: 40, weight: 600, lh: 110, ls: -1, align: 'left', upper: false }] }] });
+    fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [
+      { id: 'c_f', name: 'Foundations', subs: [{ id: 's_f1', name: 'Dirección estratégica' }, { id: 's_f2', name: 'Propósito, misión y visión' }] },
+      { id: 'c_v', name: 'Voice & Tone', subs: [{ id: 's_v1', name: 'Introducción' }, { id: 's_v2', name: 'Cómo hablamos' }, { id: 's_v3', name: 'Voz de marca' }] }] });
+    ['s_f1', 's_f2', 's_v1', 's_v2', 's_v3'].forEach((id, i) => fake.seed('pages/' + id, { rows: [tall('r_' + id + 'a', 'Sección ' + (i + 1)), tall('r_' + id + 'b', 'Más')] }));
+    const site = new URL(SUPA_BASE).origin; /* served at the root, like Vercel: every section path is the page */
+    const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1 });
+    await fake.attach(ctx, 'routes'); await routes(ctx);
+    await ctx.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\/dist\/umd\/supabase\.js/, r => r.fulfill({ path: SB_JS, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+    const R = await ctx.newPage(); watchErrors(R, 'routes');
+    const where = () => R.evaluate(() => ({ path: location.pathname, hash: location.hash, view: document.documentElement.dataset.view, active: (document.querySelector('#rail-nav .sub.is-active') || {}).textContent || '' }));
+    const go = async (path) => { await R.goto(site + path); await R.waitForTimeout(1600); return where(); };
+    let w = await go('/');
+    check(w.view === 'home' && w.path === '/', 'the root opens Home (' + JSON.stringify(w) + ')');
+    w = await go('/voice-tone');
+    check(w.view === 'cat' && w.path === '/voice-tone' && w.active === 'Introducción', '/voice-tone opens the category on its first section (' + JSON.stringify(w) + ')');
+    w = await go('/voice-tone/como-hablamos');
+    const top = await R.evaluate(() => Math.round(document.getElementById('s-s_v2').getBoundingClientRect().top));
+    check(w.active === 'Cómo hablamos' && w.path === '/voice-tone/como-hablamos' && top > -40 && top < 120, `/voice-tone/como-hablamos opens that section, scrolled to it (${top}px from the top)`);
+    await R.evaluate(() => window.scrollTo(0, document.getElementById('s-s_v3').getBoundingClientRect().top + scrollY - 40)); await R.waitForTimeout(900);
+    w = await where();
+    check(w.path === '/voice-tone/voz-de-marca' && !w.hash, 'scrolling to the next section, the address follows it (' + w.path + ')');
+    await R.click('#rail-nav .sub[data-id="s_v1"]'); await R.waitForTimeout(1600);
+    check((await where()).path === '/voice-tone', 'picking the first section in the rail: the category path again');
+    w = await go('/#s_f2');
+    check(w.active === 'Propósito, misión y visión' && w.path === '/foundations/proposito-mision-y-vision' && !w.hash, 'an old #s_… link opens its section and the address becomes its path (' + w.path + ')');
+    await R.click('#rail-logo'); await R.waitForTimeout(900);
+    check((await where()).path === '/' && (await where()).view === 'home', 'the logo goes Home at /');
+    await R.goBack(); await R.waitForTimeout(1200);
+    w = await where();
+    check(w.view === 'cat' && w.path === '/foundations/proposito-mision-y-vision' && w.active === 'Propósito, misión y visión', 'the browser back button returns to the section (' + w.path + ')');
+    w = await go('/voice-tone/una-seccion-renombrada');
+    check(w.view === 'cat' && w.active === 'Introducción' && w.path === '/voice-tone', 'a path that no longer matches opens its category (' + w.path + ')');
+    /* the next visit reads that category's pages before the page scripts run (bc.nav keeps the names of the paths) */
+    fake.readLog = [];
+    await R.goto('about:blank'); await R.goto(site + '/voice-tone/voz-de-marca'); await R.waitForSelector('#s-s_v3 .row'); await R.waitForTimeout(600);
+    check(fake.readLog[0] && ['catalog/tree', 'pages/s_v1', 'pages/s_v2', 'pages/s_v3'].every(p => fake.readLog[0].includes(p)), 'on the next visit, a section path brings its category in the first request (' + (fake.readLog[0] || []).join(', ') + ')');
+    check((await where()).active === 'Voz de marca', 'and opens on that section');
+    check(!R.errors.length, 'no page errors with section paths' + (R.errors.length ? ': ' + R.errors.join(' | ') : ''));
+    await ctx.close();
   }
 
   await browser.close();
