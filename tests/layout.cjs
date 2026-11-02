@@ -756,11 +756,16 @@ function watchErrors(page, label) {
     check(tabs.every(Boolean), 'Tab stays inside the reader');
     await V.keyboard.press('Escape'); await V.waitForTimeout(250);
     check(await V.locator('#mreader .mr-fly').count() === 1, 'closing, the sheets fly back into the card');
-    await V.waitForTimeout(700);
+    const back = await V.evaluate(() => { const fp = document.querySelector('#mreader .mr-flypage'), pages = [...document.querySelectorAll('#mreader .mr-scroll .mf-page')];
+      return { title: fp && (fp.querySelector('.mf-h') || {}).textContent, opacity: fp ? +getComputedStyle(fp).opacity : -1, left: pages.map((p, i) => p.style.visibility === 'hidden' ? i : -1).filter(i => i >= 0).join() }; });
+    check(back.title === 'Hoja dos' && back.opacity === 1 && back.left === '1', `the sheet being read flies back whole, without fading, and is not left behind in the reader (${back.title}, opacity ${back.opacity})`);
+    await V.waitForTimeout(800);
     st = await state(V);
     check(!st.open && await V.evaluate(() => document.activeElement && document.activeElement.classList.contains('slot-reader')) && await V.evaluate(() => !document.documentElement.classList.contains('ov-open')), 'Escape closes it and gives the focus back to the card');
+    check(await V.evaluate(() => document.querySelector('.slot-reader .mf-sheet.is-f .mf-h').textContent) === 'Hoja dos', 'and it stays on top of the card');
     await V.keyboard.press('Enter'); await V.waitForTimeout(1100);
-    check((await state(V)).open, 'Enter on the card opens it again');
+    const re = await V.evaluate(() => { const sc = document.querySelector('.mr-scroll'), p = sc.querySelectorAll('.mf-page')[1]; return Math.round(p.getBoundingClientRect().top - sc.getBoundingClientRect().top); });
+    check((await state(V)).open && re === 24, 'Enter on the card opens it again, on that sheet (' + re + 'px under the edge)');
     await V.click('#mreader .mr-x'); await V.waitForTimeout(900);
     check(!(await state(V)).open, 'and the close button closes it');
     check(!V.errors.length, 'no page errors in the reader' + (V.errors.length ? ': ' + V.errors.join(' | ') : ''));

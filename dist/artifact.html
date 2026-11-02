@@ -552,6 +552,8 @@ html.frame-on .status{visibility:hidden} /* on a phone the bar spans the screen 
 .mr-fly{position:fixed;container-type:inline-size;pointer-events:none}
 .mr-fly .mf-fan{overflow:visible} /* the box's clip crops the flight, not the card's edges */
 .mr-fly .mf-sheet.is-f{transform-origin:0 0}
+.mr-flypage{position:fixed;transform-origin:0 0;pointer-events:none}
+.mr-flypage > .mr-pages{display:block;padding:0}
 .mr-btn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#FFFFFF;color:#000000;box-shadow:0 0 0 1px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.06);transition:background-color 160ms ease,opacity 160ms ease,transform 140ms var(--ease-out)}
 .mr-btn svg.i{width:18px;height:18px;stroke-width:2}
 .mr-btn:active{transform:scale(.92)}
@@ -1777,6 +1779,7 @@ const FS_TYPES = ['image', 'video', 'color'];
 const ROW_TYPES = ['text', 'image', 'video', 'carousel', 'svg', 'color', 'reader'];
 const MF_MAX = 100000; /* the text of a Manifiesto module (slot.doc), in characters */
 const mfMemo = new Map(); /* its sheets, parsed once per text (mfParse) */
+const mfAt = new Map(); /* the sheet each Manifiesto was left on (this visit): it stays on top of the card and opens first */
 const OW_REF = { half: 547, content: 1114, screen: 1472 };
 const IMG_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
 const VID_TYPES = ['video/mp4', 'video/webm'];
@@ -8105,10 +8108,12 @@ function buildReader(s, editing) {
   el.innerHTML = mfCardHTML(s, editing);
   return el;
 }
+function mfTop(s) { return clamp(mfAt.get(s.id) || 0, 0, Math.max(0, mfPages(s).length - 1)); }
 function mfCardHTML(s, editing) {
-  const p = mfPages(s);
-  return `<div class="mf-card"><div class="mf-fan" aria-hidden="true"><div class="mf-sheet is-l"></div><div class="mf-sheet is-r"></div><div class="mf-sheet is-f">${p.length ? `<div class="mf-page">${mfPageHTML(p[0])}</div>` : ''}</div></div>${editing && !p.length ? '<p class="mf-empty">Pega el texto en el panel</p>' : ''}</div>`;
+  const p = mfPages(s), top = editing ? 0 : mfTop(s);
+  return `<div class="mf-card"><div class="mf-fan" aria-hidden="true"><div class="mf-sheet is-l"></div><div class="mf-sheet is-r"></div><div class="mf-sheet is-f">${p.length ? `<div class="mf-page">${mfPageHTML(p[top])}</div>` : ''}</div></div>${editing && !p.length ? '<p class="mf-empty">Pega el texto en el panel</p>' : ''}</div>`;
 }
+const MR_NARROW = matchMedia('(max-width: 760px)'); /* the reader's narrow layout (see .mr-pages in the CSS) */
 const Reader = {
   s: null, card: null, to: null, idle: 0,
   open(s, card) {
@@ -8127,6 +8132,8 @@ const Reader = {
     m.hidden = false;
     if (lenis) lenis.stop(); else ROOT.classList.add('ov-open', 'no-lenis');
     const sc = $('.mr-scroll', m);
+    /* it opens on the sheet the card shows on top (the one it was left on) */
+    this.at = mfTop(s); if (this.at) sc.scrollTop = this.tops(sc)[this.at];
     sc.addEventListener('scroll', () => this.sync(), { passive: true });
     ['wheel', 'touchstart'].forEach(t => sc.addEventListener(t, () => { this.to = null; }, { passive: true }));
     this.sync();
@@ -8137,6 +8144,12 @@ const Reader = {
     if (!S.modal || S.modal.kind !== 'reader') return;
     const m = $('#mreader'), from = S.modal.from; S.modal = null;
     const fin = () => { if (S.modal && S.modal.kind === 'reader') return; m.hidden = true; m.innerHTML = ''; };
+    /* the sheet being read goes back on top of the card (under the reader, so nothing shows yet) */
+    const sc = $('.mr-scroll', m), s = this.s;
+    if (sc && s) {
+      const i = $$('.mf-page', sc).indexOf(this.current(sc)), p = mfPages(s);
+      if (i >= 0 && p[i]) { mfAt.set(s.id, i); const f = this.card && this.card.isConnected && $('.mf-sheet.is-f', this.card); if (f) f.innerHTML = `<div class="mf-page">${mfPageHTML(p[i])}</div>`; }
+    }
     if (!S.overlay) { ROOT.classList.remove('ov-open', 'no-lenis'); lenis && lenis.start(); }
     if (instant) fin(); else this.fly(false).then(fin, fin);
     if (from && from.isConnected) from.focus({ preventScroll: true });
@@ -8169,7 +8182,7 @@ const Reader = {
     if (RM || !card || !card.getClientRects().length) {
       return m.animate(opening ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-out', fill: 'both' }).finished;
     }
-    const W = innerWidth, H = innerHeight, R = card.getBoundingClientRect(), D = opening ? 820 : 620;
+    const W = innerWidth, H = innerHeight, R = card.getBoundingClientRect(), D = opening ? 820 : 720;
     const ease = 'cubic-bezier(.32,.72,0,1)', k = parseFloat(getComputedStyle(box).getPropertyValue('--mr-in')) || 16;
     const pair = (a, b) => opening ? [a, b] : [b, a];
     const clipCard = `inset(${Math.max(0, R.top)}px ${Math.max(0, W - R.right)}px ${Math.max(0, H - R.bottom)}px ${Math.max(0, R.left)}px round 20px)`;
@@ -8180,18 +8193,44 @@ const Reader = {
     sc.after(fly);
     const real = $$('.mf-sheet', card), sheets = $$('.mf-sheet', fly);
     const base = real.map(n => { const t = getComputedStyle(n).transform; return t && t !== 'none' ? t : ''; });
-    const front = $('.mf-sheet.is-f', fly), F = front.getBoundingClientRect(), pg = opening ? $('.mf-page', sc) : this.current(sc), P = pg.getBoundingClientRect();
-    const toPage = `translate(${P.left - F.left}px, ${P.top - F.top}px) scale(${P.width / F.width})`;
+    const front = $('.mf-sheet.is-f', fly), F = front.getBoundingClientRect();
+    /* On wide windows the reader's page and the card's front sheet are the same layout (595px, one at the card's scale):
+       the hand-over between them is a plain swap, invisible. On narrow ones the reader reflows the page, so the copy on
+       top fades over an opaque one (never two half-transparent sheets) */
+    const same = !MR_NARROW.matches;
     const anims = [
       box.animate({ clipPath: pair(clipCard, `inset(${k}px round 20px)`) }, { duration: D, easing: ease, fill: 'both' }),
       dim.animate({ opacity: pair(0, 1) }, { duration: D * .6, easing: 'ease-out', fill: 'both', delay: opening ? 0 : D * .4 }),
-      front.animate({ transform: pair(base[2] || 'none', toPage) }, { duration: D, easing: ease, fill: 'both' }),
       ...sheets.slice(0, 2).map((n, i) => n.animate({ transform: pair(base[i] || 'none', `translateY(${Math.round(H * .7)}px) ${base[i] || ''}`), opacity: pair(1, 0) }, opening ? { duration: D * .55, easing: 'cubic-bezier(.55,0,.75,.25)', fill: 'both' } : { duration: D, easing: ease, fill: 'both', delay: D * .1 })),
-      /* the real pages take over from the flying sheet at the end (and hand back to it at the start of the way back) */
-      sc.animate(opening ? [{ opacity: 0 }, { opacity: 0, offset: .7 }, { opacity: 1 }] : [{ opacity: 1 }, { opacity: 0, offset: .22 }, { opacity: 0 }], lin({ duration: D })),
-      fly.animate(opening ? [{ opacity: 1 }, { opacity: 1, offset: .7 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1, offset: .22 }, { opacity: 1 }], lin({ duration: D })),
       ...ui.map(n => n.animate(opening ? [{ opacity: 0 }, { opacity: 0, offset: .55 }, { opacity: 1 }] : [{ opacity: 1 }, { opacity: 0, offset: .2 }, { opacity: 0 }], lin({ duration: D })))
     ];
+    if (opening) {
+      /* the card's front sheet (the first page at the card's scale) grows into the first page; the real pages take over
+         once it has landed, so only the sheets below it appear */
+      const P = $$('.mf-page', sc)[this.at || 0].getBoundingClientRect();
+      anims.push(
+        front.animate({ transform: [base[2] || 'none', `translate(${P.left - F.left}px, ${P.top - F.top}px) scale(${P.width / F.width})`] }, { duration: D, easing: ease, fill: 'both' }),
+        sc.animate([{ opacity: 0 }, { opacity: 0, offset: .62 }, { opacity: 1, offset: .86 }, { opacity: 1 }], lin({ duration: D })));
+      if (!same) anims.push(fly.animate([{ opacity: 1 }, { opacity: 1, offset: .86 }, { opacity: 0 }], lin({ duration: D })));
+    } else {
+      /* the page being read is the sheet that flies back: a copy of it, exactly where it is, leaves at once (the page
+         itself hides, so nothing is left behind to fade); the pages around it fade, and once it is back in the card its
+         text hands over to the card's own first page */
+      const pg = this.current(sc), P = pg.getBoundingClientRect(), V = sc.getBoundingClientRect();
+      const fp = document.createElement('div'); fp.className = 'mr-flypage'; fp.setAttribute('aria-hidden', 'true');
+      fp.style.cssText = `left:${P.left}px;top:${P.top}px;width:${P.width}px;height:${P.height}px`;
+      const wrap = document.createElement('div'); wrap.className = 'mr-pages'; wrap.append(pg.cloneNode(true)); fp.append(wrap);
+      fly.after(fp);
+      pg.style.visibility = 'hidden';
+      const cut = Math.max(0, Math.round(V.top - P.top)), r = parseFloat(getComputedStyle(pg).borderTopLeftRadius) || 12;
+      anims.push(
+        fp.animate({ transform: ['none', `translate(${F.left - P.left}px, ${F.top - P.top}px) scale(${F.width / P.width})`] }, { duration: D, easing: ease, fill: 'both' }),
+        front.animate(same ? [{ opacity: 0 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 0, offset: .6 }, { opacity: 1, offset: .601 }, { opacity: 1 }], lin({ duration: D })),
+        sc.animate([{ opacity: 1 }, { opacity: 0, offset: .3 }, { opacity: 0 }], lin({ duration: D })));
+      if (!same) anims.push(fp.animate([{ opacity: 1 }, { opacity: 1, offset: .62 }, { opacity: 0 }], lin({ duration: D })));
+      /* a page partly scrolled under the top edge shows its hidden part as it leaves */
+      if (cut) anims.push(fp.animate({ clipPath: [`inset(${cut}px 0 0 0 round ${r}px)`, `inset(0 round ${r}px)`] }, { duration: D * .5, easing: ease, fill: 'both' }));
+    }
     const done = Promise.all(anims.map(a => a.finished));
     if (opening) done.then(() => { if (!fly.isConnected) return; fly.remove(); anims.forEach(a => { try { a.cancel(); } catch {} }); }, () => fly.remove());
     return done;
