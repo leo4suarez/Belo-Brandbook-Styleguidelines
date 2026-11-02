@@ -1,7 +1,8 @@
 // v7: the theme opens light, the rail title and its category list, locked categories (in the page and in the
 // database), moving a subcategory, the items of a text module (containers, auto-layout groups, dividers), module
 // strokes, the width of a block and the split of a half row, the carousel strip, and phones (three text styles, the
-// sections dropdown, search in the menu), and the section paths of the published site (/voice-tone/como-hablamos).
+// sections dropdown, search in the menu), the section paths of the published site (/voice-tone/como-hablamos), and the
+// "Ver de nuevo" button of animation examples.
 // Runs on the local demo (BASE_URL) and on the fake Supabase project (SUPA_BASE_URL). Usage: through tests/run.cjs.
 const { chromium } = require('playwright');
 const path = require('path');
@@ -629,6 +630,64 @@ function watchErrors(page, label) {
     check((await where()).active === 'Voz de marca', 'and opens on that section');
     check(!R.errors.length, 'no page errors with section paths' + (R.errors.length ? ': ' + R.errors.join(' | ') : ''));
     await ctx.close();
+  }
+
+  /* ---------- 13. Animation examples: "Ver de nuevo" plays a module's animation again ---------- */
+  {
+    const fake = new FakeSupabase(SUPA_URL);
+    const word = { enter: 'split-fade', by: 'words', dur: .3, stagger: .06, order: 'start', delay: 0, dir: 'bottom', dist: 56, ease: 'power1.out', scroll: 'none' };
+    const card = (id, t) => ({ id: 'm_' + id, type: 'text', bg: { kind: 'color', color: '#ffffff' }, stroke: { c: '#e3e3e3', w: 1 }, align: 'start', ink: 'auto', pad: { t: 32, r: 32, b: 32, l: 32 },
+      blocks: [{ id: 'b_' + id, text: t, font: 'jakarta', size: 48, weight: 600, lh: 95, ls: -4, align: 'left', upper: false, anim: word }] });
+    fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [{ id: 'c_t', name: 'Typography', subs: [{ id: 's_m', name: 'Motion' }] }] });
+    fake.seed('pages/s_m', { rows: [
+      { id: 'r_head', layout: 'full', h: null, slots: [{ id: 'm_head', type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b_head', text: 'Apariciones', font: 'jakarta', size: 48, weight: 600, lh: 110, ls: -2, align: 'left', upper: false, anim: word }] }] },
+      { id: 'r_ex', layout: 'half', h: 350, anim: { stagger: .15, tstagger: .12, replay: true }, slots: [card('x1', 'Una billetera para todas tus monedas'), card('x2', 'Hacé más con lo tuyo')] }
+    ] });
+    const opened = async (label, opts = {}) => {
+      const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1, ...opts });
+      await fake.attach(ctx, label); await routes(ctx);
+      await ctx.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\/dist\/umd\/supabase\.js/, r => r.fulfill({ path: SB_JS, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+      const page = await ctx.newPage(); watchErrors(page, label);
+      await page.goto(SUPA_BASE + '#s_m'); await page.waitForSelector('#s-s_m .row[data-id="r_ex"]'); await page.waitForTimeout(2500);
+      return { page, ctx };
+    };
+    const split = (p, id) => p.evaluate((id) => { const t = document.querySelector(`.tb[data-block="${id}"]`); const w = [...t.querySelectorAll('.sw')]; return { words: w.length, hidden: w.filter(x => +getComputedStyle(x).opacity < .99).length, text: t.textContent, opacity: +getComputedStyle(t).opacity }; }, id);
+    const { page: V, ctx: vctx } = await opened('replay');
+    const btns = await V.evaluate(() => [...document.querySelectorAll('.replay')].map(b => ({ slot: b.closest('.slot').dataset.slot, label: b.getAttribute('aria-label'), w: Math.round(b.getBoundingClientRect().width) })));
+    check(btns.length === 2 && btns.every(b => b.label === 'Ver la animación de nuevo' && b.w === 36) && btns.map(b => b.slot).join() === 'm_x1,m_x2', 'a block marked "Ver de nuevo" shows a reload button on each animated module, and only there (' + btns.map(b => b.slot).join(', ') + ')');
+    const rest = await split(V, 'b_x1');
+    check(rest.words === 0 && rest.opacity === 1, 'once its animation has played, the text is whole');
+    await V.click('.slot[data-slot="m_x1"] .replay'); await V.waitForTimeout(120);
+    const mid = await split(V, 'b_x1'), other = await split(V, 'b_x2');
+    check(mid.words === 6 && mid.hidden > 0 && other.words === 0, `the button plays that module's animation again, word by word (${mid.hidden} of ${mid.words} words still to come; the other module stays still)`);
+    await V.waitForTimeout(1600);
+    const after = await split(V, 'b_x1');
+    check(after.words === 0 && after.text === 'Una billetera para todas tus monedas' && after.opacity === 1, 'and leaves the text whole again');
+    await V.click('.slot[data-slot="m_x1"] .replay'); await V.waitForTimeout(60); await V.click('.slot[data-slot="m_x1"] .replay'); await V.waitForTimeout(1600);
+    check((await split(V, 'b_x1')).words === 0 && (await split(V, 'b_x1')).text === 'Una billetera para todas tus monedas', 'pressed twice in a row, it starts over and still ends whole');
+    check(!V.errors.length, 'no page errors replaying' + (V.errors.length ? ': ' + V.errors.join(' | ') : ''));
+    await vctx.close();
+    // On a phone nothing animates by itself, but the button still plays the example
+    const { page: M, ctx: mctx } = await opened('replay-phone', { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await M.locator('.slot[data-slot="m_x2"]').scrollIntoViewIfNeeded(); await M.waitForTimeout(800);
+    check((await split(M, 'b_x2')).words === 0 && await M.locator('.slot[data-slot="m_x2"] .replay').isVisible(), 'on a phone the example sits still, with its button');
+    await M.tap('.slot[data-slot="m_x2"] .replay'); await M.waitForTimeout(120);
+    check((await split(M, 'b_x2')).hidden > 0, 'and a tap plays its animation');
+    await mctx.close();
+    // Reduced motion: no animations, so no button
+    const { page: R, ctx: rctx } = await opened('replay-rm', { reducedMotion: 'reduce' });
+    check(await R.locator('.replay').count() === 0, 'with reduced motion there is no reload button');
+    await rctx.close();
+    // The switch: Animación → Ver de nuevo, on a block of the local demo
+    const E = await localPage('#s_direccion');
+    check(await E.locator('.row[data-id="r_t"] .replay').count() === 0, 'a block starts without the button');
+    await editRow(E, 'r_t');
+    await E.click('#insp [data-action="insp-view"][data-v="anim"]'); await E.waitForTimeout(200);
+    check(await E.locator('#insp [data-action="seg"][data-k="rrep"][data-v="off"][aria-pressed="true"]').count() === 1, 'the Animación view has "Ver de nuevo", off');
+    await E.click('#insp [data-action="seg"][data-k="rrep"][data-v="on"]'); await E.waitForTimeout(150);
+    await confirm(E);
+    check(await E.locator('.row[data-id="r_t"] .replay').count() >= 1, 'turned on and confirmed, the block shows its reload button');
+    await E.context().close();
   }
 
   await browser.close();

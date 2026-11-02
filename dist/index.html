@@ -360,6 +360,12 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .slot-text.has-gap .tblocks{gap:calc(var(--tg) * var(--k))}
 .slot-text.has-gap .tblocks > .lx + .lx{margin-top:0}
 .tb.is-copy{max-width:64ch}
+/* "Ver de nuevo" on an animation example: a small round button in the module's top right corner, in its ink */
+.slot > .replay{position:absolute;z-index:4;top:12px;right:12px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:inherit;background:color-mix(in srgb,currentColor 7%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 16%,transparent);transition:background-color 160ms ease,transform 160ms var(--ease-out)}
+.slot > .replay svg.i{width:17px;height:17px;stroke-width:1.9}
+@media (hover:hover) and (pointer:fine){.slot > .replay:hover{background:color-mix(in srgb,currentColor 14%,transparent)}}
+.slot > .replay:active{transform:scale(.92) rotate(-40deg)}
+.slot > .replay:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 /* Containers (text blocks and groups): width fill (default) / hug / fixed, a minimum height, fill, stroke, radius, spacing.
    Scoped to .tblocks so the editing styles of a text (its rounded hover, its 1em minimum height) do not override them. */
 .lx{min-width:0}
@@ -1410,6 +1416,7 @@ const uScale = () => Math.min(1, innerWidth / 1512);
 
 const ICONS = {
   plus: '<path d="M12 5v14M5 12h14"/>',
+  replay: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5"/><path d="M3.5 3.5v5h5"/>',
   down: '<path d="M6 9l6 6 6-6"/>',
   more: '<circle cx="5.5" cy="12" r="1.3" class="f"/><circle cx="12" cy="12" r="1.3" class="f"/><circle cx="18.5" cy="12" r="1.3" class="f"/>',
   edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
@@ -1665,7 +1672,7 @@ const resolveEase = (v) => BEZ_RE.test(v || '') ? easeFn(v) : (v || 'none');
 function normAnim(a, kind) {
   if (!a || typeof a !== 'object') return undefined;
   const num = (v, d, lo, hi) => clamp(isNum(v) ? v : d, lo, hi);
-  if (kind === 'row') return { stagger: num(a.stagger, ANIM_DEF.row.stagger, 0, 1.5), tstagger: num(a.tstagger, ANIM_DEF.row.tstagger, 0, 1.5) };
+  if (kind === 'row') return { stagger: num(a.stagger, ANIM_DEF.row.stagger, 0, 1.5), tstagger: num(a.tstagger, ANIM_DEF.row.tstagger, 0, 1.5), ...(a.replay === true ? { replay: true } : {}) };
   a = { ...a };
   const L = LEGACY_ENTER[a.enter];
   if (L) { a.enter = L[0]; if (L[1] && !a.dir) a.dir = L[1]; if (L[2] && !a.by) a.by = L[2]; }
@@ -2993,6 +3000,11 @@ function buildRow(item, sig, subId) {
   } else {
     const t = document.createElement('div'); t.className = 'row-tools admin-only'; t.setAttribute('role', 'toolbar'); t.setAttribute('aria-label', 'Acciones del bloque');
     setRowTools(t, row.id, false); el.append(t);
+    /* an animation example: each animated module has a button that plays its animation again (Animación → Ver de nuevo) */
+    if (seqAnim(row).replay && !RM) motionPlan(row).forEach(m => {
+      const host = (animated(m.a) || m.blocks.length) && el.querySelector(`.slot[data-slot="${m.s.id}"]`); if (!host) return;
+      host.insertAdjacentHTML('beforeend', `<button type="button" class="replay" data-action="anim-replay" data-slot="${m.s.id}" aria-label="Ver la animación de nuevo" title="Ver la animación de nuevo">${icon('replay')}</button>`);
+    });
   }
   return el;
 }
@@ -5389,6 +5401,9 @@ function inspAnimView(row, slot) {
       ${texts ? `<div class="insp-line"><span class="lbl">Entre textos</span>${fld('tstag', 'stagger', Q.tstagger, 's', { title: 'Espera entre bloques de texto' })}</div>` : ''}
       <p class="insp-hint">Cuánto espera cada módulo, y cada texto animado, antes de empezar después del anterior.</p></div>`;
   }
+  if (hasAnim(row)) h += `<div class="insp-sec"><h4>Ver de nuevo<span>Bloque completo</span></h4>
+      <div class="insp-line"><span class="lbl">Botón</span>${segc('rrep', [['off', 'No'], ['on', 'Sí']], Q.replay ? 'on' : 'off', 'Botón para ver la animación de nuevo')}</div>
+      <p class="insp-hint">Cada módulo animado del bloque muestra un botón para ver su animación otra vez. Para ejemplos de animación.</p></div>`;
   return h;
 }
 const ANIM_FIELD = { menter: 'enter', mscroll: 'scroll', mdur: 'dur', mdelay: 'delay', mdir: 'dir', mdist: 'dist', mease: 'ease', tenter: 'enter', tscroll: 'scroll', tdur: 'dur', tdelay: 'delay', tdir: 'dir', tdist: 'dist', tease: 'ease', tby: 'by', torder: 'order', tstep: 'stagger', rstag: 'stagger', tstag: 'tstagger' };
@@ -5648,6 +5663,7 @@ function onField(k, v) {
       break;
     }
     case 'rstag': case 'tstag': row.anim = normAnim({ ...seqAnim(row), [ANIM_FIELD[k]]: v }, 'row'); Motion.previewSoon(); break;
+    case 'rrep': row.anim = normAnim({ ...seqAnim(row), replay: v === 'on' }, 'row'); renderInspector(); break;
     case 'ibw': case 'ibwv': case 'ibh': case 'ibhv': case 'ibfill': case 'ibsw': case 'ibsc': case 'ibr': case 'ibpt': case 'ibpr': case 'ibpb': case 'ibpl': {
       const own = boxOwner(slot); if (!own) return;
       const shape = (x) => x ? [isNum(x.w) ? 'f' : x.w || '', isNum(x.h), !!x.sw, 1].join() : '';
@@ -6178,20 +6194,22 @@ function addTextScroll(rowEl, tb, a) {
   const g = Motion.g, P = SCROLL[a.scroll]; if (!P || !P.split || !window.SplitText) return;
   splitText(tb, 'words', false, { autoSplit: true, onSplit: (self) => g.fromTo(self.words, { opacity: .16 }, { opacity: 1, ease: 'none', stagger: .1, scrollTrigger: scrollST(rowEl, P) }) });
 }
-function buildMotion(rowEl, row, { preview = false, onDone = null, onUpdate = null } = {}) {
+function buildMotion(rowEl, row, { preview = false, only = null, onDone = null, onUpdate = null } = {}) {
   const vars = { onComplete: () => { Ink.schedule(); onDone && onDone(); } };
   if (onUpdate) vars.onUpdate = onUpdate;
-  if (preview) vars.paused = true; else vars.scrollTrigger = { trigger: rowEl, start: 'top 82%', once: true };
-  const tl = Motion.g.timeline(vars);
-  motionPlan(row).forEach(m => {
+  /* only: one module's enter animation, played at once from its own start (the "Ver de nuevo" button) */
+  if (preview) vars.paused = true; else if (!only) vars.scrollTrigger = { trigger: rowEl, start: 'top 82%', once: true };
+  const tl = Motion.g.timeline(vars), plan = motionPlan(row), t0 = only ? ((plan.find(m => m.s.id === only) || {}).at || 0) : 0;
+  plan.forEach(m => {
+    if (only && m.s.id !== only) return;
     const el = $(`.slot[data-slot="${m.s.id}"]`, rowEl); if (!el) return;
     const sp = SCROLL[m.a.scroll] || {};
-    addModEnter(tl, el, m.a, m.at, m.a.scroll !== 'none' && !sp.self);
-    if (!preview) addModScroll(rowEl, el, m.a);
+    addModEnter(tl, el, m.a, m.at - t0, m.a.scroll !== 'none' && !sp.self);
+    if (!preview && !only) addModScroll(rowEl, el, m.a);
     m.blocks.forEach(t => {
       const tb = $(`.tb[data-block="${t.b.id}"]`, el); if (!tb) return;
-      addTextEnter(tl, tb, t.a, t.at);
-      if (!preview) addTextScroll(rowEl, tb, t.a);
+      addTextEnter(tl, tb, t.a, t.at - t0);
+      if (!preview && !only) addTextScroll(rowEl, tb, t.a);
     });
   });
   return tl;
@@ -6224,6 +6242,14 @@ const Motion = {
     this.refresh();
   },
   resetAll() { this.live.forEach(ctx => ctx.revert()); this.live.clear(); this.sync(); },
+  /* "Ver de nuevo": the row's animations go back to rest and the module plays its enter again. It also plays on a phone
+     (where nothing animates by itself): the visitor asked for it */
+  replay(rowEl, slotId) {
+    if (!this.g || RM || !rowEl) return;
+    const row = (S.pages.get(rowEl.dataset.sub) || []).find(r => r.id === rowEl.dataset.id); if (!row) return;
+    const old = this.live.get(rowEl); if (old) old.revert();
+    this.live.set(rowEl, this.g.context(() => buildMotion(rowEl, row, { only: slotId })));
+  },
   /* ScrollTrigger re-measures after images load or blocks change. A refresh sets the scroll position back when it is
      done, and on a touch screen that stops a flick dead: there it waits until the page has stopped scrolling */
   refresh() {
@@ -8011,6 +8037,7 @@ document.addEventListener('click', (ev) => {
     case 'hs-next': Slider.go(1); break;
     case 'logo': if (S.mode === 'admin') $('#logo-input').click(); break;
     case 'menu-open': openOverlay('menu'); break;
+    case 'anim-replay': Motion.replay(a.closest('.row'), a.dataset.slot); break;
     case 'menu-close': closeOverlay(); break;
     case 'search-open': openOverlay('search'); break;
     case 'secs-menu': ev.stopPropagation(); secsMenuPop(a); break;

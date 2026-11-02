@@ -97,6 +97,7 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
   - Controles: desde dónde entra (abajo, arriba, izquierda, derecha), distancia, duración y retraso; en los split, dividir por líneas, palabras o letras, escalonado por parte y orden (inicio, final, centro, bordes, azar).
   - **Curva** de cada animación: familia (sine, power, expo, circ, back, elástica, rebote) e In / Out / In-Out, con un editor bezier de dos manijas. Editar cualquier curva la vuelve personalizada.
   - **Secuencia** del bloque: espera entre módulos y entre textos. Nada se hereda.
+  - **Ver de nuevo** (del bloque, para ejemplos de animación): cada módulo animado del bloque muestra arriba a la derecha un botón redondo con el ícono de recargar, que vuelve a reproducir la animación de ese módulo. En el celular, donde nada se anima solo, el botón la reproduce igual; con `prefers-reduced-motion` no aparece.
   - **Estilos de animación** vinculados, para todo el catálogo: se guarda la animación de un módulo o de un texto con un nombre y se vincula a otros. Editar un elemento vinculado lo marca como modificado, hasta que se actualiza el estilo (cambia en todos lados) o se restablece. **Usar en todos** vincula de una vez los del mismo tipo: el mismo tipo de módulo o, en textos, el mismo rol según el tamaño (títulos de 40 px o más, subtítulos de 24 a 39 px, textos). Al eliminar un estilo, cada elemento conserva su animación.
   - Vista previa automática, con barra para recorrerla, velocidad 1× / ½× / ¼× y Esc para salir. **Ver división** marca en el lienzo las líneas, palabras o letras del texto y las cuenta.
   - Las divisiones conservan los saltos de línea y no cambian el alto del texto.
@@ -354,3 +355,4 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Un link a una sección baja hasta ella también en la primera visita (el scroll suave todavía no conocía el alto de la página y se quedaba arriba).
   - Celular: sin animaciones.
   - Editores también con `@belo.app` (migración `20261102120000_catalog_editors_belo_app.sql`, pendiente de aplicar en Supabase).
+- **v7.14:** **Ver de nuevo**, opción de bloque en la vista Animación: un botón con el ícono de recargar sobre cada módulo animado vuelve a reproducir su animación (para los ejemplos de Apariciones en Typography / Motion y Motion / Typography).
