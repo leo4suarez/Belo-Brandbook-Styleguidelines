@@ -1,6 +1,6 @@
 # Belo · Brandbook & Style Guidelines
 
-Catálogo modular de la marca **Belo**. Las categorías y secciones se arman con bloques editables (texto, imagen, video, carrusel, color y SVG), en tres layouts: pantalla completa, ancho completo y dos mitades.
+Catálogo modular de la marca **Belo**. Las categorías y secciones se arman con bloques editables (texto, imagen, video, carrusel, color, SVG y Manifiesto), en tres layouts: pantalla completa, ancho completo y dos mitades.
 
 - **Versión compartida:** <https://belo-brandbook.vercel.app>, en Vercel, con el contenido guardado en Supabase. Cualquiera con el link la ve y la gente de Paisanos la edita.
 - **Versión anterior (respaldo, congelada):** el artifact de Claude <https://claude.ai/artifact/BTAeownzjZUsJDNfH5bxT5>.
@@ -45,7 +45,7 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
   - Arriba a la derecha, junto a la X: los selectores del fondo del menú (solo en Admin) y claro/oscuro con íconos.
   - Abajo a la derecha, viewer/admin con íconos (ojo y lápiz) al lado del usuario, o "Iniciar sesión".
 - **Viewer / admin en las secciones:** quien puede editar tiene el mismo switch del menú abajo a la izquierda de cada sección. Se oculta en la Home, con el menú o el buscador abiertos y mientras se edita un bloque.
-- Buscador. También encuentra SVG y archivos descargables por su nombre, y el texto de los modales.
+- Buscador. También encuentra SVG y archivos descargables por su nombre, el texto de los modales y el de las hojas del Manifiesto.
 - Sidebar sin contenedor, con el título de la categoría y las subcategorías. Hace scroll-spy y auto-scroll dentro de la misma página.
   - El título de la categoría usa el mismo cuerpo de texto que las subcategorías, con un chevron que despliega todas las categorías para saltar a otra.
   - **Mover a otra categoría:** el menú «…» de una subcategoría la manda, con todo su contenido, al final de otra categoría.
@@ -75,6 +75,7 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 - **Archivos descargables:** cada módulo puede ofrecer sus originales (SVG, PNG, JPG, PDF, ZIP, EPS o AI, hasta 50 MB) con formato, nombre y peso, y un nombre visible editable. Con un archivo descarga directo; con varios abre un menú; sin ninguno descarga el archivo del propio módulo.
 - Barra flotante de tipo de módulo, botón de volver y `Ctrl+Z` / `Ctrl+Shift+Z` para deshacer y rehacer.
 - Carrusel con stepper animado (step player), arrastre con física de resorte y autoplay al entrar en pantalla.
+- **Módulo Manifiesto:** una tarjeta gris con la primera hoja parada sobre otras dos, inclinadas detrás. Un clic (o Enter) abre el lector: la tarjeta crece hasta ocupar la ventana, la hoja de adelante vuela a su lugar y las de atrás caen. Las hojas van una debajo de otra y se leen con el scroll o hoja por hoja con los chevrons de al lado (en el celular, arriba, junto a cerrar); cerrar (o Escape) vuelve a meter las hojas en la tarjeta. El texto se escribe en el panel, en líneas simples: `===` sola en una línea empieza una hoja, `# ` al inicio hace un título (varias seguidas, un título de varias líneas), `---` es un divisor y una línea en blanco separa párrafos.
   - Formato **Tira**: las imágenes van una al lado de la otra, cada una con su tamaño (verticales, horizontales o libres), su encuadre y un texto opcional debajo. Se recorre deslizando (trackpad, dedo, arrastre con el mouse o flechas). En el editor, un clic elige una imagen: se encuadra arrastrándola y se cambia el tamaño desde su esquina (Shift mantiene la proporción), o con los campos del panel.
   - Su contenedor tiene las mismas esquinas redondeadas que el resto de los módulos y, en los dos formatos, un **Fondo** como los demás contenedores (ninguno, el gris del tema, uno de la paleta u otro color). En la tira, con fondo las imágenes quedan con aire alrededor (regulable en **Espaciado interno**) y los textos de debajo toman la tinta que se lee sobre ese fondo.
 - **Carga rápida:**
@@ -140,7 +141,7 @@ node tests/run.cjs layout.cjs     # solo algunas suites
 - `home.cjs` abre Chromium con la GPU habilitada (`--ignore-gpu-blocklist --enable-gpu`) para que el anillo se dibuje con WebGL, y comprueba sobre la captura que los bordes de todas las tarjetas caen sobre una misma curva; también prueba la versión sin WebGL. Prueba la Home: el slider (curva 3D sin tarjetas encimadas, movimiento automático y su pausa con el mouse o el toque, los dos botones redondos, teclado, rueda, arrastre con inercia), hover, lightbox de la tarjeta clickeada, galería (subir, titular y descripción con sus límites, formatos, esquinas, velocidad, ordenar, quitar y deshacer), las portadas de los videos y que cada video se descargue una sola vez, los botones arriba a la derecha solo en la Home, movimiento reducido, mobile y el switch viewer/admin de las secciones.
 - `editor.cjs` prueba el inspector contextual, el espaciado interno, los estilos de texto (también entre secciones y entre dos editores) y la paleta.
 - `media.cjs` prueba el encuadre, el módulo SVG, el módulo de color, las interacciones (copiar, modal y descarga) y los archivos descargables, también guardados en el Supabase simulado.
-- `layout.cjs` prueba el tema claro por visita, el título del sidebar y su lista de categorías, las categorías bloqueadas (en la página y en la base simulada), mover una subcategoría, los contenedores, grupos y divisores de los textos, el espaciado interno del auto layout, los bordes, el ancho de los bloques, la división de dos mitades y la tira del carrusel (con sus esquinas, su fondo y su espaciado interno), la barra de scroll de la página, el chip de las interacciones que sigue al cursor y la carga. Sobre la carga prueba que las secciones llegan en un pedido, las lecturas tempranas de la visita siguiente, las imágenes diferidas, las copias optimizadas a su ancho y la vuelta a los originales si el optimizador falla.
+- `layout.cjs` prueba el tema claro por visita, el título del sidebar y su lista de categorías, las categorías bloqueadas (en la página y en la base simulada), mover una subcategoría, los contenedores, grupos y divisores de los textos, el espaciado interno del auto layout, los bordes, el ancho de los bloques, la división de dos mitades y la tira del carrusel (con sus esquinas, su fondo y su espaciado interno), la barra de scroll de la página, el chip de las interacciones que sigue al cursor y la carga. Sobre la carga prueba que las secciones llegan en un pedido, las lecturas tempranas de la visita siguiente, las imágenes diferidas, las copias optimizadas a su ancho y la vuelta a los originales si el optimizador falla. También prueba el módulo Manifiesto (la tarjeta, el lector, los chevrons, cerrar, el celular y el panel) y los títulos de los pilares en el celular.
 - Las capturas quedan en `tests/output/`, que está ignorado por git.
 - Las pruebas bloquean Google Fonts y sirven Lenis desde `tests/fixtures/` y supabase-js desde `node_modules`, así que corren sin red. Por eso en el log aparece `Failed to load resource: net::ERR_FAILED`: es esperado.
 - Para cambiar el puerto: `PORT=8790 npm test`.
@@ -198,7 +199,7 @@ Hay dos tipos de documento (en Supabase y en la base del artifact):
   ```js
   { rows: [{ id, layout: 'fullscreen' | 'full' | 'half', h, slots: [slot], overlay? }] }
   ```
-  - `slot.type` puede ser `text`, `image`, `video`, `carousel`, `color` o `svg`.
+  - `slot.type` puede ser `text`, `image`, `video`, `carousel`, `color`, `svg` o `reader` (Manifiesto).
   - Los textos guardan sus `blocks` con `font`, `size`, `weight`, `lh`, `ls`, `align` y `upper`. Además, opcionales:
     - `ts`: el estilo de texto vinculado, y `tsOver: true` si se modificó localmente. Los valores propios son una copia del estilo.
     - `color`: el id de un color de la paleta. Sin `color`, el texto usa la tinta automática; si el color se borra de la paleta, vuelve a la automática.
@@ -209,6 +210,7 @@ Hay dos tipos de documento (en Supabase y en la base del artifact):
     - `slot.frame` (imágenes, también de fondo): `{ fit: 'cover' | 'contain', x, y, zoom }`, con el punto focal en % y la escala de 100 a 400 %. Se aplica con `object-position` y la propiedad `scale`, nunca con `transform`.
     - `slot.action`: `{ kind: 'modal' | 'download' | 'copy', value?, title?, body?, media?: [{ id, w, h }] }`, lo que pasa al hacer clic.
     - `slot.files`: `[{ id, name, type, size }]`, los archivos descargables (`name` es el nombre visible).
+    - Manifiesto: `{ type: 'reader', name, doc }`, con `doc` el texto de las hojas en las líneas simples del panel (hasta 100.000 caracteres) y `name` el nombre que anuncia el lector.
     - SVG: `{ type: 'svg', asset, w, h, name, size, ratio, bg: { kind: 'none' | 'surface' | 'color', color? }, scale, pos, dx, dy }`, con `scale` en % del ancho, `pos` una de las 9 posiciones (`tl` … `br`) y `dx` / `dy` en % del contenedor. Descargable es `action: { kind: 'download' }`.
     - Color en bloques normales: `{ type: 'color', color, ratio: '1/1', label }`; `label: false` oculta el nombre y el HEX.
     - `slot.stroke`: `{ w, c? }`, el borde del módulo (grosor en px; sin `c` usa el color del texto).
@@ -356,3 +358,7 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Celular: sin animaciones.
   - Editores también con `@belo.app` (migración `20261102120000_catalog_editors_belo_app.sql`, pendiente de aplicar en Supabase).
 - **v7.14:** **Ver de nuevo**, opción de bloque en la vista Animación: un botón con el ícono de recargar sobre cada módulo animado vuelve a reproducir su animación (para los ejemplos de Apariciones en Typography / Motion y Motion / Typography).
+- **v7.15:**
+  - Módulo **Manifiesto**: una tarjeta de hojas que se abre en un lector a pantalla completa, con las hojas una debajo de otra, chevrons para pasar de hoja y botón de cerrar (diseño de Figma).
+  - Celular: los títulos Phudu que abren un detalle (Poder, Frontera, Sonrisa) van a 60 px, con «Ver detalle» como un botón redondo con «+» a su derecha.
+  - «Ver de nuevo» pasa a blanco, en la esquina de abajo a la derecha del módulo.

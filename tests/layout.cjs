@@ -1,8 +1,9 @@
 // v7: the theme opens light, the rail title and its category list, locked categories (in the page and in the
 // database), moving a subcategory, the items of a text module (containers, auto-layout groups, dividers), module
 // strokes, the width of a block and the split of a half row, the carousel strip, and phones (three text styles, the
-// sections dropdown, search in the menu), the section paths of the published site (/voice-tone/como-hablamos), and the
-// "Ver de nuevo" button of animation examples.
+// sections dropdown, search in the menu), the section paths of the published site (/voice-tone/como-hablamos), the
+// "Ver de nuevo" button of animation examples, the Manifiesto module (a card of sheets that opens into a reader) and the
+// pillar titles on phones (60px, a round "+" on their right).
 // Runs on the local demo (BASE_URL) and on the fake Supabase project (SUPA_BASE_URL). Usage: through tests/run.cjs.
 const { chromium } = require('playwright');
 const path = require('path');
@@ -655,6 +656,8 @@ function watchErrors(page, label) {
     const { page: V, ctx: vctx } = await opened('replay');
     const btns = await V.evaluate(() => [...document.querySelectorAll('.replay')].map(b => ({ slot: b.closest('.slot').dataset.slot, label: b.getAttribute('aria-label'), w: Math.round(b.getBoundingClientRect().width) })));
     check(btns.length === 2 && btns.every(b => b.label === 'Ver la animación de nuevo' && b.w === 36) && btns.map(b => b.slot).join() === 'm_x1,m_x2', 'a block marked "Ver de nuevo" shows a reload button on each animated module, and only there (' + btns.map(b => b.slot).join(', ') + ')');
+    const spot = await V.evaluate(() => { const b = document.querySelector('.slot[data-slot="m_x1"] .replay'), r = b.getBoundingClientRect(), s = b.closest('.slot').getBoundingClientRect(); return { right: Math.round(s.right - r.right), bottom: Math.round(s.bottom - r.bottom), bg: getComputedStyle(b).backgroundColor }; });
+    check(spot.right === 12 && spot.bottom === 12 && spot.bg === 'rgb(255, 255, 255)', 'it is white and sits in the bottom right corner of the module (' + spot.right + ', ' + spot.bottom + ', ' + spot.bg + ')');
     const rest = await split(V, 'b_x1');
     check(rest.words === 0 && rest.opacity === 1, 'once its animation has played, the text is whole');
     await V.click('.slot[data-slot="m_x1"] .replay'); await V.waitForTimeout(120);
@@ -688,6 +691,149 @@ function watchErrors(page, label) {
     await confirm(E);
     check(await E.locator('.row[data-id="r_t"] .replay').count() >= 1, 'turned on and confirmed, the block shows its reload button');
     await E.context().close();
+  }
+
+  /* ---------- 14. Manifiesto: a card of sheets that opens into a reader ---------- */
+  {
+    const fake = new FakeSupabase(SUPA_URL);
+    const filler = '\n\n' + Array(8).fill('Un párrafo de prueba, lo bastante largo para ocupar varias líneas de la hoja en un teléfono.').join('\n\n');
+    const doc = '# Primera hoja\nUno.\n\nDos,\nen dos líneas.\n---\n# Segundo\n# título\nTres.' + filler + '\n===\n# Hoja dos\nCuatro.' + filler + '\n===\nCinco, la última.' + filler;
+    fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [{ id: 'c_f', name: 'Foundations', subs: [{ id: 's_mf', name: 'Manifiesto' }] }] });
+    fake.seed('pages/s_mf', { rows: [
+      { id: 'r_head', layout: 'full', h: null, slots: [{ id: 'm_head', type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b_head', text: 'Manifiesto', font: 'jakarta', size: 48, weight: 600, lh: 110, ls: -2, align: 'left', upper: false }] }] },
+      { id: 'r_mf', layout: 'full', h: null, slots: [{ id: 'm_mf', type: 'reader', name: 'Manifiesto', doc }] },
+      { id: 'r_tail', layout: 'full', h: 900, slots: [{ id: 'm_tail', type: 'color', color: '#111111', ratio: '16/9', label: true }] }
+    ] });
+    const opened = async (label, opts = {}) => {
+      const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1, ...opts });
+      await fake.attach(ctx, label); await routes(ctx);
+      await ctx.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\/dist\/umd\/supabase\.js/, r => r.fulfill({ path: SB_JS, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+      const page = await ctx.newPage(); watchErrors(page, label);
+      await page.goto(SUPA_BASE + '#s_mf'); await page.waitForSelector('#s-s_mf .slot-reader'); await page.waitForTimeout(2000);
+      return { page, ctx };
+    };
+    const state = (p) => p.evaluate(() => {
+      const m = document.getElementById('mreader'), sc = m.querySelector('.mr-scroll');
+      return { open: !m.hidden, pages: m.querySelectorAll('.mf-page').length, y: sc ? Math.round(sc.scrollTop) : -1, prev: !!(m.querySelector('[data-action="mr-prev"]') || {}).disabled, next: !!(m.querySelector('[data-action="mr-next"]') || {}).disabled,
+        focusIn: m.contains(document.activeElement), locked: document.documentElement.classList.contains('lenis-stopped') || document.documentElement.classList.contains('ov-open') };
+    });
+    const { page: V, ctx: vctx } = await opened('reader');
+    const card = await V.evaluate(() => { const s = document.querySelector('.slot-reader'), r = s.getBoundingClientRect(), f = s.querySelector('.mf-sheet.is-f');
+      return { role: s.getAttribute('role'), label: s.getAttribute('aria-label'), sheets: s.querySelectorAll('.mf-sheet').length, title: (f.querySelector('.mf-h') || {}).textContent, ratio: r.width / r.height, chip: (s.querySelector('.act-chip') || {}).textContent }; });
+    check(card.role === 'button' && card.label === 'Leer: Manifiesto' && card.chip === 'Leer', 'the Manifiesto module is a button that says "Leer" (' + card.label + ')');
+    check(card.sheets === 3 && card.title === 'Primera hoja' && near(card.ratio, 1105 / 530, .02), 'its card shows the first sheet over two more, in the wide gray card of the design');
+    await V.locator('.slot-reader').scrollIntoViewIfNeeded(); await scrollIdle(V);
+    await V.screenshot({ path: T + 'layout-14a-manifiesto-card.png' });
+    const pageY = await V.evaluate(() => scrollY);
+    await V.click('.slot-reader'); await V.waitForTimeout(250);
+    check(await V.locator('#mreader .mr-fly .mf-sheet').count() === 3, 'opening, the sheets fly out of the card');
+    await V.waitForTimeout(900);
+    await V.screenshot({ path: T + 'layout-14b-manifiesto-open.png' });
+    let st = await state(V);
+    check(st.open && st.pages === 3 && st.focusIn && st.locked && await V.locator('#mreader .mr-fly').count() === 0, 'and it opens into the reader: the three sheets, the focus inside, the page behind still');
+    const geo = await V.evaluate(() => { const b = document.querySelector('.mr-box'), cs = getComputedStyle(b), p = document.querySelector('#mreader .mf-page').getBoundingClientRect(), x = document.querySelector('.mr-x').getBoundingClientRect(), n = document.querySelector('.mr-nav').getBoundingClientRect();
+      return { clip: cs.clipPath, pw: Math.round(p.width), pl: Math.round(p.left), pr: Math.round(p.right), xr: Math.round(innerWidth - x.right), xt: Math.round(x.top), nl: Math.round(n.left), nmid: Math.round(n.top + n.height / 2), h: innerHeight, title: document.querySelector('#mreader .mf-h').textContent }; });
+    check(/inset\(16px/.test(geo.clip) && geo.pw === 595 && near(geo.pl + geo.pw / 2, 756, 6), 'the reader takes the whole window (16px in) with the sheet centered at 595px (' + geo.clip + ')');
+    check(geo.xr === 40 && geo.xt === 40 && near(geo.nl, geo.pr + 19, 6) && near(geo.nmid, geo.h / 2, 2), 'close sits at the top right, the two chevrons beside the sheet, centered');
+    check(st.prev && !st.next, 'on the first sheet, "up" is off and "down" is on');
+    await V.click('#mreader [data-action="mr-next"]'); await V.waitForTimeout(900);
+    const top2 = await V.evaluate(() => { const sc = document.querySelector('.mr-scroll'), p = sc.querySelectorAll('.mf-page')[1]; return Math.round(p.getBoundingClientRect().top - sc.getBoundingClientRect().top); });
+    st = await state(V);
+    check(top2 === 24 && !st.prev, 'down brings the next sheet to the top (' + top2 + 'px under the edge)');
+    await V.click('#mreader [data-action="mr-next"]'); await V.waitForTimeout(900);
+    await V.click('#mreader [data-action="mr-next"]'); await V.waitForTimeout(900);
+    st = await state(V);
+    check(st.next && st.y === await V.evaluate(() => { const sc = document.querySelector('.mr-scroll'); return sc.scrollHeight - sc.clientHeight; }), 'on the last sheet "down" reads it to its end, and then it is off');
+    await V.click('#mreader [data-action="mr-prev"]'); await V.waitForTimeout(900);
+    await V.click('#mreader [data-action="mr-prev"]'); await V.waitForTimeout(900); await V.click('#mreader [data-action="mr-prev"]'); await V.waitForTimeout(900);
+    st = await state(V);
+    check(st.y === 0 && st.prev, 'and "up" goes back sheet by sheet to the first');
+    await V.mouse.move(756, 500); await V.mouse.wheel(0, 700); await V.waitForTimeout(500);
+    st = await state(V);
+    check(st.y > 300 && await V.evaluate(() => scrollY) === pageY, 'the wheel scrolls the sheets, not the page behind (' + st.y + ')');
+    const tabs = [];
+    for (let i = 0; i < 5; i++) { await V.keyboard.press('Tab'); tabs.push(await V.evaluate(() => document.getElementById('mreader').contains(document.activeElement))); }
+    check(tabs.every(Boolean), 'Tab stays inside the reader');
+    await V.keyboard.press('Escape'); await V.waitForTimeout(250);
+    check(await V.locator('#mreader .mr-fly').count() === 1, 'closing, the sheets fly back into the card');
+    await V.waitForTimeout(700);
+    st = await state(V);
+    check(!st.open && await V.evaluate(() => document.activeElement && document.activeElement.classList.contains('slot-reader')) && await V.evaluate(() => !document.documentElement.classList.contains('ov-open')), 'Escape closes it and gives the focus back to the card');
+    await V.keyboard.press('Enter'); await V.waitForTimeout(1100);
+    check((await state(V)).open, 'Enter on the card opens it again');
+    await V.click('#mreader .mr-x'); await V.waitForTimeout(900);
+    check(!(await state(V)).open, 'and the close button closes it');
+    check(!V.errors.length, 'no page errors in the reader' + (V.errors.length ? ': ' + V.errors.join(' | ') : ''));
+    await vctx.close();
+    // Phone: a square card, the sheet takes the width, the buttons in a bar above the sheets
+    const { page: M, ctx: mctx } = await opened('reader-phone', { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await M.locator('.slot-reader').scrollIntoViewIfNeeded(); await M.waitForTimeout(500);
+    const mcard = await M.evaluate(() => { const r = document.querySelector('.slot-reader').getBoundingClientRect(); return r.width / r.height; });
+    check(near(mcard, 1, .02), 'on a phone the card is square');
+    await M.tap('.slot-reader'); await M.waitForTimeout(1200);
+    await M.screenshot({ path: T + 'layout-14c-manifiesto-phone.png' });
+    const mg = await M.evaluate(() => { const p = document.querySelector('#mreader .mf-page').getBoundingClientRect(), sc = document.querySelector('.mr-scroll').getBoundingClientRect(), n = document.querySelector('.mr-nav').getBoundingClientRect(), x = document.querySelector('.mr-x').getBoundingClientRect();
+      return { pw: Math.round(p.width), fs: parseFloat(getComputedStyle(document.querySelector('#mreader .mf-h')).fontSize), navAbove: n.bottom <= sc.top && x.bottom <= sc.top }; });
+    check(mg.pw === 390 - 16 - 16 && mg.fs === 34 && mg.navAbove, 'on a phone the sheet takes the width, its titles shrink and the buttons sit in a bar above the text (' + mg.pw + 'px)');
+    await M.tap('#mreader [data-action="mr-next"]'); await M.waitForTimeout(900);
+    check((await state(M)).y > 0, 'and the chevrons turn the sheets');
+    await mctx.close();
+    // Reduced motion: no flight, it just appears
+    const { page: Q, ctx: qctx } = await opened('reader-rm', { reducedMotion: 'reduce' });
+    await Q.click('.slot-reader'); await Q.waitForTimeout(60);
+    check(await Q.locator('#mreader .mr-fly').count() === 0 && (await state(Q)).open, 'with reduced motion it opens without the flight');
+    await qctx.close();
+    // The editor: "Manifiesto" among the types, the text in plain lines, the card follows
+    const E = await localPage('#s_direccion');
+    const sec = '#s-s_direccion';
+    await E.locator(`${sec} [data-action="adder-open"]`).scrollIntoViewIfNeeded(); await scrollIdle(E);
+    await E.click(`${sec} [data-action="adder-open"]`);
+    await E.click(`${sec} [data-action="adder-layout"][data-layout="full"]`);
+    check(await E.locator('.row.is-editing [data-action="pick-type"][data-type="reader"]').textContent().then(t => t.includes('Manifiesto')), 'the type picker offers "Manifiesto"');
+    await E.click('.row.is-editing [data-action="pick-type"][data-type="reader"]'); await E.waitForTimeout(200);
+    check(await E.locator('#insp [data-action="confirm-edit"]').isDisabled() && (await E.textContent('#mf-count')) === '0 hojas', 'empty, it cannot be confirmed yet');
+    await E.fill('#f-mfdoc', doc); await E.waitForTimeout(150);
+    check((await E.textContent('#mf-count')) === '3 hojas' && !(await E.locator('#insp [data-action="confirm-edit"]').isDisabled()), 'with the text in, the panel counts 3 sheets and it can be confirmed');
+    check(await E.evaluate(() => (document.querySelector('.row.is-editing .mf-sheet.is-f .mf-h') || {}).textContent) === 'Primera hoja', 'the card in the editor shows the first sheet as it is typed');
+    await E.screenshot({ path: T + 'layout-14d-manifiesto-editor.png' });
+    await confirm(E);
+    const made = E.locator(`${sec} .slot-reader[role="button"]`);
+    check(await made.count() === 1, 'confirmed, the new card is in the section, ready to open');
+    await made.click(); await E.waitForTimeout(1100);
+    check((await state(E)).pages === 3, 'and opens with its three sheets');
+    await E.keyboard.press('Escape'); await E.waitForTimeout(800);
+    await E.click('#btn-search'); await E.waitForSelector('#search-input');
+    await E.fill('#search-input', 'la última'); await E.waitForTimeout(250);
+    check(await E.locator('#search-results .sr').count() >= 1, 'search finds the text inside the sheets');
+    check(!E.errors.length, 'no page errors in the editor' + (E.errors.length ? ': ' + E.errors.join(' | ') : ''));
+    await E.context().close();
+  }
+
+  /* ---------- 15. Phones: a Phudu title that opens a detail (Poder, Frontera, Sonrisa) ---------- */
+  {
+    const fake = new FakeSupabase(SUPA_URL);
+    const pillar = (id, t) => ({ id: 'm_' + id, type: 'text', bg: { kind: 'surface' }, align: 'start', ink: 'auto', action: { kind: 'modal', title: t, body: 'Detalle de ' + t },
+      blocks: [{ id: 'b_' + id, text: t, font: 'phudu', size: 120, weight: 900, lh: 95, ls: -2, align: 'left', upper: true }] });
+    fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [{ id: 'c_f', name: 'Foundations', subs: [{ id: 's_p', name: 'Pilares creativos' }] }] });
+    fake.seed('pages/s_p', { rows: [{ id: 'r_p', layout: 'full', h: null, slots: [pillar('p1', 'Poder')] }, { id: 'r_f', layout: 'full', h: null, slots: [pillar('p2', 'Frontera')] }] });
+    const look = (p) => p.evaluate(() => { const s = document.querySelector('.slot[data-slot="m_p1"]'), t = s.querySelector('.tb'), c = s.querySelector('.act-chip'), tr = t.getBoundingClientRect(), cr = c.getBoundingClientRect(), lab = c.querySelector('span');
+      return { fs: parseFloat(getComputedStyle(t).fontSize), cw: Math.round(cr.width), ch: Math.round(cr.height), right: cr.left >= tr.right - 1, midY: Math.abs((cr.top + cr.bottom) / 2 - (tr.top + tr.bottom) / 2), label: getComputedStyle(lab).display, plus: !!c.querySelector('.ac-plus') && getComputedStyle(c.querySelector('.ac-plus')).display }; });
+    for (const [label, opts] of [['pillar-phone', { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }], ['pillar-desk', {}]]) {
+      const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1, ...opts });
+      await fake.attach(ctx, label); await routes(ctx);
+      await ctx.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\/dist\/umd\/supabase\.js/, r => r.fulfill({ path: SB_JS, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+      const p = await ctx.newPage(); watchErrors(p, label);
+      await p.goto(SUPA_BASE + '#s_p'); await p.waitForSelector('.slot[data-slot="m_p1"] .act-chip'); await p.waitForTimeout(1500);
+      const l = await look(p);
+      if (label === 'pillar-phone') {
+        await p.screenshot({ path: T + 'layout-15-pillars-phone.png' });
+        check(l.fs === 60 && l.cw === 44 && l.ch === 44 && l.right && l.midY < 2 && l.label === 'none' && l.plus === 'block', `on a phone the pillar title is 60px and its "Ver detalle" a round "+" on its right (${l.fs}px, ${l.cw}×${l.ch})`);
+        await p.tap('.slot[data-slot="m_p1"]'); await p.waitForTimeout(500);
+        check(await p.evaluate(() => !document.getElementById('amodal').hidden), 'and a tap still opens the detail');
+      } else check(l.fs > 60 && l.label !== 'none' && l.plus === 'none', 'on a computer it keeps its size and the "Ver detalle" chip');
+      check(!p.errors.length, 'no page errors (' + label + ')' + (p.errors.length ? ': ' + p.errors.join(' | ') : ''));
+      await ctx.close();
+    }
   }
 
   await browser.close();

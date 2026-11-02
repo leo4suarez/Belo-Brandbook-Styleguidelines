@@ -360,10 +360,10 @@ html.insp-anim .row.is-editing .slot[data-anim]::after{content:attr(data-anim);p
 .slot-text.has-gap .tblocks{gap:calc(var(--tg) * var(--k))}
 .slot-text.has-gap .tblocks > .lx + .lx{margin-top:0}
 .tb.is-copy{max-width:64ch}
-/* "Ver de nuevo" on an animation example: a small round button in the module's top right corner, in its ink */
-.slot > .replay{position:absolute;z-index:4;top:12px;right:12px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:inherit;background:color-mix(in srgb,currentColor 7%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 16%,transparent);transition:background-color 160ms ease,transform 160ms var(--ease-out)}
+/* "Ver de nuevo" on an animation example: a small white round button in the module's bottom right corner */
+.slot > .replay{position:absolute;z-index:4;right:12px;bottom:12px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#000000;background:#FFFFFF;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.08);transition:background-color 160ms ease,transform 160ms var(--ease-out)}
 .slot > .replay svg.i{width:17px;height:17px;stroke-width:1.9}
-@media (hover:hover) and (pointer:fine){.slot > .replay:hover{background:color-mix(in srgb,currentColor 14%,transparent)}}
+@media (hover:hover) and (pointer:fine){.slot > .replay:hover{background:#F2F3F6}}
 .slot > .replay:active{transform:scale(.92) rotate(-40deg)}
 .slot > .replay:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 /* Containers (text blocks and groups): width fill (default) / hug / fixed, a minimum height, fill, stroke, radius, spacing.
@@ -495,6 +495,7 @@ html.frame-on .status{visibility:hidden} /* on a phone the bar spans the screen 
 .act-chip{position:absolute;right:14px;bottom:14px;z-index:3;display:inline-flex;align-items:center;gap:7px;max-width:calc(100% - 28px);height:34px;padding:0 14px 0 11px;border-radius:999px;background:var(--material);color:var(--ink);-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);box-shadow:inset 0 0 0 .5px var(--material-edge),var(--shadow-soft);font:600 12.5px/1 var(--font);letter-spacing:-.005em;text-transform:none;text-shadow:none;white-space:nowrap;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity 180ms ease,transform 240ms var(--ease-out)}
 .act-chip span{overflow:hidden;text-overflow:ellipsis}
 .act-chip svg.i{width:15px;height:15px;stroke-width:2}
+.act-chip .ac-plus{display:none}
 .slot[data-act]:hover .act-chip,.slot[data-act]:focus-visible .act-chip,.slot[data-act].is-pop .act-chip{opacity:1;transform:none}
 @media (hover:none){.act-chip{opacity:1;transform:none}}
 .slot-video .act-chip{right:100px}
@@ -514,6 +515,63 @@ html.frame-on .status{visibility:hidden} /* on a phone the bar spans the screen 
 .pop .pal-h{margin:6px 12px 6px}
 
 /* Modal of a module ("Abrir modal"): a centered light dialog over a soft blurred backdrop */
+/* Manifiesto: a gray card with the first sheet standing over two more, tilted behind it; it opens into the reader (a
+   gray box inset from the window, the sheets one under the other, close at the top right and the chevrons beside the
+   sheet). A sheet is drawn at 595 × 878 in --mu units: 1px in the reader, the card's scale on its front sheet. */
+:root{--mf-bg:#EBEBEB}
+:root[data-scheme="dark"]{--mf-bg:#1D1E22}
+@media (prefers-color-scheme: dark){:root:not([data-scheme]){--mf-bg:#1D1E22}}
+.slot-reader{background:var(--mf-bg)}
+.mf-card{position:relative;aspect-ratio:1105/530;container-type:inline-size;--fw:44.8%;--ft:10.9%}
+@container (max-width:640px){.mf-card{aspect-ratio:1/1;--fw:62%;--ft:9%}}
+.mf-fan{position:absolute;inset:0;overflow:hidden;border-radius:inherit;pointer-events:none}
+.mf-sheet{position:absolute;left:calc((100% - var(--fw)) / 2);top:var(--ft);width:var(--fw);aspect-ratio:595/878;border-radius:1.1cqw;background:#FFFFFF;box-shadow:0 0 0 .5px rgba(0,0,0,.04),0 4px 20px rgba(0,0,0,.05);overflow:hidden;container-type:inline-size;transition:transform 520ms var(--ease-out)}
+.mf-sheet.is-l{transform:translate(-16%,6.5%) rotate(-3.6deg)}
+.mf-sheet.is-r{transform:translate(27%,15.5%) rotate(5.8deg)}
+.mf-sheet .mf-page{--mu:calc(100cqw / 595);box-shadow:none}
+@media (hover:hover) and (pointer:fine){
+  .slot-reader[data-act]:hover .mf-sheet.is-f{transform:translateY(-2.2%)}
+  .slot-reader[data-act]:hover .mf-sheet.is-l{transform:translate(-19%,6%) rotate(-5deg)}
+  .slot-reader[data-act]:hover .mf-sheet.is-r{transform:translate(30%,14%) rotate(7.4deg)}
+}
+.mf-empty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;padding:8px 14px;border-radius:999px;background:var(--panel);box-shadow:var(--shadow-soft);font:600 12.5px/1.2 var(--font);color:var(--muted);white-space:nowrap}
+.mf-page{--mu:1px;position:relative;width:calc(595 * var(--mu));min-height:calc(878 * var(--mu));padding:calc(44 * var(--mu));display:flex;flex-direction:column;align-items:flex-start;gap:calc(24 * var(--mu));border-radius:calc(12 * var(--mu));background:#FFFFFF;color:#000000;text-align:left}
+.mf-h{margin:0;font:900 calc(44 * var(--mu))/.9 var(--display);letter-spacing:calc(-.44 * var(--mu));text-transform:uppercase;white-space:pre-line;overflow-wrap:anywhere;text-box:trim-both cap alphabetic}
+.mf-txt{max-width:calc(422 * var(--mu));font:500 calc(14 * var(--mu))/1.3 var(--font);letter-spacing:calc(-.28 * var(--mu))}
+.mf-txt p{margin:0;white-space:pre-line;overflow-wrap:anywhere}
+.mf-txt p + p{margin-top:1.3em}
+.mf-hr{align-self:stretch;height:0;margin:calc(8 * var(--mu)) 0;border:0;border-top:1px dashed rgba(0,0,0,.12)}
+.mreader{position:fixed;inset:0;z-index:92}
+.mreader[hidden]{display:none}
+.mr-dim{position:absolute;inset:0;background:var(--bg)}
+.mr-box{--mr-in:16px;position:absolute;inset:0;background:var(--mf-bg);clip-path:inset(var(--mr-in) round 20px)}
+.mr-scroll{position:absolute;inset:var(--mr-in);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;outline:none}
+.mr-scroll:focus-visible{box-shadow:inset 0 0 0 2px var(--focus);border-radius:20px}
+.mr-pages{display:flex;flex-direction:column;align-items:center;gap:20px;padding:24px 16px}
+.mr-pages .mf-page{width:min(595px,100%);box-shadow:0 4px 20px rgba(0,0,0,.05)}
+.mr-fly{position:fixed;container-type:inline-size;pointer-events:none}
+.mr-fly .mf-fan{overflow:visible} /* the box's clip crops the flight, not the card's edges */
+.mr-fly .mf-sheet.is-f{transform-origin:0 0}
+.mr-btn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#FFFFFF;color:#000000;box-shadow:0 0 0 1px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.06);transition:background-color 160ms ease,opacity 160ms ease,transform 140ms var(--ease-out)}
+.mr-btn svg.i{width:18px;height:18px;stroke-width:2}
+.mr-btn:active{transform:scale(.92)}
+.mr-btn:disabled{opacity:.4;pointer-events:none}
+.mr-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+@media (hover:hover) and (pointer:fine){.mr-btn:hover{background:#F2F3F6}}
+.mr-x{position:absolute;top:calc(var(--mr-in) + 24px);right:calc(var(--mr-in) + 24px)}
+.mr-nav{position:absolute;top:50%;left:calc(50% + min(595px, 100vw - 2 * var(--mr-in) - 32px) / 2 + 19px);transform:translateY(-50%);display:flex;flex-direction:column;gap:11px}
+.mr-nav[hidden]{display:none}
+/* Narrow windows: the sheet takes the width (shorter title, less margin) and the buttons get a bar of their own over
+   the pages (chevrons on the left, close on the right), so they never cover the text */
+@media (max-width:760px){
+  .mr-box{--mr-in:8px}
+  .mr-scroll{top:calc(var(--mr-in) + 60px)}
+  .mr-pages{gap:12px;padding:0 8px 8px}
+  .mr-pages .mf-page{min-height:0;padding:24px;gap:20px}
+  .mr-pages .mf-h{font-size:34px;letter-spacing:-.34px}
+  .mr-x{top:calc(var(--mr-in) + 12px);right:calc(var(--mr-in) + 12px)}
+  .mr-nav{top:calc(var(--mr-in) + 12px);left:calc(var(--mr-in) + 12px);transform:none;flex-direction:row;gap:8px}
+}
 .amodal{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
 .amodal[hidden]{display:none}
 .amodal-bg{position:absolute;inset:0;background:rgba(10,10,12,.36);-webkit-backdrop-filter:blur(10px) saturate(120%);backdrop-filter:blur(10px) saturate(120%)}
@@ -1261,6 +1319,13 @@ html.is-row-drag .page-mode{visibility:hidden}
   #stage .row:not(.is-editing) .tb[data-mr="t"]{font-size:22px;line-height:1.1!important;letter-spacing:-.03em!important}
   #stage .row:not(.is-editing) .tb[data-mr="t"]:not([data-font="phudu"]){font-weight:600!important}
   #stage .row:not(.is-editing) .tb[data-mr="t"][data-font="phudu"]{font-size:40px}
+  /* a Phudu title that opens a detail (Poder, Frontera, Sonrisa): 60px, and its "Ver detalle" a round "+" on its right */
+  #stage .row:not(.is-editing) .slot-text[data-act="modal"]:has(.tb[data-font="phudu"]) .tb[data-mr="t"][data-font="phudu"]{font-size:60px}
+  #stage .row:not(.is-editing) .slot-text[data-act="modal"]:has(.tb[data-font="phudu"]) .tpad{flex-direction:row;align-items:center;gap:16px}
+  #stage .row:not(.is-editing) .slot-text[data-act="modal"]:has(.tb[data-font="phudu"]) .tpad > .tblocks{min-width:0}
+  #stage .row:not(.is-editing) .slot-text[data-act="modal"]:has(.tb[data-font="phudu"]) .tpad > .act-chip{align-self:center;margin:0;width:44px;height:44px;padding:0;justify-content:center;gap:0}
+  #stage .row:not(.is-editing) .slot-text[data-act="modal"]:has(.tb[data-font="phudu"]) .act-chip > :not(.ac-plus){display:none}
+  #stage .row:not(.is-editing) .slot-text[data-act="modal"]:has(.tb[data-font="phudu"]) .act-chip .ac-plus{display:block;width:20px;height:20px}
   #stage .row:not(.is-editing) .fs-overlay .tb[data-mr="t"][data-font="phudu"]{font-size:64px;letter-spacing:-.01em!important;text-align:left!important;margin-left:0;align-self:flex-start}
   #stage .row:not(.is-editing) .tb[data-mr="s"]{font-size:14px;line-height:1.2!important;font-weight:600!important}
   #stage .row:not(.is-editing) .tb[data-mr="s"][data-gray]{color:inherit!important}
@@ -1378,6 +1443,7 @@ html.is-row-drag .page-mode{visibility:hidden}
 <div class="hlb" id="home-lb" role="dialog" aria-modal="true" aria-label="Vista ampliada" tabindex="-1" hidden></div>
 <div class="pop" id="pop" role="menu" hidden></div>
 <div class="amodal" id="amodal" role="dialog" aria-modal="true" aria-labelledby="amodal-t" hidden></div>
+<div class="mreader" id="mreader" role="dialog" aria-modal="true" aria-label="Manifiesto" hidden></div>
 <div class="frame-ghost" id="frame-ghost" aria-hidden="true" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="logo-input" class="sr-only" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
@@ -1476,6 +1542,8 @@ const ICONS = {
   tap: '<path d="M10 10l9.5 3.6-4.1 1.5-1.5 4.1z"/><path d="M5.5 5.5l1.6 1.6M10 3v2.3M3 10h2.3"/>',
   crop: '<path d="M7 3v13a1 1 0 0 0 1 1h13"/><path d="M3 7h13a1 1 0 0 1 1 1v13"/>',
   expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5"/>',
+  cup: '<path d="M6 15l6-6 6 6"/>',
+  pages: '<rect x="8.5" y="3" width="11" height="14.5" rx="2"/><path d="M5 7.5v11A2.5 2.5 0 0 0 7.5 21H15"/><path d="M11.5 8h5M11.5 11.5h5"/>',
   file: '<path d="M13.5 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8.5z"/><path d="M13.5 3.5v5h5"/>',
   zoom: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2M11 8.5v5M8.5 11h5"/>',
   zoomOut: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2M8.5 11h5"/>',
@@ -1702,10 +1770,13 @@ const TYPES = {
   video: { label: 'Video', hint: 'MP4 o WebM', icon: 'video' },
   carousel: { label: 'Carrusel', hint: 'Varias imágenes en secuencia', icon: 'carousel' },
   color: { label: 'Color', hint: 'Una muestra de color', fsHint: 'Un fondo de color', icon: 'color' },
-  svg: { label: 'SVG', hint: 'Logo o ilustración vectorial', icon: 'svg' }
+  svg: { label: 'SVG', hint: 'Logo o ilustración vectorial', icon: 'svg' },
+  reader: { label: 'Manifiesto', hint: 'Hojas que se abren para leer', icon: 'pages' }
 };
 const FS_TYPES = ['image', 'video', 'color'];
-const ROW_TYPES = ['text', 'image', 'video', 'carousel', 'svg', 'color'];
+const ROW_TYPES = ['text', 'image', 'video', 'carousel', 'svg', 'color', 'reader'];
+const MF_MAX = 100000; /* the text of a Manifiesto module (slot.doc), in characters */
+const mfMemo = new Map(); /* its sheets, parsed once per text (mfParse) */
 const OW_REF = { half: 547, content: 1114, screen: 1472 };
 const IMG_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
 const VID_TYPES = ['video/mp4', 'video/webm'];
@@ -1715,7 +1786,7 @@ const EXT = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'ima
 const ACCEPT = { image: IMG_TYPES.join(','), video: VID_TYPES.join(','), carousel: IMG_TYPES.join(','), svg: 'image/svg+xml,.svg', files: [...SRC_TYPES, '.svg', '.pdf', '.zip', '.eps', '.ai'].join(',') };
 const POS9 = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'];
 /* What a click on a module can do, per content type: only what makes sense for it */
-const ACT_KINDS = { text: ['none', 'modal', 'copy', 'download'], image: ['none', 'modal', 'download'], video: ['none', 'modal', 'download'], carousel: ['none', 'modal', 'download'], svg: ['none', 'download', 'modal'], color: ['none', 'copy', 'modal', 'download'] };
+const ACT_KINDS = { text: ['none', 'modal', 'copy', 'download'], image: ['none', 'modal', 'download'], video: ['none', 'modal', 'download'], carousel: ['none', 'modal', 'download'], svg: ['none', 'download', 'modal'], color: ['none', 'copy', 'modal', 'download'], reader: ['none'] };
 const CE = (() => { const d = document.createElement('div'); try { d.contentEditable = 'plaintext-only'; } catch {} return d.contentEditable === 'plaintext-only' ? 'plaintext-only' : 'true'; })();
 
 const mkBlock = (font, size, weight, lh, ls, extra = {}) => ({ id: uid('b'), text: '', font, size, weight, lh, ls, align: 'left', upper: font === 'phudu', ...extra });
@@ -1863,6 +1934,10 @@ function normSlot(s) {
     { const g = pxIn(s.sgap, 0, 400); if (g !== undefined) s.sgap = g; else delete s.sgap; }
     if (!['center', 'end'].includes(s.sal)) delete s.sal;
     if (!s.bg || !['none', 'surface', 'color'].includes(s.bg.kind) || (s.bg.kind === 'color' && !hexOk(s.bg.color || ''))) delete s.bg;
+  }
+  if (s.type === 'reader') {
+    s.doc = typeof s.doc === 'string' ? s.doc.slice(0, MF_MAX) : '';
+    s.name = typeof s.name === 'string' && s.name.trim() ? s.name.trim().slice(0, 80) : 'Manifiesto';
   }
   if (s.anim) s.anim = normAnim(s.anim, 'mod'); else delete s.anim;
   return s;
@@ -3153,6 +3228,7 @@ function buildSlotView(s, ref) {
   else if (s.type === 'carousel') { el = document.createElement('div'); el.className = 'slot slot-carousel' + (s.mode === 'strip' ? ' is-strip' : ''); el.dataset.slot = s.id; paintCarBox(el, s); el.append(buildCarousel(s, false)); }
   else if (s.type === 'svg') el = buildSvg(s, ref);
   else if (s.type === 'color') el = buildColor(s);
+  else if (s.type === 'reader') el = buildReader(s, false);
   else { el = document.createElement('div'); el.className = 'slot'; return el; }
   if (s.type !== 'text') paintStroke(el, s);
   return decorateAct(el, s);
@@ -3368,6 +3444,7 @@ function copyValue(s) {
 }
 /* The action a module offers right now, or null (no action, or nothing to copy, show or download) */
 function actInfo(s) {
+  if (s && s.type === 'reader') return mfPages(s).length ? { kind: 'read', icon: 'expand', label: 'Leer', aria: 'Leer: ' + s.name } : null;
   const a = s && s.action; if (!a || !(ACT_KINDS[s.type] || []).includes(a.kind)) return null;
   if (a.kind === 'copy') { const v = copyValue(s); return v ? { kind: 'copy', icon: 'copy', label: v.length <= 24 && !v.includes('\n') ? 'Copiar ' + v : 'Copiar texto', aria: 'Copiar ' + (v.length <= 60 ? v : 'el texto') } : null; }
   if (a.kind === 'download') {
@@ -3383,7 +3460,7 @@ function decorateAct(el, s) {
   el.setAttribute('role', 'button'); el.tabIndex = 0;
   if (s.type !== 'text') el.setAttribute('aria-label', a.aria);
   const host = (s.type === 'text' && $(':scope > .tpad', el)) || el;
-  host.insertAdjacentHTML('beforeend', `<span class="act-chip"${s.type !== 'text' ? ' aria-hidden="true"' : ''}>${icon(a.icon)}<span>${esc(a.label)}</span></span>`);
+  host.insertAdjacentHTML('beforeend', `<span class="act-chip"${s.type !== 'text' ? ' aria-hidden="true"' : ''}>${icon(a.icon)}<span>${esc(a.label)}</span>${a.kind === 'modal' ? icon('plus', 'ac-plus') : ''}</span>`);
   return el;
 }
 
@@ -3806,6 +3883,7 @@ function buildSlotEdit(s, row, ref) {
   else if (s.type === 'image' || s.type === 'video' || s.type === 'svg') el = buildMediaEdit(s, ref);
   else if (s.type === 'carousel') el = buildCarouselEdit(s);
   else if (s.type === 'color') el = buildColor(s);
+  else if (s.type === 'reader') el = buildReader(s, true);
   else el = buildPicker(s, ROW_TYPES, false);
   if (s.type) paintStroke(el, s);
   if (S.animSlot === s.id) el.classList.add('is-swapped');
@@ -3896,6 +3974,7 @@ function fillType(s, type, ctx) {
   if (type === 'carousel') { s.images = []; s.ratio = 'auto'; s.pace = 5; s.autoplay = true; }
   if (type === 'color') { s.color = BRAND; if (ctx !== 'fs') { s.ratio = '1/1'; s.label = true; } }
   if (type === 'svg') { s.asset = null; s.ratio = '16/9'; s.bg = { kind: 'surface' }; s.scale = 60; s.pos = 'mc'; s.dx = 0; s.dy = 0; }
+  if (type === 'reader') { s.doc = ''; s.name = 'Manifiesto'; }
   return s;
 }
 function carryExtras(s, { files, action }) {
@@ -3978,7 +4057,8 @@ function startNew(subId, layout) {
 const slotValid = (s) => !s ? false : s.type === 'text' ? (s.blocks || []).some(b => b.text && b.text.trim())
   : (s.type === 'image' || s.type === 'video' || s.type === 'svg') ? !!s.asset
   : s.type === 'carousel' ? (s.images || []).length > 0
-  : s.type === 'color' ? hexOk(s.color || '') : false;
+  : s.type === 'color' ? hexOk(s.color || '')
+  : s.type === 'reader' ? mfPages(s).length > 0 : false;
 /* Uploads that hold the confirmation: the module's own file, its source files, the images of its modal */
 const rowUploading = (r) => allSlots(r).some(s => S.uploading.has(s.id) || S.uploading.has('files:' + s.id) || S.uploading.has('media:' + s.id));
 const rowValid = (r) => r.slots.every(slotValid) && !rowUploading(r);
@@ -4618,10 +4698,21 @@ const DESIGN_SECTIONS = {
   video: [secMediaFile, secContainer, secFsDim],
   carousel: [secCarouselImages, secCarouselPlay, secStripItem, secContainer, secPadding],
   color: [secFsColor, secContainer],
-  svg: [secSvgFile, secContainer, secPadding, secSvgPlace, secSvgDownload]
+  svg: [secSvgFile, secContainer, secPadding, secSvgPlace, secSvgDownload],
+  reader: [secReaderDoc]
 };
 const ROW_SECTIONS = [secOverlayAdd, secWidth, secHeight];
 const inspCtx = (row, slot) => ({ row, slot, fs: row.layout === 'fullscreen', half: row.layout === 'half', overlay: !!slot && isOverlaySlot(slot) });
+/* Manifiesto: its name and the text of its sheets, in plain lines */
+function secReaderDoc(c) {
+  const s = c.slot, n = mfPages(s).length;
+  return `<div class="insp-sec"><h4>Nombre</h4>
+      <div class="fld txt"><input id="f-mfname" type="text" data-f="mfname" value="${esc(s.name || '')}" placeholder="Manifiesto" maxlength="80" autocomplete="off" aria-label="Nombre del lector"></div>
+      <p class="insp-hint">Lo anuncian los lectores de pantalla al abrirlo.</p></div>
+    <div class="insp-sec"><h4>Hojas<span id="mf-count">${n} ${n === 1 ? 'hoja' : 'hojas'}</span></h4>
+      <textarea id="f-mfdoc" class="txa mf-txa" data-f="mfdoc" rows="14" maxlength="${MF_MAX}" placeholder="# Título&#10;Un párrafo.&#10;&#10;Otro párrafo.&#10;---&#10;# Otro título&#10;===&#10;# La hoja siguiente" aria-label="Texto de las hojas">${esc(s.doc || '')}</textarea>
+      <p class="insp-hint"><code>===</code> en una línea sola empieza una hoja nueva · <code>#</code> y un espacio al inicio hace un título · <code>---</code> es un divisor · una línea en blanco separa párrafos.</p></div>`;
+}
 function designView(c) {
   const head = !c.slot || !c.slot.type
     ? `<div class="insp-sec"><p class="insp-hint">Elige en el bloque qué tipo de contenido va ${c.fs ? 'de fondo' : 'en este módulo'}.</p></div>`
@@ -4992,6 +5083,7 @@ const ACT_OPTS = { none: ['Nada', 'none'], modal: ['Abrir modal', 'expand'], dow
 function actView(c) {
   const s = c.slot;
   if (!s || !s.type) return `<div class="insp-sec"><p class="insp-hint">Elige primero qué contiene ${c.fs ? 'el fondo' : 'el módulo'}.</p></div>`;
+  if (s.type === 'reader') return `<div class="insp-sec"><h4>Al hacer clic</h4><p class="insp-hint">Se abre el lector a pantalla completa, con las hojas una debajo de otra. También responde a Enter y a Espacio.</p></div>`;
   const kinds = ACT_KINDS[s.type] || ['none'], a = s.action || {}, cur = kinds.includes(a.kind) ? a.kind : 'none';
   const desc = { none: 'Solo se muestra', modal: 'Título, texto e imágenes', download: s.files && s.files.length ? `${s.files.length} ${s.files.length === 1 ? 'archivo' : 'archivos'}` : ownFiles(s).length ? 'El archivo del módulo' : 'Sube los archivos', copy: (copyValue(s) || 'Un texto').split('\n')[0].slice(0, 26) };
   let h = `<div class="insp-sec"><h4>Al hacer clic<span>${esc(slotLabel(c.row, s))}</span></h4>
@@ -5538,6 +5630,21 @@ function onField(k, v) {
       if (!slot || !slot.type || !(ACT_KINDS[slot.type] || []).includes(v)) return;
       if (v === 'none') delete slot.action; else slot.action = { ...(slot.action || {}), kind: v };
       renderInspector(); break;
+    }
+    case 'mfname': {
+      if (!slot || slot.type !== 'reader') return;
+      slot.name = String(v).trim().slice(0, 80) || 'Manifiesto';
+      return;
+    }
+    case 'mfdoc': {
+      if (!slot || slot.type !== 'reader') return;
+      const was = rowValid(row);
+      slot.doc = String(v).slice(0, MF_MAX);
+      const n = slotEl(slot.id), card = n && $(':scope > .mf-card', n);
+      if (card) card.outerHTML = mfCardHTML(slot, true);
+      const cnt = $('#mf-count'), p = mfPages(slot).length; if (cnt) cnt.textContent = p + (p === 1 ? ' hoja' : ' hojas');
+      if (was !== rowValid(row)) updateFoot();
+      return;
     }
     case 'actvalue': case 'acttitle': case 'actbody': {
       if (!slot || !slot.action) return;
@@ -6423,6 +6530,7 @@ function leaveHome({ push = true } = {}) {
 addEventListener('popstate', () => {
   if (S.edit) return; /* the open block keeps the page; the next spy update rewrites the hash */
   Lightbox.close(true); closePop(true);
+  Reader.close(true);
   if (S.overlay) closeOverlay(true);
   const h = linkedSub();
   if (!h) { showHome({ push: false }); return; }
@@ -7686,6 +7794,7 @@ function textsOfRow(r) {
     const a = s.action || {}, out = [];
     if (s.type === 'text') out.push(...(s.blocks || []).map(b => b.text));
     if (s.type === 'svg' && s.name) out.push(s.name);
+    if (s.type === 'reader') mfPages(s).forEach(p => p.forEach(it => { if (it.t) out.push(it.t); }));
     if (s.type === 'color' && hexOk(s.color || '')) { const p = palByHex(s.color); out.push((p ? p.name + ' · ' : '') + s.color.toUpperCase()); }
     if (a.kind === 'modal') out.push(a.title, a.body);
     if (a.kind === 'copy' && a.value) out.push(a.value);
@@ -7890,6 +7999,7 @@ function slotAct(el) {
   if (S.edit) return; /* while a block is being edited the other rows are dimmed: their actions wait (mouse and keyboard) */
   const s = slotOf(el), a = s && actInfo(s); if (!a) return;
   if (a.kind === 'copy') copyText(copyValue(s), el);
+  else if (a.kind === 'read') Reader.open(s, el);
   else if (a.kind === 'modal') openActModal(s, el);
   else if (a.kind === 'download') {
     const list = dlItems(s);
@@ -7950,6 +8060,143 @@ function closeActModal() {
   }
   if (from && from.isConnected) from.focus({ preventScroll: true });
 }
+
+/* ---------- Manifiesto: a reader of sheets ----------
+   The module keeps its text as plain lines (slot.doc): a line with only === starts a new sheet, a line that starts with
+   "# " is a title (lines in a row make one title of several lines), a line with only --- is a divider and a blank line
+   separates paragraphs (a single line break stays a line break). The card shows the first sheet over two more; a click
+   opens the reader: the gray box grows from the card to the window, the front sheet flies to where the first page sits
+   and the two behind it drop away. The pages scroll on their own (wheel, touch, keys) or one by one with the chevrons;
+   closing plays the same flight back into the card. */
+function mfParse(doc) {
+  doc = String(doc || '');
+  if (mfMemo.has(doc)) return mfMemo.get(doc);
+  const pages = []; let page = [], cur = null;
+  const endPage = () => { cur = null; if (page.some(it => it.k !== 'hr')) pages.push(page); page = []; };
+  doc.replace(/\r\n?/g, '\n').split('\n').forEach(raw => {
+    const line = raw.trim();
+    if (/^={3,}$/.test(line)) { endPage(); return; }
+    if (/^-{3,}$/.test(line)) { cur = null; if (page.length) page.push({ k: 'hr' }); return; }
+    if (!line) { cur = null; return; }
+    const h = /^#\s+(.+)$/.exec(line), k = h ? 'h' : 'p', t = h ? h[1].trim() : line;
+    if (cur && cur.k === k) cur.t += '\n' + t; else { cur = { k, t }; page.push(cur); }
+  });
+  endPage();
+  pages.forEach(p => { while (p.length && p[p.length - 1].k === 'hr') p.pop(); });
+  if (mfMemo.size > 24) mfMemo.clear();
+  mfMemo.set(doc, pages);
+  return pages;
+}
+function mfPages(s) { return s && s.type === 'reader' ? mfParse(s.doc) : []; }
+/* One sheet: titles, dividers and the paragraphs between them as one text column */
+function mfPageHTML(items) {
+  let h = '', txt = [];
+  const flush = () => { if (txt.length) h += `<div class="mf-txt">${txt.map(t => `<p>${esc(t)}</p>`).join('')}</div>`; txt = []; };
+  items.forEach(it => {
+    if (it.k === 'p') { txt.push(it.t); return; }
+    flush();
+    h += it.k === 'h' ? `<h2 class="mf-h">${esc(it.t)}</h2>` : '<hr class="mf-hr">';
+  });
+  flush();
+  return h;
+}
+function buildReader(s, editing) {
+  const el = document.createElement('div'); el.className = 'slot slot-reader'; el.dataset.slot = s.id;
+  el.innerHTML = mfCardHTML(s, editing);
+  return el;
+}
+function mfCardHTML(s, editing) {
+  const p = mfPages(s);
+  return `<div class="mf-card"><div class="mf-fan" aria-hidden="true"><div class="mf-sheet is-l"></div><div class="mf-sheet is-r"></div><div class="mf-sheet is-f">${p.length ? `<div class="mf-page">${mfPageHTML(p[0])}</div>` : ''}</div></div>${editing && !p.length ? '<p class="mf-empty">Pega el texto en el panel</p>' : ''}</div>`;
+}
+const Reader = {
+  s: null, card: null, to: null, idle: 0,
+  open(s, card) {
+    const pages = mfPages(s); if (!pages.length || S.modal) return;
+    const m = $('#mreader');
+    closePop(true);
+    m.getAnimations().forEach(a => a.cancel()); /* a fade left over from the last close */
+    m.setAttribute('aria-label', s.name);
+    m.innerHTML = `<div class="mr-dim" data-action="mr-close"></div><div class="mr-box">
+        <div class="mr-scroll" tabindex="0" data-lenis-prevent aria-label="${esc(s.name)}: ${pages.length} ${pages.length === 1 ? 'hoja' : 'hojas'}"><div class="mr-pages">${pages.map((p, i) => `<article class="mf-page" aria-label="Hoja ${i + 1} de ${pages.length}">${mfPageHTML(p)}</article>`).join('')}</div></div>
+        <button type="button" class="mr-btn mr-x" data-action="mr-close" aria-label="Cerrar">${icon('x')}</button>
+        <div class="mr-nav"${pages.length < 2 ? ' hidden' : ''}><button type="button" class="mr-btn" data-action="mr-prev" aria-label="Hoja anterior">${icon('cup')}</button><button type="button" class="mr-btn" data-action="mr-next" aria-label="Hoja siguiente">${icon('down')}</button></div>
+      </div>`;
+    S.modal = { from: card, kind: 'reader' };
+    this.s = s; this.card = card; this.to = null;
+    m.hidden = false;
+    if (lenis) lenis.stop(); else ROOT.classList.add('ov-open', 'no-lenis');
+    const sc = $('.mr-scroll', m);
+    sc.addEventListener('scroll', () => this.sync(), { passive: true });
+    ['wheel', 'touchstart'].forEach(t => sc.addEventListener(t, () => { this.to = null; }, { passive: true }));
+    this.sync();
+    this.fly(true);
+    sc.focus({ preventScroll: true });
+  },
+  close(instant = false) {
+    if (!S.modal || S.modal.kind !== 'reader') return;
+    const m = $('#mreader'), from = S.modal.from; S.modal = null;
+    const fin = () => { if (S.modal && S.modal.kind === 'reader') return; m.hidden = true; m.innerHTML = ''; };
+    if (!S.overlay) { ROOT.classList.remove('ov-open', 'no-lenis'); lenis && lenis.start(); }
+    if (instant) fin(); else this.fly(false).then(fin, fin);
+    if (from && from.isConnected) from.focus({ preventScroll: true });
+  },
+  /* Where each page starts in the scroller (its top 24px under the box edge, like the first one) */
+  tops(sc) { const pad = parseFloat(getComputedStyle($('.mr-pages', sc)).paddingTop) || 0; return $$('.mf-page', sc).map(p => p.offsetTop - pad); },
+  step(dir) {
+    const sc = $('#mreader .mr-scroll'); if (!sc) return;
+    const t = this.tops(sc), y = this.to != null ? this.to : sc.scrollTop, max = sc.scrollHeight - sc.clientHeight;
+    let to = dir > 0 ? t.find(v => v > y + 4) : [...t].reverse().find(v => v < y - 4);
+    if (to === undefined) to = dir > 0 ? max : 0;
+    this.to = clamp(Math.round(to), 0, max);
+    sc.scrollTo({ top: this.to, behavior: RM ? 'auto' : 'smooth' });
+    this.sync();
+  },
+  sync() {
+    const m = $('#mreader'), sc = m && $('.mr-scroll', m); if (!sc) return;
+    const y = this.to != null ? this.to : sc.scrollTop, max = sc.scrollHeight - sc.clientHeight;
+    $('[data-action="mr-prev"]', m).disabled = y <= 2;
+    $('[data-action="mr-next"]', m).disabled = y >= max - 2;
+    clearTimeout(this.idle);
+    this.idle = setTimeout(() => { if (this.to != null && Math.abs(sc.scrollTop - this.to) > 2) return; this.to = null; }, 160);
+  },
+  /* The page in view: the last one whose top has reached the upper third of the box */
+  current(sc) { const pages = $$('.mf-page', sc), r = sc.getBoundingClientRect(); let cur = pages[0]; pages.forEach(p => { if (p.getBoundingClientRect().top <= r.top + r.height / 3) cur = p; }); return cur; },
+  fly(opening) {
+    const m = $('#mreader'), box = $('.mr-box', m), dim = $('.mr-dim', m), sc = $('.mr-scroll', m), ui = $$('.mr-x, .mr-nav', m);
+    const card = this.card && this.card.isConnected ? $('.mf-card', this.card) : null;
+    const lin = (o) => ({ fill: 'both', easing: 'linear', ...o });
+    if (RM || !card || !card.getClientRects().length) {
+      return m.animate(opening ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-out', fill: 'both' }).finished;
+    }
+    const W = innerWidth, H = innerHeight, R = card.getBoundingClientRect(), D = opening ? 820 : 620;
+    const ease = 'cubic-bezier(.32,.72,0,1)', k = parseFloat(getComputedStyle(box).getPropertyValue('--mr-in')) || 16;
+    const pair = (a, b) => opening ? [a, b] : [b, a];
+    const clipCard = `inset(${Math.max(0, R.top)}px ${Math.max(0, W - R.right)}px ${Math.max(0, H - R.bottom)}px ${Math.max(0, R.left)}px round 20px)`;
+    const fly = document.createElement('div'); fly.className = 'mr-fly';
+    const cs = getComputedStyle(card); /* the card's sheet layout (wide or square) travels with the copy */
+    fly.style.cssText = `left:${R.left}px;top:${R.top}px;width:${R.width}px;height:${R.height}px;--fw:${cs.getPropertyValue('--fw')};--ft:${cs.getPropertyValue('--ft')}`;
+    fly.innerHTML = $('.mf-fan', card).outerHTML;
+    sc.after(fly);
+    const real = $$('.mf-sheet', card), sheets = $$('.mf-sheet', fly);
+    const base = real.map(n => { const t = getComputedStyle(n).transform; return t && t !== 'none' ? t : ''; });
+    const front = $('.mf-sheet.is-f', fly), F = front.getBoundingClientRect(), pg = opening ? $('.mf-page', sc) : this.current(sc), P = pg.getBoundingClientRect();
+    const toPage = `translate(${P.left - F.left}px, ${P.top - F.top}px) scale(${P.width / F.width})`;
+    const anims = [
+      box.animate({ clipPath: pair(clipCard, `inset(${k}px round 20px)`) }, { duration: D, easing: ease, fill: 'both' }),
+      dim.animate({ opacity: pair(0, 1) }, { duration: D * .6, easing: 'ease-out', fill: 'both', delay: opening ? 0 : D * .4 }),
+      front.animate({ transform: pair(base[2] || 'none', toPage) }, { duration: D, easing: ease, fill: 'both' }),
+      ...sheets.slice(0, 2).map((n, i) => n.animate({ transform: pair(base[i] || 'none', `translateY(${Math.round(H * .7)}px) ${base[i] || ''}`), opacity: pair(1, 0) }, opening ? { duration: D * .55, easing: 'cubic-bezier(.55,0,.75,.25)', fill: 'both' } : { duration: D, easing: ease, fill: 'both', delay: D * .1 })),
+      /* the real pages take over from the flying sheet at the end (and hand back to it at the start of the way back) */
+      sc.animate(opening ? [{ opacity: 0 }, { opacity: 0, offset: .7 }, { opacity: 1 }] : [{ opacity: 1 }, { opacity: 0, offset: .22 }, { opacity: 0 }], lin({ duration: D })),
+      fly.animate(opening ? [{ opacity: 1 }, { opacity: 1, offset: .7 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1, offset: .22 }, { opacity: 1 }], lin({ duration: D })),
+      ...ui.map(n => n.animate(opening ? [{ opacity: 0 }, { opacity: 0, offset: .55 }, { opacity: 1 }] : [{ opacity: 1 }, { opacity: 0, offset: .2 }, { opacity: 0 }], lin({ duration: D })))
+    ];
+    const done = Promise.all(anims.map(a => a.finished));
+    if (opening) done.then(() => { if (!fly.isConnected) return; fly.remove(); anims.forEach(a => { try { a.cancel(); } catch {} }); }, () => fly.remove());
+    return done;
+  }
+};
 
 /* ---------- Source files, modal images (editor) ---------- */
 function sourceType(f) {
@@ -8134,6 +8381,9 @@ document.addEventListener('click', (ev) => {
     }
     case 'dl-file': { const P = S.pop, f = P && P.data && P.data.items && P.data.items[+a.dataset.i]; closePop(true); if (f) downloadFile(f); break; }
     case 'amodal-close': closeActModal(); break;
+    case 'mr-close': Reader.close(); break;
+    case 'mr-prev': Reader.step(-1); break;
+    case 'mr-next': Reader.step(1); break;
     case 'type-style-new': S.typeStyleUi = { mode: 'new' }; renderInspector(); { const i = $('#type-style-name'); i && i.focus(); } break;
     case 'type-style-ask': {
       const b = activeBlock(); S.typeStyleUi = { mode: a.dataset.mode, id: b && b.ts }; renderInspector();
@@ -8403,7 +8653,7 @@ document.addEventListener('input', (ev) => {
   if (el.id === 'pal-new-hex') { S.palUi = { ...S.palUi, hex: el.value }; el.parentElement.style.setProperty('--c', el.value); return; }
   if (el.dataset && el.dataset.palHex) { el.parentElement.style.setProperty('--c', el.value); return; }
   const k = el.dataset && el.dataset.f; if (!k) return;
-  if (k === 'actvalue' || k === 'acttitle' || k === 'actbody' || k === 'ccap') { onField(k, el.value); return; }
+  if (k === 'actvalue' || k === 'acttitle' || k === 'actbody' || k === 'ccap' || k === 'mfname' || k === 'mfdoc') { onField(k, el.value); return; }
   if (k === 'cfz') { onField('cfz', +el.value); return; }
   if (NULLABLE.has(k) && !el.value.trim()) { onField(k, null); return; } /* empty goes back to automatic (or none) */
   if (k === 'bgcolor' || k === 'fscolor' || el.type === 'color') { onField(k, el.value); return; }
@@ -8493,7 +8743,7 @@ document.addEventListener('keydown', (ev) => {
   if ((ev.metaKey || ev.ctrlKey) && (ev.key === 'k' || ev.key === 'K') && !S.modal) { ev.preventDefault(); if (S.overlay === 'search') closeOverlay(true); else openOverlay('search', { instant: true }); return; }
   if (ev.key === '/' && !typing && !S.overlay && !S.edit && !S.modal) { ev.preventDefault(); openOverlay('search', { instant: true }); return; }
   if (ev.key === 'Escape') {
-    if (S.modal) { closeActModal(); return; }
+    if (S.modal) { if (S.modal.kind === 'reader') Reader.close(); else closeActModal(); return; }
     if (Motion.pv) { Motion.stopPreview(); return; }
     if (S.frameUi && !(S.pop && S.pop.trigger)) { setFrameMode(false); return; }
     if (S.pop) { const tr = S.pop.trigger; closePop(); tr && tr.focus && tr.focus(); return; }
@@ -8504,7 +8754,7 @@ document.addEventListener('keydown', (ev) => {
     if (S.confirmDelete) { S.confirmDelete = null; refreshRowTools(); return; }
   }
   if (ev.key === 'Tab' && (S.modal || Lightbox.on || S.overlay)) {
-    const f = focusables(S.modal ? $('#amodal') : Lightbox.on ? $('#home-lb') : $('#' + S.overlay)); if (!f.length) return;
+    const f = focusables(S.modal ? $(S.modal.kind === 'reader' ? '#mreader' : '#amodal') : Lightbox.on ? $('#home-lb') : $('#' + S.overlay)); if (!f.length) return;
     const i = f.indexOf(document.activeElement);
     if (ev.shiftKey && (i <= 0)) { ev.preventDefault(); f[f.length - 1].focus(); }
     else if (!ev.shiftKey && i === f.length - 1) { ev.preventDefault(); f[0].focus(); }
