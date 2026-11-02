@@ -3,7 +3,7 @@
 // strokes, the width of a block and the split of a half row, the carousel strip, and phones (three text styles, the
 // sections dropdown, search in the menu), the section paths of the published site (/voice-tone/como-hablamos), the
 // "Ver de nuevo" button of animation examples, the Manifiesto module (a card of sheets that opens into a reader) and the
-// pillar titles on phones (60px, a round "+" on their right).
+// pillar titles on phones (60px, a round "+" on their right), and the Open Graph image of shared links.
 // Runs on the local demo (BASE_URL) and on the fake Supabase project (SUPA_BASE_URL). Usage: through tests/run.cjs.
 const { chromium } = require('playwright');
 const path = require('path');
@@ -839,6 +839,18 @@ function watchErrors(page, label) {
       check(!p.errors.length, 'no page errors (' + label + ')' + (p.errors.length ? ': ' + p.errors.join(' | ') : ''));
       await ctx.close();
     }
+  }
+
+  /* ---------- 16. Shared links: the Open Graph image and tags ---------- */
+  {
+    const root = new URL('/', BASE).href;
+    const html = await (await fetch(root + 'voice-tone')).text();
+    const tag = (k) => { const m = new RegExp(`<meta (?:property|name)="${k}" content="([^"]*)"`).exec(html); return m ? m[1] : null; };
+    const head = html.slice(0, html.indexOf('</head>'));
+    check(head.includes('og:image') && tag('og:image') === 'https://belo-brandbook.vercel.app/og.png' && tag('og:image:width') === '1200' && tag('og:image:height') === '630', 'every page carries the Open Graph image, by its full address, in its head (' + tag('og:image') + ')');
+    check(tag('og:title') === 'Belo Brand Catalog' && tag('twitter:card') === 'summary_large_image' && tag('twitter:image') === tag('og:image') && !!tag('og:description'), 'with the page title, a description and the large card for X');
+    const img = await fetch(root + 'og.png'), buf = Buffer.from(await img.arrayBuffer());
+    check(img.status === 200 && img.headers.get('content-type') === 'image/png' && buf.readUInt32BE(16) === 1200 && buf.readUInt32BE(20) === 630, 'and /og.png is served: a 1200 × 630 PNG (' + img.status + ', ' + buf.length + ' bytes)');
   }
 
   await browser.close();

@@ -109,10 +109,12 @@ El catálogo es **una sola página HTML** sin dependencias de build: markup, est
 ```
 src/catalog.html            Fuente única (HTML + CSS + JS). Contiene el marcador __PHUDU_B64__
 assets/fonts/               Phudu variable (TTF original), subset woff2 que se embebe, y su licencia OFL
+assets/og.png               La imagen de los links compartidos (Open Graph, 1200 × 630)
 scripts/build.mjs           Genera dist/ embebiendo la fuente en base64 y, si hay variables de entorno, la configuración de Supabase
 scripts/serve.mjs           Servidor estático mínimo para dist/ (sin dependencias)
 dist/artifact.html          Lo que se publica como artifact (cuerpo de la página)
 dist/index.html             La misma página envuelta en un documento completo, para Vercel y para verla local
+dist/og.png                 Copia de assets/og.png que sirve el sitio
 supabase/migrations/        Esquema de la base: documentos, editores, permisos, historial, tiempo real y archivos
 tests/                      Pruebas end-to-end con Playwright, sus fixtures y un Supabase simulado
 ```
@@ -246,6 +248,7 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - El plan Hobby de Vercel tiene un cupo mensual de transformaciones. Cada imagen se transforma una vez por ancho y queda en caché; si el cupo se agota, la página vuelve sola a los originales.
   - Fuera de Vercel (vista local, el artifact, las pruebas) se cargan los originales. `localStorage['bc.opt'] = '1'` o `'0'` fuerza las copias o los originales.
 - La versión de Vercel guarda en Supabase sin configurar nada en Vercel: la configuración pública está en `supabase/public.json`.
+- **Links compartidos:** `dist/index.html` lleva en su `<head>` las etiquetas Open Graph y de X (título, descripción e imagen), así WhatsApp, Slack, LinkedIn o X muestran la tarjeta con `assets/og.png`. La imagen va con su dirección completa: en Vercel se arma con el dominio de producción (`VERCEL_PROJECT_PRODUCTION_URL`), `SITE_URL` la reemplaza y en local queda `https://belo-brandbook.vercel.app`. Para cambiarla, reemplazá `assets/og.png` por otra de 1200 × 630. Las apps guardan la vista previa un tiempo: para verla nueva al momento, se puede volver a pedir en el [Sharing Debugger](https://developers.facebook.com/tools/debug/) de Meta o en el [Post Inspector](https://www.linkedin.com/post-inspector/) de LinkedIn.
 - `dist/artifact.html` también la lleva, pero dentro de Claude la página usa la base del artifact.
 
 ## Créditos y licencias
@@ -362,3 +365,4 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Módulo **Manifiesto**: una tarjeta de hojas que se abre en un lector a pantalla completa, con las hojas una debajo de otra, chevrons para pasar de hoja y botón de cerrar (diseño de Figma). Al cerrar, la hoja que se estaba leyendo vuelve entera a la tarjeta, con la misma continuidad que al abrir, y queda arriba.
   - Celular: los títulos Phudu que abren un detalle (Poder, Frontera, Sonrisa) van a 60 px, con «Ver detalle» como un botón redondo con «+» a su derecha.
   - «Ver de nuevo» pasa a blanco, en la esquina de abajo a la derecha del módulo.
+- **v7.16:** imagen para links compartidos (Open Graph y X): la tarjeta azul «Brand Guidelines» en `assets/og.png`, con título y descripción.
