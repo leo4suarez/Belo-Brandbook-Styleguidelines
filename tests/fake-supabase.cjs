@@ -3,6 +3,10 @@
 // can_edit), Storage (assets bucket) and Realtime (postgres_changes on docs, presence) over a mocked WebSocket.
 // The rules mirror supabase/migrations: anyone reads (but the pages of a locked category), only confirmed @paisanoscreando.com, @paisanos.io and @belo.app accounts write,
 // and save_doc refuses a stale version with PT409.
+// With `gate` set ({ password }) it plays the password gate (catalog_password_gate): only editors and sessions that
+// unlocked it in the last 24 hours read, anonymous sign-ins work, and site_access / unlock answer. Without it everyone
+// reads (site_access gives every visitor a pass); with `gateMissing` those two functions do not exist, as on a project
+// where that migration is not applied.
 const crypto = require('crypto');
 
 const b64u = (o) => Buffer.from(typeof o === 'string' ? o : JSON.stringify(o)).toString('base64url');
@@ -22,6 +26,10 @@ class FakeSupabase {
     this.sockets = new Set();
     this.held = new Set();       // sockets whose realtime events are held back (simulates a slow connection)
     this.log = [];
+    this.gate = null;            // { password }: the password gate is on
+    this.gateMissing = false;    // site_access and unlock answer 404 (the migration is not applied)
+    this.viewers = new Map();    // user id -> time it unlocked the gate
+    this.fails = new Map();      // user id -> times of wrong passwords
   }
 
   addUser({ id, email, name, confirmed = true }) {
@@ -36,7 +44,7 @@ class FakeSupabase {
     return b64u({ alg: 'HS256', typ: 'JWT' }) + '.' + b64u({ sub: u.id, email: u.email, role: 'authenticated', aud: 'authenticated', exp: now + 86400, iat: now, user_metadata: { full_name: u.name } }) + '.sig';
   }
   userJSON(u) {
-    return { id: u.id, aud: 'authenticated', role: 'authenticated', email: u.email, email_confirmed_at: u.confirmed ? new Date().toISOString() : null, user_metadata: { full_name: u.name, name: u.name }, app_metadata: { provider: 'google', providers: ['google'] }, created_at: new Date().toISOString() };
+    return { id: u.id, aud: 'authenticated', role: 'authenticated', is_anonymous: !!u.anonymous, email: u.email, email_confirmed_at: u.confirmed ? new Date().toISOString() : null, user_metadata: { full_name: u.name, name: u.name }, app_metadata: { provider: 'google', providers: ['google'] }, created_at: new Date().toISOString() };
   }
   session(u) {
     const now = Math.floor(Date.now() / 1000);
@@ -56,6 +64,8 @@ class FakeSupabase {
     try { const p = JSON.parse(Buffer.from(parts[1], 'base64url').toString()); return this.users.get(p.sub) || null; } catch { return null; }
   }
 
+  canRead(u) { return !this.gate || this.gateMissing || this.isEditor(u) || this.viewerUntil(u) > Date.now(); }
+  viewerUntil(u) { const t = u && this.viewers.get(u.id); return t ? t + 864e5 : 0; }
   // Pages of a locked category are readable by editors only (catalog_locked_categories)
   pageLocked(path) {
     const t = this.docs.get('catalog/tree'), m = /^pages\/(.+)$/.exec(path);
@@ -120,6 +130,12 @@ class FakeSupabase {
       return json(200, this.session(who));
     }
     if (p === '/auth/v1/logout') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*' } });
+    if (p === '/auth/v1/signup' && req.method() === 'POST') { // anonymous sign-in
+      if (!this.gate) return json(422, { code: 'anonymous_provider_disabled', message: 'Anonymous sign-ins are disabled' });
+      const who = { id: crypto.randomUUID(), email: '', name: '', confirmed: false, anonymous: true };
+      this.users.set(who.id, who); this.anonCount = (this.anonCount || 0) + 1;
+      return json(200, this.session(who));
+    }
     if (p === '/auth/v1/user') { const who = this.userFrom(headers); return who ? json(200, this.userJSON(who)) : json(401, { message: 'invalid' }); }
 
     // Data API
@@ -127,7 +143,8 @@ class FakeSupabase {
       // path=eq.<path> or path=in.(<path>,"<path>",…) — the page reads several documents in one request
       const raw = u.searchParams.get('path') || '', inList = /^in\.\((.*)\)$/.exec(raw);
       const wants = inList ? inList[1].split(',').map(x => x.trim().replace(/^"(.*)"$/, '$1')).filter(Boolean) : [raw.replace(/^eq\./, '')];
-      const editor = this.isEditor(this.userFrom(headers));
+      const reader = this.userFrom(headers), editor = this.isEditor(reader);
+      if (!this.canRead(reader)) { this.blockedReads = (this.blockedReads || 0) + 1; return json(200, []); }
       this.reads = (this.reads || 0) + 1;
       (this.readLog = this.readLog || []).push(wants);
       const out = wants.map(want => {
@@ -138,6 +155,18 @@ class FakeSupabase {
       return json(200, out);
     }
     if (p === '/rest/v1/rpc/can_edit') return json(200, this.isEditor(this.userFrom(headers)));
+    if (p === '/rest/v1/rpc/site_access' || p === '/rest/v1/rpc/unlock') {
+      if (this.gateMissing) return json(404, { code: 'PGRST202', message: 'Could not find the function ' + p.split('/').pop() + ' in the schema cache', details: null, hint: null });
+      const who = this.userFrom(headers), always = '2100-01-01T00:00:00.000Z';
+      if (!this.gate) return json(200, p.endsWith('site_access') ? { editor: this.isEditor(who), until: always } : { ok: true, until: always });
+      if (p.endsWith('site_access')) { const t = this.viewerUntil(who); return json(200, { editor: this.isEditor(who), until: t > Date.now() ? new Date(t).toISOString() : null }); }
+      if (!who) return json(401, { code: 'PT401', message: 'sign in first', details: null, hint: null });
+      const body = JSON.parse(req.postData() || '{}'), recent = (this.fails.get(who.id) || []).filter(t => t > Date.now() - 600e3);
+      if (recent.length >= 5) return json(200, { ok: false, reason: 'too_many' });
+      if (body.p_password !== this.gate.password) { this.fails.set(who.id, [...recent, Date.now()]); return json(200, { ok: false, reason: 'wrong' }); }
+      this.fails.delete(who.id); this.viewers.set(who.id, Date.now());
+      return json(200, { ok: true, until: new Date(Date.now() + 864e5).toISOString() });
+    }
     if (p === '/rest/v1/rpc/save_doc') {
       if (this.down > 0) { this.down--; return route.abort('connectionreset'); }
       const [status, body] = this.saveDoc(this.userFrom(headers), JSON.parse(req.postData() || '{}'));

@@ -2,7 +2,7 @@
 
 Catálogo modular de la marca **Belo**. Las categorías y secciones se arman con bloques editables (texto, imagen, video, carrusel, color, SVG y Manifiesto), en tres layouts: pantalla completa, ancho completo y dos mitades.
 
-- **Versión compartida:** <https://belo-brandbook.vercel.app>, en Vercel, con el contenido guardado en Supabase. Cualquiera con el link la ve y la gente de Paisanos la edita.
+- **Versión compartida:** <https://belo-brandbook.vercel.app>, en Vercel, con el contenido guardado en Supabase. Se entra con una contraseña compartida (o como editor con Google) y la editan Paisanos y Belo.
 - **Versión anterior (respaldo, congelada):** el artifact de Claude <https://claude.ai/artifact/BTAeownzjZUsJDNfH5bxT5>.
 
 ## Cómo funciona
@@ -143,7 +143,7 @@ node tests/run.cjs layout.cjs     # solo algunas suites
 - `home.cjs` abre Chromium con la GPU habilitada (`--ignore-gpu-blocklist --enable-gpu`) para que el anillo se dibuje con WebGL, y comprueba sobre la captura que los bordes de todas las tarjetas caen sobre una misma curva; también prueba la versión sin WebGL. Prueba la Home: el slider (curva 3D sin tarjetas encimadas, movimiento automático y su pausa con el mouse o el toque, los dos botones redondos, teclado, rueda, arrastre con inercia), hover, lightbox de la tarjeta clickeada, galería (subir, titular y descripción con sus límites, formatos, esquinas, velocidad, ordenar, quitar y deshacer), las portadas de los videos y que cada video se descargue una sola vez, los botones arriba a la derecha solo en la Home, movimiento reducido, mobile y el switch viewer/admin de las secciones.
 - `editor.cjs` prueba el inspector contextual, el espaciado interno, los estilos de texto (también entre secciones y entre dos editores) y la paleta.
 - `media.cjs` prueba el encuadre, el módulo SVG, el módulo de color, las interacciones (copiar, modal y descarga) y los archivos descargables, también guardados en el Supabase simulado.
-- `layout.cjs` prueba el tema claro por visita, el título del sidebar y su lista de categorías, las categorías bloqueadas (en la página y en la base simulada), mover una subcategoría, los contenedores, grupos y divisores de los textos, el espaciado interno del auto layout, los bordes, el ancho de los bloques, la división de dos mitades y la tira del carrusel (con sus esquinas, su fondo y su espaciado interno), la barra de scroll de la página, el chip de las interacciones que sigue al cursor y la carga. Sobre la carga prueba que las secciones llegan en un pedido, las lecturas tempranas de la visita siguiente, las imágenes diferidas, las copias optimizadas a su ancho y la vuelta a los originales si el optimizador falla. También prueba el módulo Manifiesto (la tarjeta, el lector, los chevrons, cerrar, el celular y el panel) y los títulos de los pilares en el celular.
+- `layout.cjs` prueba el tema claro por visita, el título del sidebar y su lista de categorías, las categorías bloqueadas (en la página y en la base simulada), mover una subcategoría, los contenedores, grupos y divisores de los textos, el espaciado interno del auto layout, los bordes, el ancho de los bloques, la división de dos mitades y la tira del carrusel (con sus esquinas, su fondo y su espaciado interno), la barra de scroll de la página, el chip de las interacciones que sigue al cursor y la carga. Sobre la carga prueba que las secciones llegan en un pedido, las lecturas tempranas de la visita siguiente, las imágenes diferidas, las copias optimizadas a su ancho y la vuelta a los originales si el optimizador falla. También prueba el módulo Manifiesto (la tarjeta, el lector, los chevrons, cerrar, el celular y el panel), los títulos de los pilares en el celular, la imagen de Open Graph y la contraseña de ingreso (la pantalla, contraseña mal y bien, las 24 horas, el límite de intentos, editores, el celular y un proyecto sin la migración).
 - Las capturas quedan en `tests/output/`, que está ignorado por git.
 - Las pruebas bloquean Google Fonts y sirven Lenis desde `tests/fixtures/` y supabase-js desde `node_modules`, así que corren sin red. Por eso en el log aparece `Failed to load resource: net::ERR_FAILED`: es esperado.
 - Para cambiar el puerto: `PORT=8790 npm test`.
@@ -152,7 +152,17 @@ node tests/run.cjs layout.cjs     # solo algunas suites
 
 - **Proyecto:** `belo-brandbook` (id `tdrlxenjgfvnjzmuixhy`, región São Paulo).
 - **Base:** una tabla `docs` con un documento JSON por ruta (`catalog/tree` y `pages/{subId}`), el mismo modelo que el artifact. El esquema está en `supabase/migrations/`.
-- **Quién ve:** cualquiera con el link, sin login. Las secciones de una categoría bloqueada solo las leen los editores (`private.page_locked`, en la regla de lectura de `docs`).
+- **Quién ve:** quien tenga la contraseña (o sea editor). Las secciones de una categoría bloqueada solo las leen los editores (`private.page_locked`, en la regla de lectura de `docs`).
+- **Contraseña de ingreso** (`20261106120000_catalog_password_gate.sql`):
+  - La pantalla de ingreso es el diseño de Figma (Head of Design · Interno, nodo 3557-7130): la tarjeta con la sonrisa azul, «Brand guidelines», el campo de contraseña con el ojo para verla, «Ingresar» y el texto legal.
+  - La protección está en la base, no solo en la página: sin la contraseña, Supabase no entrega ningún documento (ni el árbol ni las secciones), aunque se lo pida directo con la clave pública.
+  - El visitante recibe una sesión anónima de Supabase y la desbloquea con `public.unlock(contraseña)`; desde ese momento lee el catálogo durante 24 horas (`private.is_viewer()`). El navegador lo recuerda (`bc.pass`) y abre directo mientras tanto; cuando vence, vuelve la pantalla y se borra la copia del árbol que guardaba (`bc.tree`, `bc.nav`).
+  - 5 contraseñas equivocadas seguidas frenan los intentos de esa sesión por 10 minutos.
+  - Los editores que ya iniciaron sesión con Google no la necesitan. Para editar se sigue entrando desde el menú («Iniciar sesión»); al cerrar sesión vuelve la pantalla.
+  - La contraseña nunca está en el repo ni en la página: se guarda cifrada (bcrypt) y se define o cambia en el SQL Editor con `select private.set_site_password('…');` (al menos 10 caracteres). Cambiarla deja afuera a todos los que entraron con la anterior.
+  - Requiere **Allow anonymous sign-ins** activado en Supabase (Authentication → Sign In / Providers).
+  - Los archivos (imágenes, videos, descargas) siguen en el bucket público: sus links son largos y al azar y solo aparecen dentro del contenido protegido, pero un link directo a un archivo se abre sin contraseña.
+  - Los buscadores no lo indexan (`noindex`); la imagen y las etiquetas de Open Graph siguen igual.
 - **Quién edita:** cuentas con email confirmado de `@paisanoscreando.com`, `@paisanos.io` o `@belo.app` (este último con `20261102120000_catalog_editors_belo_app.sql`). Se entra con Google desde el menú ("Iniciar sesión"). Una cuenta de otro dominio entra en "Solo lectura".
   - Para sumar a una persona puntual: `insert into private.editors (email) values ('alguien@belo.app');`
   - Para sumar un dominio entero: `insert into private.editor_domains (domain) values ('belo.app');`
@@ -366,3 +376,4 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Celular: los títulos Phudu que abren un detalle (Poder, Frontera, Sonrisa) van a 60 px, con «Ver detalle» como un botón redondo con «+» a su derecha.
   - «Ver de nuevo» pasa a blanco, en la esquina de abajo a la derecha del módulo.
 - **v7.16:** imagen para links compartidos (Open Graph y X): la tarjeta azul «Brand Guidelines» en `assets/og.png`, con título y descripción.
+- **v7.17:** **contraseña de ingreso** con la pantalla de Figma. La base solo entrega el catálogo a editores y a quien ingresó la contraseña en las últimas 24 horas; el dispositivo se recuerda 24 horas. Migración `20261106120000_catalog_password_gate.sql`, `noindex` para los buscadores.

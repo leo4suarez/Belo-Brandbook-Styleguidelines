@@ -3,7 +3,8 @@
 // strokes, the width of a block and the split of a half row, the carousel strip, and phones (three text styles, the
 // sections dropdown, search in the menu), the section paths of the published site (/voice-tone/como-hablamos), the
 // "Ver de nuevo" button of animation examples, the Manifiesto module (a card of sheets that opens into a reader) and the
-// pillar titles on phones (60px, a round "+" on their right), and the Open Graph image of shared links.
+// pillar titles on phones (60px, a round "+" on their right), the Open Graph image of shared links, and the password
+// gate (the screen, a wrong and a right password, the 24 hours, editors, phones).
 // Runs on the local demo (BASE_URL) and on the fake Supabase project (SUPA_BASE_URL). Usage: through tests/run.cjs.
 const { chromium } = require('playwright');
 const path = require('path');
@@ -851,6 +852,103 @@ function watchErrors(page, label) {
     check(tag('og:title') === 'Belo Brand Catalog' && tag('twitter:card') === 'summary_large_image' && tag('twitter:image') === tag('og:image') && !!tag('og:description'), 'with the page title, a description and the large card for X');
     const img = await fetch(root + 'og.png'), buf = Buffer.from(await img.arrayBuffer());
     check(img.status === 200 && img.headers.get('content-type') === 'image/png' && buf.readUInt32BE(16) === 1200 && buf.readUInt32BE(20) === 630, 'and /og.png is served: a 1200 × 630 PNG (' + img.status + ', ' + buf.length + ' bytes)');
+  }
+
+  /* ---------- 17. Password gate: only editors and visitors with the password read the catalog ---------- */
+  {
+    const fake = new FakeSupabase(SUPA_URL);
+    const PASS = 'clave-de-prueba-123';
+    fake.gate = { password: PASS };
+    const leo = fake.addUser({ email: 'leo@paisanoscreando.com', name: 'Leo Suarez' });
+    fake.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [{ id: 'c_f', name: 'Foundations', subs: [{ id: 's_a', name: 'Valores de marca' }] }] });
+    fake.seed('pages/s_a', { rows: [{ id: 'r_a', layout: 'full', h: null, slots: [{ id: 'm_a', type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b_a', text: 'Contenido privado', font: 'jakarta', size: 48, weight: 600, lh: 110, ls: -2, align: 'left', upper: false }] }] }] });
+    const open = async (label, opts = {}, user) => {
+      const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1, ...opts });
+      await fake.attach(ctx, label); await routes(ctx);
+      await ctx.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\/dist\/umd\/supabase\.js/, r => r.fulfill({ path: SB_JS, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+      if (user) await fake.signInContext(ctx, user);
+      const page = await ctx.newPage(); watchErrors(page, label);
+      await page.goto(SUPA_BASE + '#s_a', { waitUntil: 'domcontentloaded' });
+      return { page, ctx };
+    };
+    const gated = (p) => p.evaluate(() => { const h = document.documentElement; return { gated: h.classList.contains('gated'), ask: h.classList.contains('gate-ask') }; });
+    const msg = (p) => p.textContent('#gate-msg');
+    const { page: G, ctx: gctx } = await open('gate');
+    const first = await gated(G);
+    check(first.gated && first.ask, 'a new visitor gets the password screen from the first paint');
+    await G.waitForTimeout(1500);
+    const behind = await G.evaluate(() => ({ rail: document.querySelectorAll('.rail-cat').length, tree: localStorage.getItem('bc.tree'), stage: getComputedStyle(document.getElementById('stage')).visibility, text: document.body.innerText.includes('Contenido privado') }));
+    check(behind.rail === 0 && !behind.tree && behind.stage === 'hidden' && !behind.text && !fake.reads, 'nothing of the catalog is read, drawn or kept behind it');
+    const look = await G.evaluate(() => { const r = (s) => document.querySelector(s).getBoundingClientRect(), cs = (s) => getComputedStyle(document.querySelector(s));
+      return { title: document.querySelector('.gate-title').textContent, tfs: cs('.gate-title').fontSize, tff: cs('.gate-title').fontFamily, input: [Math.round(r('.gate-input').width), Math.round(r('.gate-input').height)], btn: [Math.round(r('.gate-btn').width), Math.round(r('.gate-btn').height), cs('.gate-btn').backgroundColor], ph: document.getElementById('gate-pass').placeholder, label: document.querySelector('.gate-btn').textContent.trim(), bg: cs('#gate').backgroundColor, legal: document.querySelector('.gate-legal').textContent.startsWith('® 2026 belo.') }; });
+    check(look.tfs === '60px' && /Phudu/.test(look.tff) && look.input.join() === '351,54' && look.btn.join() === '351,54,rgb(0, 47, 167)' && look.ph === 'Contraseña' && look.label === 'Ingresar' && look.bg === 'rgb(252, 252, 252)' && look.legal, `it is the Figma design: "${look.title}" in Phudu 60px, a 351 × 54 field and blue button, the legal line (${look.input.join('×')}, ${look.btn.join(', ')})`);
+    await G.screenshot({ path: T + 'layout-17a-gate.png' });
+    await G.click('#gate [data-action="gate-eye"]');
+    const shown = await G.evaluate(() => [document.getElementById('gate-pass').type, document.querySelector('#gate [data-action="gate-eye"]').getAttribute('aria-pressed')].join());
+    await G.click('#gate [data-action="gate-eye"]');
+    check(shown === 'text,true' && await G.evaluate(() => document.getElementById('gate-pass').type) === 'password', 'the eye shows and hides the password');
+    await G.fill('#gate-pass', 'no-es-esta'); await G.click('.gate-btn'); await G.waitForTimeout(600);
+    check((await msg(G)) === 'Contraseña incorrecta.' && (await gated(G)).gated && await G.evaluate(() => document.getElementById('gate').classList.contains('is-error')), 'a wrong password says so and keeps the catalog closed');
+    await G.screenshot({ path: T + 'layout-17b-gate-wrong.png' });
+    await G.fill('#gate-pass', PASS); await G.keyboard.press('Enter');
+    check(await until(async () => !(await gated(G)).gated), 'the right password opens the catalog');
+    await G.waitForTimeout(1200);
+    const inside = await G.evaluate(() => ({ rail: (document.querySelector('.rail-cat') || {}).textContent, text: document.body.innerText.includes('Contenido privado'), pass: +localStorage.getItem('bc.pass') }));
+    check(inside.rail === 'Foundations' && inside.text && Math.abs(inside.pass - (Date.now() + 864e5)) < 120e3 && fake.anonCount === 1, 'with its content, and the device is remembered for 24 hours (a visitor session, no account)');
+    await G.click('#btn-menu'); await G.waitForTimeout(800);
+    check(await G.locator('#menu .acct-in').count() === 1 && await G.evaluate(() => document.documentElement.dataset.mode) === 'viewer', 'the visitor is not signed in: to edit, "Iniciar sesión" in the menu, as before');
+    await G.keyboard.press('Escape'); await G.waitForTimeout(500);
+    await G.reload({ waitUntil: 'domcontentloaded' });
+    const again = await gated(G);
+    await G.waitForTimeout(1500);
+    check(!again.gated && await G.evaluate(() => document.body.innerText.includes('Contenido privado')), 'within the 24 hours it opens straight away, without the screen');
+    // 24 hours later
+    const vid = [...fake.viewers.keys()][0];
+    fake.viewers.set(vid, Date.now() - 25 * 3600e3);
+    await G.evaluate(() => localStorage.setItem('bc.pass', String(Date.now() - 1000)));
+    await G.reload({ waitUntil: 'domcontentloaded' });
+    check((await gated(G)).gated, 'after 24 hours the screen comes back');
+    await G.waitForTimeout(1500);
+    const later = await G.evaluate(() => ({ ask: document.documentElement.classList.contains('gate-ask'), tree: localStorage.getItem('bc.tree'), nav: localStorage.getItem('bc.nav'), text: document.body.innerText.includes('Contenido privado') }));
+    check(later.ask && !later.tree && !later.nav && !later.text, 'asking for the password again, with the copy of the catalog this browser kept gone');
+    // access lost while the page is open (the password was changed)
+    await G.fill('#gate-pass', PASS); await G.keyboard.press('Enter');
+    await until(async () => !(await gated(G)).gated); await G.waitForTimeout(1000);
+    fake.viewers.clear(); await G.waitForTimeout(5200);
+    await G.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    check(await until(async () => (await gated(G)).ask), 'when the password changes, an open page goes back to the screen (on returning to the tab)');
+    check(!G.errors.length, 'no page errors behind the gate' + (G.errors.length ? ': ' + G.errors.join(' | ') : ''));
+    await gctx.close();
+    // Guessing is slowed down
+    const { page: Q, ctx: qctx } = await open('gate-guess');
+    await Q.waitForTimeout(1200);
+    for (let i = 0; i < 5; i++) { await Q.fill('#gate-pass', 'intento-' + i); await Q.click('.gate-btn'); await Q.waitForTimeout(250); }
+    await Q.fill('#gate-pass', PASS); await Q.click('.gate-btn'); await Q.waitForTimeout(400);
+    check((await msg(Q)) === 'Demasiados intentos. Prueba de nuevo en unos minutos.' && (await gated(Q)).gated, 'after 5 wrong passwords it stops trying for a while, even with the right one');
+    await qctx.close();
+    // Editors skip it, and get it back when they sign out
+    const { page: E, ctx: ectx } = await open('gate-editor', {}, leo);
+    await E.waitForTimeout(1800);
+    check(!(await gated(E)).gated && await E.evaluate(() => document.body.innerText.includes('Contenido privado')) && await E.evaluate(() => document.documentElement.dataset.mode) === 'admin', 'an editor signed in with Google goes straight in, in Admin');
+    await E.click('#btn-menu'); await E.waitForTimeout(800);
+    await E.click('#menu [data-action="signout"]');
+    check(await until(async () => (await gated(E)).ask), 'and signing out brings the password screen');
+    await ectx.close();
+    // A project where the gate is not installed yet: the catalog opens as before
+    fake.gateMissing = true;
+    const { page: N, ctx: nctx } = await open('gate-missing');
+    N.errors = []; N.on('console', m => { if (m.type() === 'error' && /status of 404/.test(m.text())) N.errors.push('(expected 404)'); });
+    check(await until(async () => !(await gated(N)).gated) && await until(() => N.evaluate(() => document.body.innerText.includes('Contenido privado'))), 'without the gate in the database (the migration not applied yet) the catalog opens as before');
+    await nctx.close();
+    fake.gateMissing = false;
+    // Phone
+    const { page: M, ctx: mctx } = await open('gate-phone', { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await M.waitForTimeout(1200);
+    const mg = await M.evaluate(() => { const c = document.querySelector('.gate-input').getBoundingClientRect(), b = document.querySelector('.gate-btn').getBoundingClientRect(), k = document.querySelector('.gate-card rect').getBoundingClientRect();
+      return { mid: Math.round((c.left + c.right) / 2), w: Math.round(c.width), bh: Math.round(b.height), card: [Math.round(k.left), Math.round(k.right)], fs: getComputedStyle(document.getElementById('gate-pass')).fontSize }; });
+    check(Math.abs(mg.mid - 195) <= 1 && mg.card[0] >= 8 && mg.card[1] <= 382 && mg.w >= 280 && mg.bh >= 44 && mg.fs === '16px', `on a phone the card fits the width, centered, with a field and button easy to tap and 16px text (no zoom on focus) (card ${mg.card.join('–')}, field ${mg.w}px, button ${mg.bh}px tall)`);
+    await M.screenshot({ path: T + 'layout-17c-gate-phone.png' });
+    await mctx.close();
   }
 
   await browser.close();

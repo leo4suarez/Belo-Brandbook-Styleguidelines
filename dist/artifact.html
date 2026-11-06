@@ -28,10 +28,29 @@
 /* Shared storage (filled in by scripts/build.mjs) and the supabase-js build the page loads */
 window.BC_SUPA = {"url":"https://tdrlxenjgfvnjzmuixhy.supabase.co","key":"sb_publishable_1yjnpyjiCsFbT1ELqwZSkg_1VyDeeBA"};
 window.BC_SB = { src: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', sri: 'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok' };
+/* Password gate (the shared catalog only, see Gate): the catalog is read only by editors and by visitors who entered the
+   password in the last 24 hours. A browser that got in less than 24 hours ago (bc.pass, the time its pass ends) opens
+   the catalog at once while the page checks in the background; any other is covered by the password screen from the
+   first paint, its form shown at once when there is no session to check (gate-ask). The size of the screen's artwork
+   (--gk) follows the window. */
+(function () {
+  var cfg = window.BC_SUPA, h = document.documentElement;
+  if (!cfg || !cfg.url || !cfg.key || window.claude) return;
+  var pass = 0, sess = null, ref = '';
+  try { pass = +localStorage.getItem('bc.pass') || 0; } catch (e) {}
+  try { ref = cfg.url.replace(/^https?:\/\//, '').split('.')[0]; sess = JSON.parse(localStorage.getItem('sb-' + ref + '-auth-token') || 'null'); } catch (e) {}
+  window.BC_TOKEN = sess && sess.access_token && sess.expires_at * 1000 > Date.now() + 30000 ? sess.access_token : null;
+  if (pass > Date.now()) return;
+  h.classList.add('gated');
+  if (!sess) h.classList.add('gate-ask');
+  var fit = function () { var k = Math.min(1, (innerWidth - 32) / 423, (innerHeight - (innerWidth < 640 ? 150 : 120)) / 430); h.style.setProperty('--gk', String(Math.max(.55, k))); };
+  fit(); addEventListener('resize', fit);
+})();
 /* The catalog starts loading before the page scripts: supabase-js is preloaded, and the tree together with the pages of
    the category the link opens (as the last visit's tree knew them, bc.nav, see onTree) are read at once, in one request
+   with the visitor's session when there is a fresh one (the gate lets only editors and password visitors read), else
    with the public key. The backend takes these answers first (BC_PRE, see supabaseBackend); a page that comes back
-   missing (a locked one, for an editor) is read again there with the session. */
+   missing (locked, or not readable yet) is read again there with the session. */
 (function () {
   var cfg = window.BC_SUPA; if (!cfg || !cfg.url || !cfg.key || !window.fetch || !window.Promise || window.claude) return;
   try {
@@ -50,7 +69,8 @@ window.BC_SB = { src: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.
     (cat || nav[0]).subs.forEach(function (id) { want.push('pages/' + id); });
   }
   var list = want.map(function (x) { return '"' + x + '"'; }).join(',');
-  var all = fetch(cfg.url + '/rest/v1/docs?select=path,data,version,updated_at,updated_by,updated_by_name&path=in.(' + encodeURIComponent(list) + ')', { headers: { apikey: cfg.key, Authorization: 'Bearer ' + cfg.key } })
+  if (document.documentElement.classList.contains('gated') && !window.BC_TOKEN) return; /* nothing it could read yet */
+  var all = fetch(cfg.url + '/rest/v1/docs?select=path,data,version,updated_at,updated_by,updated_by_name&path=in.(' + encodeURIComponent(list) + ')', { headers: { apikey: cfg.key, Authorization: 'Bearer ' + (window.BC_TOKEN || cfg.key) } })
     .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   var pre = window.BC_PRE = {};
   want.forEach(function (path) {
@@ -515,6 +535,49 @@ html.frame-on .status{visibility:hidden} /* on a phone the bar spans the screen 
 .pop .pal-h{margin:6px 12px 6px}
 
 /* Modal of a module ("Abrir modal"): a centered light dialog over a soft blurred backdrop */
+/* Password screen (see Gate), from the Figma design at 1920 × 1080: the white card with the blue smile behind it in the
+   middle, the legal line at the bottom, on #FCFCFC. While the page has the gated class everything else is hidden under
+   it; gate-ask shows its card and form (before that, a session is being checked and only the background shows). The
+   artwork scales with the window (--gk, set by the head script); the form inside it keeps its 16px text. */
+.gate{display:none}
+html.gated,html.gated body{overflow:hidden}
+html.gated body > :not(.gate){visibility:hidden!important}
+html.gated .gate,.gate.is-out{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;background:#FCFCFC;color:#000000;font-family:var(--font);-webkit-font-smoothing:antialiased}
+.gate.is-out{opacity:0;pointer-events:none;transition:opacity 420ms var(--ease-out)}
+.gate-stage{flex:1;display:flex;flex-direction:column;justify-content:center;padding:24px 0}
+/* centered even when wider than a phone (the wings then run off both edges) */
+.gate-art{flex:none;position:relative;width:calc(531px * var(--gk, 1));height:calc(502px * var(--gk, 1));margin:calc(-24px * var(--gk, 1)) 0 0 calc((100% - 531px * var(--gk, 1)) / 2)}
+.gate-inner{position:absolute;left:0;top:0;width:531px;height:502px;transform:scale(var(--gk, 1));transform-origin:0 0}
+.gate-smile{position:absolute;left:-1px;top:340.12px}
+.gate-card{position:absolute;left:0;top:0}
+.gate-form{position:absolute;left:90px;top:124px;width:351px;margin:0;display:flex;flex-direction:column;align-items:center;gap:32px}
+.gate-title{width:332px;margin:0;font:900 60px/.85 var(--display);letter-spacing:-.02em;text-transform:uppercase;text-align:center;color:#000000}
+.gate-fields{display:flex;flex-direction:column;gap:24px;width:100%}
+.gate-input{display:flex;align-items:center;gap:12px;height:54px;padding:4px 16px 4px 20px;border:1px solid #E3E3E3;border-radius:9999px;background:#FFFFFF;transition:border-color 160ms ease,box-shadow 160ms ease}
+.gate-input:focus-within{border-color:#002FA7;box-shadow:0 0 0 3px rgba(0,47,167,.12)}
+.gate-input input{flex:1;min-width:0;height:100%;padding:0;border:0;outline:0;background:none;font:500 16px/1.2 var(--font);letter-spacing:-.01em;color:#000000}
+.gate-input input::placeholder{color:#C9C9C9;opacity:1}
+.gate-eye{flex:none;width:24px;height:24px;display:grid;place-items:center;border-radius:50%}
+.gate-eye svg{display:block}
+.gate-eye .eye-on,.gate-eye[aria-pressed="true"] .eye-off{display:none}
+.gate-eye[aria-pressed="true"] .eye-on{display:block}
+.gate-eye:focus-visible,.gate-btn:focus-visible{outline:2px solid #002FA7;outline-offset:3px}
+.gate-btn{display:flex;align-items:center;justify-content:center;height:54px;padding:8px 20px;text-align:center;border-radius:9999px;background:#002FA7;color:#FFFFFF;font:600 16px/1.2 var(--font);letter-spacing:-.01em;transition:background-color 160ms ease,opacity 160ms ease,transform 140ms var(--ease-out)}
+@media (hover:hover) and (pointer:fine){.gate-btn:hover{background:#00268A}}
+.gate-btn:active{transform:scale(.985)}
+.gate.is-busy .gate-btn{opacity:.72;pointer-events:none}
+.gate-msg{position:absolute;left:0;right:0;top:calc(100% + 16px);margin:0;font:500 13px/1.3 var(--font);letter-spacing:-.01em;color:#D4321F;text-align:center}
+.gate-msg:empty{display:none}
+.gate.is-error .gate-input{border-color:#D4321F}
+.gate.is-error .gate-input:focus-within{box-shadow:0 0 0 3px rgba(212,50,31,.12)}
+.gate-legal{width:100%;max-width:1921px;margin:0 auto;padding:0 100px 78px;font:500 13px/1.3 var(--font);letter-spacing:-.01em;color:#C9C9C9;text-align:center}
+html.gated:not(.gate-ask) .gate-stage,html.gated:not(.gate-ask) .gate-legal{opacity:0}
+.gate-stage,.gate-legal{transition:opacity 320ms ease}
+@keyframes gateShake{0%,100%{transform:none}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+.gate.is-shake .gate-input{animation:gateShake 420ms var(--ease-out)}
+@media (max-width:640px){.gate-legal{padding:0 16px 24px;font-size:11px}}
+@media (prefers-reduced-motion:reduce){.gate.is-shake .gate-input{animation:none}.gate.is-out,.gate-stage,.gate-legal{transition:none}}
+
 /* Manifiesto: a gray card with the first sheet standing over two more, tilted behind it; it opens into the reader (a
    gray box inset from the window, the sheets one under the other, close at the top right and the chevrons beside the
    sheet). A sheet is drawn at 595 × 878 in --mu units: 1px in the reader, the card's scale on its front sheet. */
@@ -1384,6 +1447,35 @@ html.is-row-drag .page-mode{visibility:hidden}
 @keyframes sheetIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 </style>
 
+<!-- Password screen (see Gate): shown over everything while the visitor has no access. The artwork (the card and the blue
+     smile) is the Figma design's, as exported. -->
+<div class="gate" id="gate" data-lenis-prevent>
+  <div class="gate-stage">
+    <div class="gate-art">
+      <div class="gate-inner">
+        <svg class="gate-smile" width="533" height="163" viewBox="0 0 533 163" fill="none" aria-hidden="true"><path d="M532 124.659C532.149 125.136 532.148 125.137 532.147 125.138C532.147 125.138 532.145 125.138 532.144 125.139C532.14 125.14 532.134 125.141 532.127 125.144C532.112 125.148 532.09 125.155 532.062 125.164C532.004 125.182 531.918 125.208 531.804 125.243C531.576 125.313 531.235 125.417 530.785 125.552C529.885 125.822 528.547 126.217 526.791 126.721C523.279 127.727 518.099 129.165 511.422 130.89C498.068 134.34 478.724 138.939 454.761 143.538C406.836 152.736 340.429 161.934 266.5 161.934C192.571 161.934 126.164 152.736 78.2393 143.538C54.2764 138.939 34.9325 134.34 21.5781 130.89C14.9009 129.165 9.72055 127.727 6.20898 126.721C4.45347 126.217 3.115 125.822 2.21484 125.552C1.76504 125.417 1.42445 125.313 1.19629 125.243C1.08244 125.208 0.996072 125.182 0.938477 125.164C0.909678 125.155 0.887599 125.148 0.873047 125.144C0.865814 125.141 0.860129 125.14 0.856445 125.139C0.854806 125.138 0.853438 125.138 0.852539 125.138C0.851558 125.137 0.850914 125.136 1 124.659L0.850586 125.137L0.5 125.027L0.5 0.717773L1.17188 0.963867L1 1.43359C1.15628 1.00783 1.17098 0.96833 1.17285 0.964844C1.17357 0.965109 1.17531 0.965291 1.17676 0.96582C1.17963 0.966872 1.18381 0.968646 1.18945 0.970703C1.20128 0.975018 1.21926 0.981575 1.24316 0.990234C1.29129 1.00767 1.3643 1.03381 1.46094 1.06836C1.65422 1.13746 1.94446 1.23986 2.33008 1.37402C3.10152 1.64242 4.25589 2.03725 5.78418 2.53906C8.84093 3.54274 13.3945 4.97728 19.376 6.69922C31.3394 10.1432 49.0155 14.7362 71.8564 19.3301C117.539 28.5179 183.881 37.708 266.5 37.708C349.119 37.708 415.461 28.5179 461.144 19.3301C483.984 14.7362 501.661 10.1432 513.624 6.69922C519.605 4.97728 524.159 3.54274 527.216 2.53906C528.744 2.03725 529.898 1.64242 530.67 1.37402C531.056 1.23986 531.346 1.13746 531.539 1.06836C531.636 1.03381 531.709 1.00767 531.757 0.990234C531.781 0.981575 531.799 0.975018 531.811 0.970703C531.816 0.968646 531.82 0.966872 531.823 0.96582C531.825 0.965291 531.826 0.965109 531.827 0.964844C531.829 0.96833 531.844 1.00783 532 1.43359L531.828 0.963867L532.5 0.717773V125.027L532.149 125.137L532 124.659Z" fill="#002FA7" stroke="#DCDCDC"/></svg>
+        <svg class="gate-card" width="531" height="502" viewBox="0 0 531 502" fill="none" aria-hidden="true"><mask id="gate-card-mask" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="531" height="502"><path d="M0 0C0 0 100.189 36.774 265.5 36.774C430.811 36.774 531 0 531 0L531 464.786C531 464.786 413.278 501.56 265.5 501.56C117.722 501.56 4.51144e-07 464.786 4.51144e-07 464.786L0 0Z" fill="white"/></mask><g mask="url(#gate-card-mask)"><rect x="54.5" y="88.5" width="422" height="480" rx="38.5" fill="white" stroke="#DCDCDC"/></g></svg>
+        <form class="gate-form" id="gate-form" autocomplete="on" novalidate onsubmit="return false">
+          <h1 class="gate-title">Brand guidelines</h1>
+          <div class="gate-fields">
+            <div class="gate-input">
+              <label class="sr-only" for="gate-pass">Contraseña</label>
+              <input id="gate-pass" name="password" type="password" placeholder="Contraseña" autocomplete="current-password" autocapitalize="off" spellcheck="false" aria-describedby="gate-msg">
+              <button type="button" class="gate-eye" data-action="gate-eye" aria-label="Mostrar contraseña" aria-pressed="false">
+                <svg class="eye-off" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10.6073 4.09497C10.0601 4.16981 9.67716 4.67407 9.752 5.22126C9.82684 5.76845 10.3311 6.15137 10.8783 6.07652L10.7428 5.08575L10.6073 4.09497ZM21.7559 11.5438L22.6303 11.0587V11.0587L21.7559 11.5438ZM19.5184 14.02C19.1741 14.4519 19.2451 15.081 19.677 15.4253C20.1089 15.7695 20.7381 15.6985 21.0823 15.2666L20.3003 14.6433L19.5184 14.02ZM21.756 12.4558L20.8816 11.9707V11.9707L21.756 12.4558ZM3.70739 2.29289C3.31686 1.90237 2.6837 1.90237 2.29317 2.29289C1.90265 2.68342 1.90265 3.31658 2.29317 3.70711L3.00028 3L3.70739 2.29289ZM14.1216 14.1213L14.8287 13.4142V13.4142L14.1216 14.1213ZM20.2932 21.7071C20.6837 22.0976 21.3169 22.0976 21.7074 21.7071C22.0979 21.3166 22.0979 20.6834 21.7074 20.2929L21.0003 21L20.2932 21.7071ZM2.24457 11.5441L3.11899 12.0292L2.24457 11.5441ZM7.18965 7.48108C7.65234 7.17953 7.78296 6.55998 7.48141 6.09729C7.17985 5.6346 6.56031 5.50398 6.09762 5.80554L6.64363 6.64331L7.18965 7.48108ZM2.24545 12.4576L1.37108 12.9428L1.37108 12.9428L2.24545 12.4576ZM17.9029 18.1944C18.3656 17.8928 18.4963 17.2733 18.1947 16.8106C17.8931 16.3479 17.2736 16.2173 16.8109 16.5188L17.3569 17.3566L17.9029 18.1944ZM10.7428 5.08575L10.8783 6.07652C14.4622 5.58634 18.3436 7.45518 20.8815 12.029L21.7559 11.5438L22.6303 11.0587C19.7727 5.90858 15.1615 3.47206 10.6073 4.09497L10.7428 5.08575ZM20.3003 14.6433L21.0823 15.2666C21.6408 14.5659 22.1592 13.7903 22.6304 12.941L21.756 12.4558L20.8816 11.9707C20.4617 12.7275 20.0044 13.4102 19.5184 14.02L20.3003 14.6433ZM21.7559 11.5438L20.8815 12.029C20.8716 12.0111 20.8714 11.989 20.8816 11.9707L21.756 12.4558L22.6304 12.941C22.9554 12.3553 22.955 11.6439 22.6303 11.0587L21.7559 11.5438ZM12.0003 15V14C10.8957 14 10.0003 13.1046 10.0003 12H9.00028H8.00028C8.00028 14.2091 9.79114 16 12.0003 16V15ZM3.00028 3L2.29317 3.70711L9.17185 10.5858L9.87896 9.87868L10.5861 9.17157L3.70739 2.29289L3.00028 3ZM9.00028 12H10.0003C10.0003 11.4474 10.223 10.9488 10.5861 10.5858L9.87896 9.87868L9.17185 9.17157C8.44909 9.89434 8.00028 10.8957 8.00028 12H9.00028ZM9.87896 9.87868L9.17185 10.5858L13.4145 14.8284L14.1216 14.1213L14.8287 13.4142L10.5861 9.17157L9.87896 9.87868ZM14.1216 14.1213L13.4145 14.8284L20.2932 21.7071L21.0003 21L21.7074 20.2929L14.8287 13.4142L14.1216 14.1213ZM14.1216 14.1213L13.4145 13.4142C13.0515 13.7772 12.5528 14 12.0003 14V15V16C13.1046 16 14.1059 15.5512 14.8287 14.8284L14.1216 14.1213ZM3.00028 3L2.29317 3.70711L20.2932 21.7071L21.0003 21L21.7074 20.2929L3.70739 2.29289L3.00028 3ZM2.24457 11.5441L3.11899 12.0292C4.25714 9.97798 5.66843 8.47254 7.18965 7.48108L6.64363 6.64331L6.09762 5.80554C4.2719 6.99544 2.64727 8.75717 1.37015 11.0589L2.24457 11.5441ZM2.24545 12.4576L1.37108 12.9428C3.29302 16.4058 6.00412 18.6464 8.98575 19.55C11.9734 20.4554 15.1477 19.9901 17.9029 18.1944L17.3569 17.3566L16.8109 16.5188C14.5312 18.0046 11.9666 18.3636 9.56581 17.636C7.1589 16.9066 4.83174 15.0569 3.11982 11.9723L2.24545 12.4576ZM2.24457 11.5441L1.37015 11.0589C1.04432 11.6461 1.04715 12.3591 1.37108 12.9428L2.24545 12.4576L3.11982 11.9723C3.12891 11.9887 3.13003 12.0093 3.11899 12.0292L2.24457 11.5441Z" fill="#868686"/></svg>
+                <svg class="eye-on" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.25 12.46C4.83 17.11 8.47 19 12 19s7.17-1.89 9.75-6.54a.97.97 0 0 0 0-.92C19.17 6.89 15.53 5 12 5S4.83 6.89 2.25 11.54a.97.97 0 0 0 0 .92Z" stroke="#868686" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="#868686" stroke-width="2"/></svg>
+              </button>
+            </div>
+            <button type="submit" class="gate-btn">Ingresar</button>
+          </div>
+          <p class="gate-msg" id="gate-msg" role="alert"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+  <p class="gate-legal">® 2026 belo. Todos los derechos reservados. belo Argentina S.A.- Proveedor de Servicios de Activos Virtuales (PSAV) inscripto bajo el N° 52 de fecha 19 de julio de 2024 en el Registro de Proveedores de Servicios de Activos Virtuales de CNV. Este registro es a los fines del control como Sujeto Obligado ante la Unidad de Información Financiera (UIF) y de todo otro ente regulador facultado a tal efecto, en el marco de sus competencias, y no implica licencia ni supervisión por parte de la COMISIÓN NACIONAL DE VALORES sobre la actividad realizada por el PSAV.</p>
+</div>
+
 <header class="rail" id="rail">
   <div class="rail-top">
     <div class="logo-wrap" id="rail-logo" data-adapt="rail"></div>
@@ -2239,7 +2331,24 @@ function supabaseBackend(sb, cfg) {
   /* Reads every watched document again: what the database lets this visitor read changed (signing in or out shows or
      hides the pages of locked categories) */
   function refetch() { watch.forEach((_, path) => refresh(path)); }
-  return { db, assets, auth, presence, refetch, assetUrl: publicUrl };
+  /* The password gate (supabase/migrations/…_catalog_password_gate.sql). access() answers { editor, until } (until: when
+     this visitor's pass ends, 0 without one), or { open: true } on a project without the gate. unlock() checks the
+     password for the visitor's session, starting an anonymous one if there is none. */
+  const gate = {
+    async access() {
+      const { data, error } = await sb.rpc('site_access');
+      if (error) { if (error.code === 'PGRST202' || error.code === '42883') return { open: true }; throw error; }
+      return { editor: !!(data && data.editor), until: data && data.until ? Date.parse(data.until) : 0 };
+    },
+    async unlock(password) {
+      const { data: cur } = await sb.auth.getSession();
+      if (!cur || !cur.session) { const { error } = await sb.auth.signInAnonymously(); if (error) throw fail('no_session', error); }
+      const { data, error } = await sb.rpc('unlock', { p_password: password });
+      if (error) throw fail('unavailable', error);
+      return { ok: !!(data && data.ok), reason: (data && data.reason) || null, until: data && data.until ? Date.parse(data.until) : 0 };
+    }
+  };
+  return { db, assets, auth, presence, refetch, gate, assetUrl: publicUrl };
 }
 
 const assetUrl = (id) => S.backend === 'local' ? (Local.urls.get(id) || '') : S.backend === 'supabase' ? Cloud.assetUrl(id) : '/_blob/' + id;
@@ -2444,7 +2553,7 @@ function startLocal() {
 async function startSupabase(cfg) {
   const back = authReturn();
   try { await loadScript(SB_SRC, SB_SRI); }
-  catch { toast('No se pudo conectar con el catálogo. Recarga la página para intentarlo de nuevo.'); return; }
+  catch { if (ROOT.classList.contains('gated')) Gate.ask('No se pudo conectar. Recarga la página para intentarlo de nuevo.'); toast('No se pudo conectar con el catálogo. Recarga la página para intentarlo de nuevo.'); return; }
   const sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
   Cloud = supabaseBackend(sb, cfg);
   B.db = Cloud.db; B.assets = Cloud.assets; B.versioned = true;
@@ -2456,8 +2565,12 @@ async function startSupabase(cfg) {
   authCleanUrl(back);
   await setUser(session, back.code && session ? 'signin' : null);
   if (back.error) toast('No se pudo iniciar sesión. Inténtalo de nuevo.');
-  Cloud.auth.onChange((ev, s) => { if (['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED', 'TOKEN_REFRESHED'].includes(ev)) setUser(s, ev === 'SIGNED_IN' ? 'signin' : null); });
+  Cloud.auth.onChange((ev, s) => {
+    if (['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED', 'TOKEN_REFRESHED'].includes(ev)) setUser(s, ev === 'SIGNED_IN' ? 'signin' : null);
+    if (ev === 'SIGNED_OUT') Gate.verify();
+  });
   setInterval(renderStatus, 30000);
+  await Gate.enter(); /* at once when this browser got in less than 24 hours ago (checked meanwhile), else after the password */
   start();
 }
 function start() {
@@ -2501,7 +2614,7 @@ const personName = (u) => { const m = (u && u.user_metadata) || {}; return Strin
 const firstName = (n) => String(n || '').split(/\s+/)[0] || '';
 const initials = (n) => String(n || '?').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
 async function setUser(session, why) {
-  const u = session && session.user;
+  const u = session && session.user && !session.user.is_anonymous ? session.user : null; /* anonymous: a password visitor */
   const prev = S.user && S.user.id;
   S.user = u ? { id: u.id, email: u.email || '', name: personName(u), avatar: (u.user_metadata && (u.user_metadata.avatar_url || u.user_metadata.picture)) || '' } : null;
   let can = false;
@@ -2532,7 +2645,101 @@ async function signOut() {
   if (S.edit) await cancelEdit();
   try { await Cloud.auth.signOut(); } catch {}
   setUser(null, null);
+  Gate.verify(); /* without the account, the password screen comes back */
 }
+
+/* ================= Password gate (Supabase only) =================
+   The catalog is read only by editors and by visitors who entered the shared password in the last 24 hours (the database
+   enforces it, see supabase/migrations/…_catalog_password_gate.sql). The screen covers the page from the first paint
+   (the head script adds the gated class) unless this browser got in less than 24 hours ago (bc.pass, the time its pass
+   ends): then the catalog opens at once and the pass is checked in the background. Losing access (the pass ended, the
+   password changed, an editor signed out) clears what the browser kept of the catalog and reloads into the screen. */
+const Gate = {
+  until: 0, timer: 0, waiters: [], busy: false,
+  el: () => $('#gate'),
+  remember(until) {
+    this.until = until || 0;
+    if (until) ls.set('pass', String(until)); else ls.del('pass');
+    clearTimeout(this.timer);
+    if (until) this.timer = setTimeout(() => this.verify(), Math.min(Math.max(0, until - Date.now()) + 1000, 2147483000));
+  },
+  /* { ok } after asking the database; offline, a fresh pass is trusted (the reads would fail anyway without one) */
+  async check() {
+    try {
+      const a = await Cloud.gate.access();
+      if (a.open || a.editor) { this.remember(Date.now() + 864e5); return { ok: true }; }
+      if (a.until > Date.now()) { this.remember(a.until); return { ok: true }; }
+      return { ok: false };
+    } catch { const t = +ls.get('pass') || 0; return { ok: t > Date.now(), offline: true }; }
+  },
+  async enter() {
+    if (!ROOT.classList.contains('gated')) { this.verify(); return; }
+    if ((await this.check()).ok) { this.lift(); return; }
+    this.ask();
+    return new Promise(res => this.waiters.push(res));
+  },
+  /* In the background: a visitor without access goes back to the screen */
+  async verify() {
+    if (S.backend !== 'supabase' || !Cloud) return;
+    const r = await this.check();
+    if (!r.ok && !r.offline) this.lock();
+  },
+  lock() {
+    ['pass', 'tree', 'nav'].forEach(k => ls.del(k)); /* nothing of the catalog stays in this browser */
+    if (S.started) { location.reload(); return; }
+    this.ask();
+  },
+  ask(msg) {
+    ['tree', 'nav'].forEach(k => ls.del(k));
+    ROOT.classList.add('gated', 'gate-ask');
+    this.say(msg || '');
+    const i = $('#gate-pass'); if (i && !TOUCH.matches) i.focus({ preventScroll: true });
+  },
+  lift() {
+    if (!ROOT.classList.contains('gated')) return;
+    const g = this.el(), shown = ROOT.classList.contains('gate-ask');
+    if (shown && !RM) { g.classList.add('is-out'); setTimeout(() => g.classList.remove('is-out'), 480); }
+    ROOT.classList.remove('gated', 'gate-ask');
+    this.waiters.splice(0).forEach(f => f());
+  },
+  say(msg, error) {
+    const g = this.el(), m = $('#gate-msg');
+    if (m) m.textContent = msg;
+    g.classList.toggle('is-error', !!error);
+  },
+  eye() {
+    const b = $('#gate [data-action="gate-eye"]'), i = $('#gate-pass'), on = i.type === 'password';
+    i.type = on ? 'text' : 'password';
+    b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', on ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    i.focus({ preventScroll: true });
+  },
+  async submit() {
+    const i = $('#gate-pass'), g = this.el(), pw = i.value;
+    if (!pw) { this.say('Escribe la contraseña.', true); i.focus(); return; }
+    if (this.busy || !Cloud) return;
+    this.busy = true; g.classList.add('is-busy'); this.say('');
+    try {
+      const r = await Cloud.gate.unlock(pw);
+      if (r.ok) { this.remember(r.until); i.value = ''; this.lift(); return; }
+      this.say(r.reason === 'too_many' ? 'Demasiados intentos. Prueba de nuevo en unos minutos.' : 'Contraseña incorrecta.', true);
+      if (!RM) { g.classList.remove('is-shake'); void g.offsetWidth; g.classList.add('is-shake'); }
+      i.select();
+    } catch (e) {
+      this.say(e && e.code === 'no_session' ? 'El ingreso no está disponible en este momento. Avísale a quien te compartió el link.' : 'No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.', true);
+    } finally { this.busy = false; g.classList.remove('is-busy'); }
+  }
+};
+$('#gate-form').addEventListener('submit', (ev) => { ev.preventDefault(); Gate.submit(); });
+$('#gate-pass').addEventListener('input', () => { if (Gate.el().classList.contains('is-error')) Gate.say(''); });
+/* Back to the tab: the pass is checked again (it may have ended, or the password changed), at most every few seconds */
+let gateSeen = Date.now();
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || ROOT.classList.contains('gated') || Date.now() - gateSeen < 5000) return;
+  gateSeen = Date.now(); Gate.verify();
+});
+addEventListener('storage', (ev) => {
+  if (ev.key === 'bc.pass' && ROOT.classList.contains('gated') && +ev.newValue > Date.now()) Gate.check().then(r => { if (r.ok) Gate.lift(); });
+});
 
 /* ================= Presence (Supabase only) ================= */
 /* Editors share which section and block they have open. Others see it in the rail and on the block. */
@@ -8308,6 +8515,7 @@ function rowSubOf(a) {
 const POP_TRIGGERS = ['item-menu', 'dd', 'pal-open', 'slot-act', 'row-move', 'row-more', 'cat-menu', 'secs-menu'];
 document.addEventListener('click', (ev) => {
   const a = ev.target.closest('[data-action]');
+  if (ROOT.classList.contains('gated')) { if (a && a.dataset.action === 'gate-eye') Gate.eye(); return; }
   if (S.pop && !ev.target.closest('#pop') && !(a && POP_TRIGGERS.includes(a.dataset.action))) closePop();
   if (!a && S.view === 'home') { Slider.click(ev); return; }
   if (!a || a.disabled) return;
@@ -8734,6 +8942,7 @@ document.addEventListener('paste', (ev) => {
 });
 
 document.addEventListener('keydown', (ev) => {
+  if (ROOT.classList.contains('gated')) return; /* the password screen: only its own field and buttons */
   /* First in the Esc chain. While a block is carried, other shortcuts (search, undo…) wait; scroll keys still scroll */
   if (rdrag && ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); rowDragCancel(); return; }
   if (rdrag && rdrag.active) return;

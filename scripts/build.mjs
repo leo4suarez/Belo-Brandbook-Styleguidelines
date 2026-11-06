@@ -51,11 +51,12 @@ export function siteUrl(env = process.env) {
   return u.replace(/\/+$/, '');
 }
 
-// What a shared link shows (WhatsApp, Slack, LinkedIn, X…): the page title, a line about it and assets/og.png (1200 × 630)
+// What a shared link shows (WhatsApp, Slack, LinkedIn, X…): the page title, a line about it and assets/og.png (1200 × 630).
+// Search engines are asked not to list the site: it is behind a password.
 function shareTags(title, site) {
   const a = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   const desc = 'Catálogo de marca de Belo.', img = site + '/og.png';
-  return `<meta name="description" content="${a(desc)}">`
+  return `<meta name="robots" content="noindex, nofollow"><meta name="description" content="${a(desc)}">`
     + `<meta property="og:type" content="website"><meta property="og:site_name" content="Belo"><meta property="og:url" content="${a(site + '/')}">`
     + `<meta property="og:title" content="${a(title)}"><meta property="og:description" content="${a(desc)}">`
     + `<meta property="og:image" content="${a(img)}"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Belo · Brand Guidelines">`
