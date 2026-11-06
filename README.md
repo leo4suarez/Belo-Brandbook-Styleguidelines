@@ -154,7 +154,7 @@ node tests/run.cjs layout.cjs     # solo algunas suites
 - **Base:** una tabla `docs` con un documento JSON por ruta (`catalog/tree` y `pages/{subId}`), el mismo modelo que el artifact. El esquema está en `supabase/migrations/`.
 - **Quién ve:** quien tenga la contraseña (o sea editor). Las secciones de una categoría bloqueada solo las leen los editores (`private.page_locked`, en la regla de lectura de `docs`).
 - **Contraseña de ingreso** (`20261106120000_catalog_password_gate.sql`):
-  - La pantalla de ingreso es el diseño de Figma (Head of Design · Interno, nodo 3557-7130): la tarjeta con la sonrisa azul, «Brand guidelines», el campo de contraseña con el ojo para verla, «Ingresar» y el texto legal.
+  - La pantalla de ingreso es el diseño de Figma (Head of Design · Interno, nodo 3557-7130): la tarjeta con la sonrisa azul, «Brand guidelines», el campo de contraseña con el ojo para verla, «Ingresar» y el texto legal. Al aparecer, la tarjeta sube desde adentro de la sonrisa, recortada por su forma (cuadro inicial: nodo 3573-15692).
   - La protección está en la base, no solo en la página: sin la contraseña, Supabase no entrega ningún documento (ni el árbol ni las secciones), aunque se lo pida directo con la clave pública.
   - El visitante recibe una sesión anónima de Supabase y la desbloquea con `public.unlock(contraseña)`; desde ese momento lee el catálogo durante 24 horas (`private.is_viewer()`). El navegador lo recuerda (`bc.pass`) y abre directo mientras tanto; cuando vence, vuelve la pantalla y se borra la copia del árbol que guardaba (`bc.tree`, `bc.nav`).
   - 5 contraseñas equivocadas seguidas frenan los intentos de esa sesión por 10 minutos.
@@ -376,4 +376,4 @@ El contenido (textos, imágenes, categorías) vive en la base del artifact y no 
   - Celular: los títulos Phudu que abren un detalle (Poder, Frontera, Sonrisa) van a 60 px, con «Ver detalle» como un botón redondo con «+» a su derecha.
   - «Ver de nuevo» pasa a blanco, en la esquina de abajo a la derecha del módulo.
 - **v7.16:** imagen para links compartidos (Open Graph y X): la tarjeta azul «Brand Guidelines» en `assets/og.png`, con título y descripción.
-- **v7.17:** **contraseña de ingreso** con la pantalla de Figma. La base solo entrega el catálogo a editores y a quien ingresó la contraseña en las últimas 24 horas; el dispositivo se recuerda 24 horas. Migración `20261106120000_catalog_password_gate.sql`, `noindex` para los buscadores.
+- **v7.17:** **contraseña de ingreso** con la pantalla de Figma; la tarjeta entra subiendo desde la sonrisa azul. La base solo entrega el catálogo a editores y a quien ingresó la contraseña en las últimas 24 horas; el dispositivo se recuerda 24 horas. Migración `20261106120000_catalog_password_gate.sql`, `noindex` para los buscadores.

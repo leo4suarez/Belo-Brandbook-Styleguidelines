@@ -876,7 +876,10 @@ function watchErrors(page, label) {
     const { page: G, ctx: gctx } = await open('gate');
     const first = await gated(G);
     check(first.gated && first.ask, 'a new visitor gets the password screen from the first paint');
+    const ty = () => G.evaluate(() => { const t = getComputedStyle(document.querySelector('.gate-rise')).transform; return t === 'none' ? 0 : Math.round(new DOMMatrix(t).m42); });
+    const rising = await ty(), pocket = await G.evaluate(() => getComputedStyle(document.querySelector('.gate-pocket')).clipPath);
     await G.waitForTimeout(1500);
+    check(rising > 0 && /^path\(/.test(pocket) && await ty() === 0, `its card rises out of the blue smile, cut by its shape (${rising}px below at first, then in place)`);
     const behind = await G.evaluate(() => ({ rail: document.querySelectorAll('.rail-cat').length, tree: localStorage.getItem('bc.tree'), stage: getComputedStyle(document.getElementById('stage')).visibility, text: document.body.innerText.includes('Contenido privado') }));
     check(behind.rail === 0 && !behind.tree && behind.stage === 'hidden' && !behind.text && !fake.reads, 'nothing of the catalog is read, drawn or kept behind it');
     const look = await G.evaluate(() => { const r = (s) => document.querySelector(s).getBoundingClientRect(), cs = (s) => getComputedStyle(document.querySelector(s));
