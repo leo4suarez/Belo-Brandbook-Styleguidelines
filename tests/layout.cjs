@@ -4,7 +4,8 @@
 // sections dropdown, search in the menu), the section paths of the published site (/voice-tone/como-hablamos), the
 // "Ver de nuevo" button of animation examples, the Manifiesto module (a card of sheets that opens into a reader) and the
 // pillar titles on phones (60px, a round "+" on their right), the Open Graph image of shared links, and the password
-// gate (the screen, a wrong and a right password, the 24 hours, editors, phones).
+// gate (the screen, a wrong and a right password, the 24 hours, editors, phones), and the copy of the catalog (downloaded
+// from Admin, opened from the disk, restored by the import).
 // Runs on the local demo (BASE_URL) and on the fake Supabase project (SUPA_BASE_URL). Usage: through tests/run.cjs.
 const { chromium } = require('playwright');
 const path = require('path');
@@ -952,6 +953,72 @@ function watchErrors(page, label) {
     check(Math.abs(mg.mid - 195) <= 1 && mg.card[0] >= 8 && mg.card[1] <= 382 && mg.w >= 280 && mg.bh >= 44 && mg.fs === '16px', `on a phone the card fits the width, centered, with a field and button easy to tap and 16px text (no zoom on focus) (card ${mg.card.join('–')}, field ${mg.w}px, button ${mg.bh}px tall)`);
     await M.screenshot({ path: T + 'layout-17c-gate-phone.png' });
     await mctx.close();
+  }
+
+  /* ---------- 18. A copy of the catalog: downloaded from Admin, opened from the disk, restored by the import ---------- */
+  {
+    const { execFileSync } = require('child_process');
+    const CP = T + 'copy' + path.sep;
+    fs.rmSync(CP, { recursive: true, force: true }); fs.mkdirSync(CP + 'out', { recursive: true });
+    const fake = new FakeSupabase(SUPA_URL);
+    const leo = fake.addUser({ email: 'leo@paisanoscreando.com', name: 'Leo Suarez' });
+    const img = '3f2b1c4d-1111-4222-8333-944455556666.jpg', img2 = '7a8b9c0d-2222-4333-8444-955566667777.jpg';
+    fake.files.set(img, { body: fs.readFileSync(FIX + 'img1.jpg'), type: 'image/jpeg' });
+    fake.files.set(img2, { body: fs.readFileSync(FIX + 'img3.jpg'), type: 'image/jpeg' });
+    const text = (id, t) => ({ id, type: 'text', bg: { kind: 'none' }, align: 'start', ink: 'auto', blocks: [{ id: 'b' + id, text: t, font: 'jakarta', size: 48, weight: 600, lh: 110, ls: -2, align: 'left', upper: false }] });
+    fake.seed('catalog/tree', { logo: null, home: { media: [{ id: img2, kind: 'image', w: 1200, h: 800 }] }, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [{ id: 'c_f', name: 'Foundations', subs: [{ id: 's_a', name: 'Valores de marca' }] }, { id: 'c_l', name: 'Borradores', locked: true, subs: [{ id: 's_l', name: 'Secreto' }] }] });
+    fake.seed('pages/s_a', { rows: [{ id: 'r_t', layout: 'full', h: null, slots: [text('m_t', 'Contenido de la copia')] }, { id: 'r_i', layout: 'full', h: null, slots: [{ id: 'm_i', type: 'image', asset: img, w: 1200, h: 800, ratio: 'auto', dim: 0, scrim: true }] }] });
+    fake.seed('pages/s_l', { rows: [{ id: 'r_l', layout: 'full', h: null, slots: [text('m_l', 'Texto bloqueado')] }] });
+    const ctxFor = async (fk, label, user) => {
+      const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1, acceptDownloads: true });
+      await fk.attach(ctx, label); await routes(ctx);
+      await ctx.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\/dist\/umd\/supabase\.js/, r => r.fulfill({ path: SB_JS, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+      if (user) await fk.signInContext(ctx, user);
+      return ctx;
+    };
+    const ctx = await ctxFor(fake, 'copy', leo);
+    const P = await ctx.newPage(); watchErrors(P, 'copy');
+    await P.goto(SUPA_BASE + '#s_a'); await P.waitForSelector('.rail-cat'); await P.waitForTimeout(1500);
+    await P.click('#btn-menu'); await P.waitForTimeout(900);
+    check(await P.locator('#menu [data-action="backup"]').count() === 1, 'an editor has "Descargar una copia del catálogo" next to the account in the menu');
+    const [dl] = await Promise.all([P.waitForEvent('download', { timeout: 30000 }), P.click('#menu [data-action="backup"]')]);
+    const zip = CP + dl.suggestedFilename();
+    await dl.saveAs(zip);
+    execFileSync('unzip', ['-q', '-o', zip, '-d', CP + 'out']);
+    const list = execFileSync('unzip', ['-Z1', zip]).toString().trim().split('\n');
+    check(/^belo-brandbook-copia-\d{4}-\d{2}-\d{2}\.zip$/.test(dl.suggestedFilename()) && ['index.html', 'belo-export.json', 'LEEME.txt', 'assets/' + img, 'assets/' + img2, 'vendor/gsap.min.js', 'vendor/lenis.min.js'].every(f => list.includes(f)), `the ZIP carries the page, the export, a guide, the files and the scripts (${list.length} files)`);
+    const exp = JSON.parse(fs.readFileSync(CP + 'out/belo-export.json', 'utf8'));
+    check(exp.format === 'belo-catalog-export' && !!exp.docs['pages/s_l'] && !!exp.docs['pages/s_a'] && exp.assets[img].file === img && Object.keys(exp.assets).length === 2, 'its export has every section (the locked ones too) and its files, in the import format');
+    check(await until(async () => /Copia lista: 2 secciones y 2 archivos/.test(await toasts(P))), 'and the page says when it is ready');
+    check(!P.errors.length, 'no page errors making the copy' + (P.errors.length ? ': ' + P.errors.join(' | ') : ''));
+    await ctx.close();
+    // Opened from the disk, with no network at all
+    const off = await browser.newContext({ viewport: { width: 1512, height: 900 }, deviceScaleFactor: 1, offline: true });
+    const C = await off.newPage(); const errs = [], outside = [];
+    C.on('pageerror', e => errs.push(e.message)); C.on('request', r => { if (!r.url().startsWith('file:') && !/fonts\.googleapis/.test(r.url())) outside.push(r.url()); });
+    await C.goto('file://' + CP + 'out/index.html#s_a'); await C.waitForTimeout(2500);
+    const st = await C.evaluate(() => { const i = document.querySelector('#stage .slot img'); return { gated: document.documentElement.classList.contains('gated'), rail: [...document.querySelectorAll('.rail-cat')].map(x => x.textContent).join(), text: document.body.innerText.includes('Contenido de la copia'), locked: document.body.innerText.includes('Texto bloqueado'), img: !!i && i.getAttribute('src').startsWith('assets/') && i.complete && i.naturalWidth > 0 }; });
+    check(!st.gated && st.rail === 'Foundations' && st.text && st.img && !st.locked && !outside.length && !errs.length, `the copy opens from the disk with no network, no password and no account: its sections, texts and images, the locked ones left out (${outside.length} outside requests)`);
+    await C.screenshot({ path: T + 'layout-18a-copy-offline.png' });
+    await C.click('#btn-menu'); await C.waitForTimeout(900);
+    check(/Copia sin conexión/.test(await C.textContent('#menu')) && await C.locator('#menu [data-action="signin"]').count() === 0, 'its menu says it is an offline copy, with no sign-in');
+    await off.close();
+    // Restored: an editor drops the export and its files on a new, empty project
+    const fresh = new FakeSupabase(SUPA_URL);
+    const ana = fresh.addUser({ email: 'ana@belo.app', name: 'Ana' });
+    fresh.seed('catalog/tree', { logo: null, menu: { bg: { kind: 'color', color: '#002fa7' } }, categories: [] });
+    fresh.uploadBytes = fs.readFileSync(CP + 'out/assets/' + img);
+    const rctx = await ctxFor(fresh, 'restore', ana);
+    const Rp = await rctx.newPage(); watchErrors(Rp, 'restore');
+    await Rp.goto(SUPA_BASE); await Rp.waitForTimeout(2500);
+    const files = list.filter(f => f === 'belo-export.json' || f.startsWith('assets/')).map(f => ({ name: f.split('/').pop(), b64: fs.readFileSync(CP + 'out/' + f).toString('base64') }));
+    const dt = await Rp.evaluateHandle((fl) => { const d = new DataTransfer(); fl.forEach(f => d.items.add(new File([Uint8Array.from(atob(f.b64), c => c.charCodeAt(0))], f.name))); return d; }, files);
+    Rp.once('dialog', d => d.accept());
+    await Rp.dispatchEvent('body', 'dragover', { dataTransfer: dt });
+    await Rp.dispatchEvent('body', 'drop', { dataTransfer: dt });
+    const back = await until(() => { const t = fresh.docs.get('catalog/tree'), p = fresh.docs.get('pages/s_a'); return !!p && t.data.categories.length === 2 && fresh.files.has(p.data.rows[1].slots[0].asset); }, 10000);
+    check(back, 'and the export restores the whole catalog into a new project through the import (sections, locked ones and files)');
+    await rctx.close();
   }
 
   await browser.close();

@@ -19,7 +19,7 @@
   h.setAttribute('data-mode', 'viewer');
   /* Section links: on the published site a section is a path (/voice-tone, /voice-tone/como-hablamos); a page opened
      as a file (index.html, the artifact) keeps the section in the hash. Old #s_… links open their section anywhere. */
-  var paths = window.BC_PATHS = /^https?:$/.test(location.protocol) && !/\.html?$/i.test(location.pathname) && !window.claude;
+  var paths = window.BC_PATHS = /^https?:$/.test(location.protocol) && !/\.html?$/i.test(location.pathname) && !window.claude && !window.BC_SNAP;
   /* Home is the opening screen, unless the link points at a section (or a sign-in is coming back to one).
      Set before the first paint so the page never flashes the other view. */
   var atRoot = !paths || location.pathname.replace(/\/+$/, '') === '';
@@ -1126,6 +1126,9 @@ html.is-row-drag .sec.is-empty.is-drop .adder::after{background:color-mix(in srg
 .acct-out{height:38px;padding:0 16px;margin-left:4px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 18%,transparent);transition:box-shadow 160ms ease,transform 140ms var(--ease-out)}
 .acct-out:hover{box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 50%,transparent)}
 .acct-out:active{transform:scale(.96)}
+.acct-dl{width:38px;padding:0;display:grid;place-items:center}
+.acct-dl svg.i{width:17px;height:17px}
+.acct-note{padding:0 18px;font-size:14px;font-weight:500;letter-spacing:-.01em}
 #menu-bgctl,#menu-theme{display:contents}
 .ovbg{display:flex;align-items:center;gap:8px;margin-right:6px}
 .ovsw{position:relative;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;cursor:pointer;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,currentColor 35%,transparent);transition:transform 140ms var(--ease-out),box-shadow 160ms ease}
@@ -2362,7 +2365,7 @@ function supabaseBackend(sb, cfg) {
   return { db, assets, auth, presence, refetch, gate, assetUrl: publicUrl };
 }
 
-const assetUrl = (id) => S.backend === 'local' ? (Local.urls.get(id) || '') : S.backend === 'supabase' ? Cloud.assetUrl(id) : '/_blob/' + id;
+const assetUrl = (id) => S.backend === 'local' ? (Local.urls.get(id) || '') : S.backend === 'supabase' ? Cloud.assetUrl(id) : S.backend === 'snapshot' ? 'assets/' + encodeURIComponent(id) : '/_blob/' + id;
 
 /* ================= Persistence ================= */
 /* Each document keeps the last state the backend confirmed (base, at version ver) and the local changes that are not
@@ -2543,6 +2546,7 @@ async function boot() {
   Sbar.init();
   Motion.init();
   Slider.size();
+  if (window.BC_SNAP) return startSnapshot(window.BC_SNAP);
   const c = window.claude;
   if (!c || typeof c.use !== 'function') return SUPA && SUPA.url && SUPA.key ? startSupabase(SUPA) : startLocal();
   const safe = (p) => Promise.resolve(p).catch(() => null);
@@ -2553,6 +2557,17 @@ async function boot() {
   let can = !!assets;
   if (user) { try { can = !!(await user.canEdit()); } catch {} }
   S.canEdit = can;
+  start();
+}
+/* A copy downloaded from Admin (see Backup): its documents travel in the page (BC_SNAP) and its files sit next to it in
+   assets/. Read only, no account, no password; it opens from the disk. */
+function startSnapshot(snap) {
+  const docs = snap.docs || {}, meta = { at: snap.at || null, by: '', uid: null };
+  const snapOf = (path) => { const d = docs[path]; return { id: path.split('/').pop(), exists: d != null, version: d != null ? 1 : 0, meta: d != null ? meta : null, data: () => d != null ? clone(d) : undefined }; };
+  const ro = async () => { throw Object.assign(new Error('read_only'), { code: 'read_only' }); };
+  B.db = { doc(path) { return { get: async () => snapOf(path), set: ro, delete: ro, onSnapshot(next) { setTimeout(() => next(snapOf(path)), 0); return () => {}; } }; } };
+  B.assets = { upload: ro, delete: ro };
+  S.backend = 'snapshot'; S.canEdit = false;
   start();
 }
 function startLocal() {
@@ -2926,7 +2941,7 @@ function renderStatus() {
   let st = 'ok', label = 'Guardado', title = '';
   const busy = [...D.values()].some(d => d.busy) || S.uploading.size > 0;
   if (S.backend === 'local') { st = 'local'; label = 'Vista local<span class="st-more"> · los cambios no se guardan</span>'; title = 'Vista local: los cambios no se guardan'; }
-  else if (busy) { st = 'saving'; label = S.uploading.size ? 'Subiendo…' : 'Guardando…'; }
+  else if (busy) { st = 'saving'; label = S.uploading.has('backup') ? S.uploading.get('backup').label : S.uploading.size ? 'Subiendo…' : 'Guardando…'; }
   else if (S.saveError) { st = 'error'; label = 'Sin guardar'; }
   else {
     /* The last edit of the section in view: who and when. */
@@ -7919,11 +7934,13 @@ function renderMenuBottom() {
 /* The last menu entry shares its row with the bottom-right controls: keep it clear of them. */
 if ('ResizeObserver' in window) new ResizeObserver(([e]) => { $('#menu-list').style.setProperty('--ob-w', Math.ceil(e.borderBoxSize ? e.borderBoxSize[0].inlineSize : e.contentRect.width) + 'px'); }).observe($('#menu-bottom'));
 function acctHTML() {
+  if (S.backend === 'snapshot') { const at = window.BC_SNAP && window.BC_SNAP.at ? new Date(window.BC_SNAP.at) : null; return `<span class="acct acct-note" data-adapt="menu">Copia sin conexión${at && !isNaN(at) ? ' · ' + at.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</span>`; }
   if (S.backend !== 'supabase') return '';
   const u = S.user;
   if (!u) return `<button type="button" class="acct acct-in" data-adapt="menu" data-action="signin">${icon('user')}<span>Iniciar sesión</span></button>`;
   const av = `<span class="av" aria-hidden="true">${u.avatar ? `<img src="${esc(u.avatar)}" alt="" referrerpolicy="no-referrer">` : esc(initials(u.name))}</span>`;
-  return `<div class="acct" data-adapt="menu">${av}<span class="acct-txt"><b>${esc(u.name || u.email)}</b><small>${S.canEdit ? esc(u.email) : 'Solo lectura'}</small></span><button type="button" class="acct-out" data-action="signout">Salir</button></div>`;
+  const copy = S.canEdit ? `<button type="button" class="acct-out acct-dl" data-action="backup" title="Descargar una copia del catálogo" aria-label="Descargar una copia del catálogo">${icon('download')}</button>` : '';
+  return `<div class="acct" data-adapt="menu">${av}<span class="acct-txt"><b>${esc(u.name || u.email)}</b><small>${S.canEdit ? esc(u.email) : 'Solo lectura'}</small></span>${copy}<button type="button" class="acct-out" data-action="signout">Salir</button></div>`;
 }
 function focusables(root) { return $$('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"]), label.ovsw', root).filter(el => el.getClientRects().length); }
 let ovReturn = null, ovTimer = 0;
@@ -8640,6 +8657,7 @@ document.addEventListener('click', (ev) => {
     case 'dl-file': { const P = S.pop, f = P && P.data && P.data.items && P.data.items[+a.dataset.i]; closePop(true); if (f) downloadFile(f); break; }
     case 'amodal-close': closeActModal(); break;
     case 'mr-close': Reader.close(); break;
+    case 'backup': Backup.run(); break;
     case 'mr-prev': Reader.step(-1); break;
     case 'mr-next': Reader.step(1); break;
     case 'type-style-new': S.typeStyleUi = { mode: 'new' }; renderInspector(); { const i = $('#type-style-name'); i && i.focus(); } break;
@@ -9138,6 +9156,126 @@ async function importExport(fileList) {
   onTree();
   toast(`Listo: se importaron ${what}.`);
 }
+/* ================= Copy of the catalog (Admin, shared catalog) =================
+   One click (the download button next to the account in the menu) builds a ZIP that keeps working if the site is down:
+   index.html opens the catalog from the disk, read only, with no server, account or password (the documents travel
+   inside the page, the files next to it in assets/, the scripts in vendor/ and the typeface in fonts/). belo-export.json
+   with assets/ restores it into a new project through the import (an editor drops them on the page). Built in the
+   browser, files stored as they are (images and videos are compressed already). */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+async function zipBlob(entries, onFile) {
+  const enc = new TextEncoder(), parts = [], central = [], now = new Date();
+  const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  let offset = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i], name = enc.encode(e.name), blob = e.data instanceof Blob ? e.data : new Blob([e.data]);
+    const crc = crc32(new Uint8Array(await blob.arrayBuffer())), size = blob.size;
+    if (offset + 30 + name.length + size > 0xFFFFFFFF) throw Object.assign(new Error('too_large'), { code: 'too_large' });
+    const h = new DataView(new ArrayBuffer(30)); /* local header: stored, UTF-8 names */
+    [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [8, 0, 2], [10, time, 2], [12, date, 2], [14, crc, 4], [18, size, 4], [22, size, 4], [26, name.length, 2], [28, 0, 2]]
+      .forEach(([o, v, n]) => n === 4 ? h.setUint32(o, v, true) : h.setUint16(o, v, true));
+    const c = new DataView(new ArrayBuffer(46)); /* central directory entry */
+    [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [10, 0, 2], [12, time, 2], [14, date, 2], [16, crc, 4], [20, size, 4], [24, size, 4], [28, name.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0, 4], [42, offset, 4]]
+      .forEach(([o, v, n]) => n === 4 ? c.setUint32(o, v, true) : c.setUint16(o, v, true));
+    parts.push(h.buffer, name, blob); central.push(c.buffer, name);
+    offset += 30 + name.length + size;
+    if (onFile) onFile(i + 1, entries.length);
+  }
+  const cd = central.reduce((n, x) => n + x.byteLength, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true); end.setUint32(12, cd, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
+}
+const Backup = {
+  busy: false,
+  step(label) { S.uploading.set('backup', { label }); renderStatus(); },
+  /* the files the documents name: every string that looks like a stored file and is found in the bucket */
+  fileIds(docs) {
+    const out = new Set();
+    const walk = (v) => { if (typeof v === 'string') { if (/^[A-Za-z0-9_-]{6,80}\.(png|jpe?g|gif|webp|svg|mp4|m4v|webm|pdf|zip|eps|ai|bin)$/i.test(v)) out.add(v); } else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') Object.values(v).forEach(walk); };
+    walk(docs);
+    return [...out];
+  },
+  async fetchOk(url, as = 'blob') { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw Object.assign(new Error('http ' + r.status), { status: r.status }); return as === 'text' ? r.text() : r.blob(); },
+  async run() {
+    if (this.busy || S.backend !== 'supabase' || !S.canEdit) return;
+    this.busy = true; closeOverlay(true);
+    toast('Armando la copia del catálogo. Puede tardar unos minutos: deja esta pestaña abierta.');
+    const entries = [], at = new Date();
+    try {
+      /* 1. every document (editors read the locked categories too) */
+      this.step('Copia: leyendo el catálogo…');
+      const docs = {}, tree = (await B.db.doc('catalog/tree').get()).data() || {};
+      docs['catalog/tree'] = tree;
+      for (const c of tree.categories || []) for (const x of c.subs || []) { const snap = await B.db.doc('pages/' + x.id).get(); if (snap.exists) docs['pages/' + x.id] = snap.data(); }
+      /* 2. their files, four at a time; names that are not in the bucket are skipped */
+      const ids = this.fileIds(docs), got = {};
+      let done = 0;
+      const queue = ids.slice();
+      await Promise.all([0, 1, 2, 3].map(async () => {
+        while (queue.length) {
+          const id = queue.shift();
+          try { const b = await this.fetchOk(Cloud.assetUrl(id)); got[id] = b; entries.push({ name: 'assets/' + id, data: b }); } catch (e) { if (e && e.status && e.status !== 400 && e.status !== 404) throw e; }
+          this.step(`Copia: archivos ${++done} de ${ids.length}`);
+        }
+      }));
+      /* 3. what the page loads from outside: the scripts and the typeface */
+      this.step('Copia: preparando la página…');
+      let html = await this.fetchOk(new URL('index.html', location.origin + '/').href, 'text');
+      for (const sc of $$('script[src*="cdn.jsdelivr.net"]').filter(x => !/supabase-js/.test(x.src))) {
+        const src = sc.getAttribute('src'), file = 'vendor/' + src.split('/').pop();
+        try { entries.push({ name: file, data: await this.fetchOk(src) }); html = html.split(src).join(file); } catch {}
+      }
+      const fl = $('link[rel="stylesheet"][href*="fonts.googleapis.com"]');
+      if (fl) {
+        try {
+          let css = await this.fetchOk(fl.href, 'text'), n = 0;
+          for (const u of [...new Set((css.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g) || []).map(m => m.slice(4, -1)))]) {
+            const file = `font-${++n}.woff2`;
+            entries.push({ name: 'fonts/' + file, data: await this.fetchOk(u) }); css = css.split(u).join(file);
+          }
+          entries.push({ name: 'fonts/fonts.css', data: css });
+          html = html.split(fl.getAttribute('href').replace(/&/g, '&amp;')).join('fonts/fonts.css').split(fl.getAttribute('href')).join('fonts/fonts.css');
+        } catch {}
+      }
+      /* 4. the page: no shared storage, the documents inside it (first thing in the page, before its own scripts) */
+      const snap = { at: at.toISOString(), by: S.user ? S.user.name : '', docs };
+      html = html.replace(/window\.BC_SUPA = [^\n]*?;\n/, 'window.BC_SUPA = null;\n');
+      html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8"><script>window.BC_SNAP = ' + JSON.stringify(snap).replace(/</g, '\\u003c') + ';<\/script>');
+      entries.unshift({ name: 'index.html', data: html });
+      /* 5. what restores it, and how to use it */
+      const exp = { format: 'belo-catalog-export', version: 1, exportedAt: at.toISOString(), docs, assets: Object.fromEntries(Object.keys(got).map(id => [id, { file: id, type: got[id].type || '' }])) };
+      entries.splice(1, 0, { name: 'belo-export.json', data: JSON.stringify(exp, null, 1) }, { name: 'LEEME.txt', data: this.readme(at, Object.keys(got).length) });
+      const zip = await zipBlob(entries, (i, n) => { if (i % 10 === 0 || i === n) this.step(`Copia: comprimiendo ${i} de ${n}`); });
+      const a = document.createElement('a'), url = URL.createObjectURL(zip);
+      a.href = url; a.download = `belo-brandbook-copia-${at.toISOString().slice(0, 10)}.zip`; a.style.display = 'none';
+      document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 120000);
+      { const ns = Object.keys(docs).length - 1, nf = Object.keys(got).length; toast(`Copia lista: ${ns} ${ns === 1 ? "sección" : "secciones"} y ${nf} ${nf === 1 ? "archivo" : "archivos"} (${fmtSize(zip.size)}).`); }
+    } catch (e) {
+      toast(e && e.code === 'too_large' ? 'La copia pasa de 4 GB: no se pudo armar en el navegador.' : 'No se pudo armar la copia. Revisa la conexión e inténtalo de nuevo.');
+    } finally { this.busy = false; S.uploading.delete('backup'); renderStatus(); }
+  },
+  readme(at, files) {
+    const day = at.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+    return [
+      `Copia del Brandbook de Belo · ${day}${S.user && S.user.name ? ' · descargada por ' + S.user.name : ''}`, '',
+      'QUÉ HAY EN ESTA CARPETA',
+      '- index.html: el catálogo completo para verlo sin internet. Ábrelo con doble clic (Chrome, Edge, Safari o Firefox).',
+      `- assets/: las imágenes, videos y archivos descargables del catálogo (${files}).`,
+      '- vendor/ y fonts/: lo que la página necesita para funcionar sin conexión.',
+      '- belo-export.json: todo el contenido en el formato de importación, para restaurar la web.', '',
+      'A TENER EN CUENTA',
+      '- Es una copia de solo lectura: muestra el catálogo tal como estaba al descargarla.',
+      '- No pide contraseña: guárdala en un lugar seguro y compártela solo con quien corresponda.',
+      '- Las categorías bloqueadas viajan en belo-export.json, pero la copia no las muestra.',
+      '- Si al abrirla con doble clic algo no carga (algunos navegadores limitan las páginas abiertas desde el disco), abre una terminal en esta carpeta, corre  python3 -m http.server 8000  y entra a http://localhost:8000', '',
+      'RESTAURAR LA WEB',
+      '1. El código está en el repositorio del proyecto (o en el ZIP del código). Su README explica cómo publicarlo en Vercel y conectarlo a un proyecto de Supabase.',
+      '2. Con la web nueva funcionando, entra como editor, pasa a modo Admin y suelta sobre la página belo-export.json junto con todos los archivos de assets/. Se suben los archivos y se guarda el catálogo.', ''
+    ].join('\n');
+  }
+};
 document.addEventListener('pointerdown', (ev) => { if (S.pop && !ev.target.closest('#pop') && !ev.target.closest(POP_TRIGGERS.map(x => `[data-action="${x}"]`).join(', '))) closePop(); }, true);
 
 /* ================= Page scrollbar: only the indicator ================= */
